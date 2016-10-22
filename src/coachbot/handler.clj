@@ -19,8 +19,16 @@
 
 (ns coachbot.handler
   (:require [compojure.api.sweet :refer :all]
+            [compojure.core :as cc]
+            [compojure.route :as r]
             [ring.util.http-response :refer :all]
             [schema.core :as s]))
+
+(defn wrap-dir-index [handler]
+  (fn [req]
+    (handler
+      (update-in req [:uri]
+                 #(if (= "/" %) "/index.html" %)))))
 
 (s/defschema Pizza
   {:name s/Str
@@ -32,23 +40,32 @@
 (def app
   (api
     {:swagger
-     {:ui "/"
+     {:ui "/swagger-ui"
       :spec "/swagger.json"
-      :data {:info {:title "Coachbot"
-                    :description "Compojure Api example"}
-             :tags [{:name "api", :description "some apis"}]}}}
+      :data {:info {:title "CoachBot"
+                    :description "Simple, elegant, automatic motivation"}
+             :tags [{:name "api", :description "CoachBot APIs"}]}}}
 
-    (context "/api/v1" []
-      :tags ["api"]
+    (middleware [wrap-dir-index]
+      (context "/api/v1" []
+        :tags ["APIs"]
 
-      (GET "/plus" []
-        :return {:result Long}
-        :query-params [x :- Long, y :- Long]
-        :summary "adds two numbers together"
-        (ok {:result (+ x y)}))
+        (GET "/plus" []
+          :return {:result Long}
+          :query-params [x :- Long, y :- Long]
+          :summary "adds two numbers together"
+          (ok {:result (+ x y)}))
 
-      (POST "/echo" []
-        :return Pizza
-        :body [pizza Pizza]
-        :summary "echoes a Pizza"
-        (ok pizza)))))
+        (POST "/echo" []
+          :return Pizza
+          :body [pizza Pizza]
+          :summary "echoes a Pizza"
+          (ok pizza)))
+
+      (undocumented (r/resources "/"))
+
+      (undocumented
+        (cc/GET (str "/.well-known/acme-challenge/"
+                     "qzi_rXCgkZonOK0VNvHut5KrVl9YJFSz4elFW0dHDpA") []
+          (ok (str "qzi_rXCgkZonOK0VNvHut5KrVl9YJFSz4elFW0dHDpA"
+                   ".g6QAiw8SpNPpxhMk9osyvfJoM3skZlmzD3qxEna4sgg")))))))
