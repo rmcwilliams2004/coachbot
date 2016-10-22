@@ -42,7 +42,7 @@
     {:swagger
      {:ui "/swagger-ui"
       :spec "/swagger.json"
-      :data {:info {:title "CoachBot"
+      :data {:info {:title "CoachBot by Courage Labs, LLC"
                     :description "Simple, elegant, automatic motivation"}
              :tags [{:name "api", :description "CoachBot APIs"}]}}}
 
