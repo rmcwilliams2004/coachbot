@@ -18,7 +18,6 @@
  */
 
 body {
-    padding: 8px 0 0 24px;
     font-family: "Cabin", sans-serif;
     position: absolute;
     top: 0;
@@ -27,6 +26,25 @@ body {
     left: 0;
 }
 
-h1 {
+h1.title, div.main-content {
+    padding: 14px;
+}
+
+h1, h2 {
+    margin-bottom: 10px;
+}
+
+h1.title {
     font-family: "Lusitana", serif;
+    font-size: 1.6em;
+    background-color: #e7e7e7;
+    text-align: center;
+}
+
+h2 {
+    font-size: 1.3em;
+}
+
+p {
+    margin: 8px 0;
 }
