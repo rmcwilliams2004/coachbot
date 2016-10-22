@@ -25,8 +25,11 @@
   :uberjar-name "server.jar"
   :test-paths ["spec"]
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "3.1.0"]
-                                  [cheshire "5.5.0"]
+                                  [cheshire "5.6.3"]
                                   [ring/ring-mock "0.3.0"]
-                                  [speclj "3.3.0"]]
-                   :plugins [[ikitommi/lein-ring "0.9.8-FIX"]
-                             [speclj "3.3.0"]]}})
+                                  [speclj "3.3.2"]]
+                   :plugins [[lein-ancient "0.6.10"]
+                             [lein-bikeshed "0.3.0"]
+                             [lein-kibit "0.1.2"]
+                             [ikitommi/lein-ring "0.9.8-FIX"]
+                             [speclj "3.3.2"]]}})

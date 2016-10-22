@@ -1,0 +1,6 @@
+language: clojure
+jdk: oraclejdk8
+script: ./test-with-checks.sh
+cache:
+  directories:
+  - $HOME/.m2

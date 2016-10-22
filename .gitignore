@@ -1,3 +1,4 @@
-.idea
-target
-coachbot.iml
+/.idea
+/target
+/coachbot.iml
+/.lein-failures
