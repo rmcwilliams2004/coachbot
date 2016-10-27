@@ -22,6 +22,23 @@ lein do clean, ring uberjar
 java -jar target/server.jar
 ```
 
+### Packaging and running as standalone jar like Heroku does
+Install the [Heroku Toolbelt](https://toolbelt.heroku.com/), then:
+
+```
+lein do clean, ring uberjar && heroku local web
+```
+
+### Deploying to Heroku
+
+After having added the heroku remote:
+
+    heroku git:remote -r production -a cl-coachbot
+    
+Then:
+    
+    git push production master
+
 ### Packaging as war
 
 `lein ring uberwar`

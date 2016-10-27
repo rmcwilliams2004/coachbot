@@ -2,3 +2,4 @@
 /target
 /coachbot.iml
 /.lein-failures
+.env

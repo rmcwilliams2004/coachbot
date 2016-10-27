@@ -18,11 +18,14 @@
 ;
 
 (ns coachbot.handler
-  (:require [compojure.api.sweet :refer :all]
+  (:require [coachbot.env :as env]
+            [compojure.api.sweet :refer :all]
             [compojure.core :as cc]
             [compojure.route :as r]
+            [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [taoensso.timbre :as log]))
 
 (defn wrap-dir-index [handler]
   (fn [req]
@@ -37,35 +40,38 @@
    :origin {:country (s/enum :FI :PO)
             :city s/Str}})
 
-(def app
-  (api
-    {:swagger
-     {:ui "/swagger-ui"
-      :spec "/swagger.json"
-      :data {:info {:title "CoachBot by Courage Labs, LLC"
-                    :description "Simple, elegant, automatic motivation"}
-             :tags [{:name "api", :description "CoachBot APIs"}]}}}
+(defapi app
+  {:swagger
+   {:ui "/swagger-ui"
+    :spec "/swagger.json"
+    :data {:info {:title "CoachBot by Courage Labs, LLC"
+                  :description "Simple, elegant, automatic motivation"}
+           :tags [{:name "api", :description "CoachBot APIs"}]}}}
 
-    (middleware [wrap-dir-index]
-      (context "/api/v1" []
-        :tags ["APIs"]
+  (middleware [wrap-dir-index]
+    (context "/api/v1" []
+      :tags ["APIs"]
 
-        (GET "/plus" []
-          :return {:result Long}
-          :query-params [x :- Long, y :- Long]
-          :summary "adds two numbers together"
-          (ok {:result (+ x y)}))
+      (GET "/plus" []
+        :return {:result Long}
+        :query-params [x :- Long, y :- Long]
+        :summary "adds two numbers together"
+        (ok {:result (+ x y)}))
 
-        (POST "/echo" []
-          :return Pizza
-          :body [pizza Pizza]
-          :summary "echoes a Pizza"
-          (ok pizza)))
+      (POST "/echo" []
+        :return Pizza
+        :body [pizza Pizza]
+        :summary "echoes a Pizza"
+        (ok pizza)))
 
-      (undocumented (r/resources "/"))
+    (undocumented (r/resources "/"))
 
-      (undocumented
-        (cc/GET (str "/.well-known/acme-challenge/"
-                     "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo") []
-          (ok (str "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo.g6QAiw8SpNP"
-                   "pxhMk9osyvfJoM3skZlmzD3qxEna4sgg")))))))
+    (undocumented
+      (cc/GET (str "/.well-known/acme-challenge/"
+                   "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo") []
+        (ok (str "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo.g6QAiw8SpNP"
+                 "pxhMk9osyvfJoM3skZlmzD3qxEna4sgg"))))))
+
+(defn -main []
+  (log/infof "Getting ready to listen on port %d" env/port)
+  (srv/run-server (api #'app) {:port env/port}))

@@ -19,8 +19,10 @@
 
 (defproject coachbot "0.1.0-SNAPSHOT"
   :description "Simple, elegant, automatic motivation"
-  :dependencies [[org.clojure/clojure "1.8.0"]
-                 [metosin/compojure-api "1.1.8"]]
+  :dependencies [[com.taoensso/timbre "4.7.4"]
+                 [org.clojure/clojure "1.8.0"]
+                 [http-kit "2.2.0"]
+                 [metosin/compojure-api "1.1.9"]]
   :ring {:handler coachbot.handler/app}
   :uberjar-name "server.jar"
   :test-paths ["spec"]
