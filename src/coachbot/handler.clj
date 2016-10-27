@@ -66,6 +66,6 @@
 
       (undocumented
         (cc/GET (str "/.well-known/acme-challenge/"
-                     "qzi_rXCgkZonOK0VNvHut5KrVl9YJFSz4elFW0dHDpA") []
-          (ok (str "qzi_rXCgkZonOK0VNvHut5KrVl9YJFSz4elFW0dHDpA"
-                   ".g6QAiw8SpNPpxhMk9osyvfJoM3skZlmzD3qxEna4sgg")))))))
+                     "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo") []
+          (ok (str "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo.g6QAiw8SpNP"
+                   "pxhMk9osyvfJoM3skZlmzD3qxEna4sgg")))))))
