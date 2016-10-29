@@ -25,7 +25,8 @@
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log])
+  (:gen-class))
 
 (defn wrap-dir-index [handler]
   (fn [req]
@@ -73,5 +74,6 @@
                  "pxhMk9osyvfJoM3skZlmzD3qxEna4sgg"))))))
 
 (defn -main []
-  (log/infof "Getting ready to listen on port %d" env/port)
-  (srv/run-server (api #'app) {:port env/port}))
+  (let [port @env/port]
+    (log/infof "Getting ready to listen on port %d" port)
+    (srv/run-server (api #'app) {:port port})))

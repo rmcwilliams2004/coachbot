@@ -30,6 +30,6 @@
                                        env-key)))))
   ([env-key default-value] (env-or env-key #(identity default-value))))
 
-(def slack-token (env "COACHBOT_SLACK_TOKEN" nil))
+(def slack-token (delay (env "COACHBOT_SLACK_TOKEN" nil)))
 
-(def port (Integer/parseInt (env "PORT" "3000")))
+(def port (delay (Integer/parseInt (env "PORT" "3000"))))
