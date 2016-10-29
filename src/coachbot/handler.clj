@@ -76,4 +76,4 @@
 (defn -main []
   (let [port @env/port]
     (log/infof "Getting ready to listen on port %d" port)
-    (srv/run-server (api #'app) {:port port})))
+    (srv/run-server app {:port port})))
