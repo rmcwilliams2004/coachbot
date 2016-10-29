@@ -26,6 +26,7 @@
   :ring {:handler coachbot.handler/app}
   :uberjar-name "server.jar"
   :test-paths ["spec"]
+  :min-lein-version "2.0.0"
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "3.1.0"]
                                   [cheshire "5.6.3"]
                                   [ring/ring-mock "0.3.0"]
@@ -34,4 +35,6 @@
                              [lein-bikeshed "0.3.0"]
                              [lein-kibit "0.1.2"]
                              [ikitommi/lein-ring "0.9.8-FIX"]
-                             [speclj "3.3.2"]]}})
+                             [speclj "3.3.2"]]}
+             :uberjar {:aot :all
+                       :dependencies [[javax.servlet/servlet-api "2.5"]]}})
