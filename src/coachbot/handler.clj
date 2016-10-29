@@ -69,9 +69,11 @@
 
     (undocumented
       (cc/GET (str "/.well-known/acme-challenge/"
-                   "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo") []
-        (ok (str "nIP1gsj9yBW05FOLx8TXxal0HsnrIv9hfbRiCVyVxWo.g6QAiw8SpNP"
-                 "pxhMk9osyvfJoM3skZlmzD3qxEna4sgg"))))))
+                   "dZKR113j9JugTDth1wM-T9XhMbnY42GNLKIKfNXqsbU") []
+        (content-type
+          (ok (str "dZKR113j9JugTDth1wM-T9XhMbnY42GNLKIKfNXqsbU."
+                   "g6QAiw8SpNPpxhMk9osyvfJoM3skZlmzD3qxEna4sgg"))
+          "text/plain")))))
 
 (defn -main []
   (let [port @env/port]
