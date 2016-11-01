@@ -18,13 +18,18 @@
 ;
 
 (ns coachbot.oauth
-  (:require [compojure.api.sweet :refer :all]
+  (:require [clj-http.client :as client]
+            [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [coachbot.env :as env]))
 
 (defn auth-slack [code]
-  (log/infof "Authorizing with Slack with code: %s" code))
+  (log/info (client/get "https://slack.com/api/oauth.access"
+                        {:query-params {:client_id @env/slack-client-id
+                                        :client_secret @env/slack-client-secret
+                                        :code code}})))
 
 (defroutes oauth-routes
   (context "/oauth" []
