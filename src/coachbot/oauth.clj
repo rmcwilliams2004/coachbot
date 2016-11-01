@@ -17,23 +17,16 @@
 ; along with CoachBot.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-(ns coachbot.env)
+(ns coachbot.oauth
+  (:require [compojure.api.sweet :refer :all]
+            [ring.util.http-response :refer :all]
+            [schema.core :as s]
+            [taoensso.timbre :as log]))
 
-(defn- env-or [env-key f]
-  (let [val (System/getenv env-key)]
-    (if-not val (f) val)))
-
-(defn- env
-  ([env-key] (env-or env-key
-                     #(throw (IllegalStateException.
-                               (format "Environment variable missing: %s"
-                                       env-key)))))
-  ([env-key default-value] (env-or env-key #(identity default-value))))
-
-(def slack-client-id (delay (env "SLACK_CLIENT_ID" nil)))
-
-(def slack-client-secret (delay (env "SLACK_CLIENT_SECRET" nil)))
-
-(def slack-verification-token (delay (env "SLACK_VERIFICATION_TOKEN" nil)))
-
-(def port (delay (Integer/parseInt (env "PORT" "3000"))))
+(defroutes oauth-routes
+  (context "/oauth" []
+    (GET "/" {:keys [headers params body] :as request}
+      :query-params [code :- String]
+      (log/infof "Headers: '%s'%nParams: '%s'%n Body: '%s'%n Code: '%s'%n"
+                 headers params (if body (slurp body) "") code)
+      (ok "Application authorized!"))))

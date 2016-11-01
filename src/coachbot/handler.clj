@@ -19,6 +19,7 @@
 
 (ns coachbot.handler
   (:require [coachbot.env :as env]
+            [coachbot.oauth :as oauth]
             [compojure.api.sweet :refer :all]
             [compojure.core :as cc]
             [compojure.route :as r]
@@ -34,13 +35,6 @@
       (update-in req [:uri]
                  #(if (= "/" %) "/index.html" %)))))
 
-(s/defschema Pizza
-  {:name s/Str
-   (s/optional-key :description) s/Str
-   :size (s/enum :L :M :S)
-   :origin {:country (s/enum :FI :PO)
-            :city s/Str}})
-
 (defapi app
   {:swagger
    {:ui "/swagger-ui"
@@ -52,18 +46,7 @@
   (middleware [wrap-dir-index]
     (context "/api/v1" []
       :tags ["APIs"]
-
-      (GET "/plus" []
-        :return {:result Long}
-        :query-params [x :- Long, y :- Long]
-        :summary "adds two numbers together"
-        (ok {:result (+ x y)}))
-
-      (POST "/echo" []
-        :return Pizza
-        :body [pizza Pizza]
-        :summary "echoes a Pizza"
-        (ok pizza)))
+      oauth/oauth-routes)
 
     (undocumented (r/resources "/"))
 
@@ -75,7 +58,9 @@
                    "g6QAiw8SpNPpxhMk9osyvfJoM3skZlmzD3qxEna4sgg"))
           "text/plain")))))
 
-(defn -main []
+(defn -main
+  "Main function. Invoked to run the application using httpkit."
+  []
   (let [port @env/port]
     (log/infof "Getting ready to listen on port %d" port)
     (srv/run-server app {:port port})))

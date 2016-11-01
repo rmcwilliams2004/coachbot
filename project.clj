@@ -19,7 +19,8 @@
 
 (defproject coachbot "0.1.0-SNAPSHOT"
   :description "Simple, elegant, automatic motivation"
-  :dependencies [[com.taoensso/timbre "4.7.4"]
+  :dependencies [[clj-http "2.3.0"]
+                 [com.taoensso/timbre "4.7.4"]
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/data.codec "0.1.0"]
                  [org.clojure/data.json "0.2.6"]

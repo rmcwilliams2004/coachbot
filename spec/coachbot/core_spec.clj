@@ -1,4 +1,4 @@
- ;
+;
 ; Copyright (c) 2016, Courage Labs, LLC.
 ;
 ; This file is part of CoachBot.
@@ -18,18 +18,14 @@
 ;
 
 (ns coachbot.core-spec
-   (:require [cheshire.core :as cheshire]
-             [coachbot.handler :refer :all]
-             [ring.mock.request :as mock]
-             [speclj.core :refer :all]))
+  (:require [coachbot.handler :refer :all]
+            [ring.mock.request :as mock]
+            [speclj.core :refer :all]))
 
-(defn parse-body [body]
-  (cheshire/parse-string (slurp body) true))
+(describe "OAuth"
+  (with-all response (app (-> (mock/request :get "/api/v1/oauth?code=test"))))
+  (with-all body (:body @response))
 
- (describe "Hello, World!"
-   (with-all response (app (-> (mock/request :get  "/api/v1/plus?x=1&y=2"))))
-   (with-all body     (parse-body (:body @response)))
-
-   (it "Can GET request to /hello?name={a-name} and receive expected response"
-     (should= 200 (:status @response))
-     (should= 3 (:result @body))))
+  (it "Can GET OAuth request"
+    (should= 200 (:status @response))
+    (should= "Application authorized!" @body)))
