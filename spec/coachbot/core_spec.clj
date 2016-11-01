@@ -25,7 +25,12 @@
 (describe "OAuth"
   (with-all response (app (-> (mock/request :get "/api/v1/oauth?code=test"))))
   (with-all body (:body @response))
+  (with-all token-container (atom []))
+
 
   (it "Can GET OAuth request"
-    (should= 200 (:status @response))
-    (should= "Application authorized!" @body)))
+    (with-redefs [coachbot.oauth/auth-slack
+                  (fn [code] (swap! @token-container conj code))]
+      (should= 200 (:status @response))
+      (should= "Application authorized!" @body)
+      (should= ["test"] @@token-container))))

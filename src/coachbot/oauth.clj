@@ -23,10 +23,13 @@
             [schema.core :as s]
             [taoensso.timbre :as log]))
 
+(defn auth-slack [code]
+  (log/infof "Authorizing with Slack with code: %s" code))
+
 (defroutes oauth-routes
   (context "/oauth" []
-    (GET "/" {:keys [headers params body] :as request}
+    (GET "/" []
       :query-params [code :- String]
-      (log/infof "Headers: '%s'%nParams: '%s'%n Body: '%s'%n Code: '%s'%n"
-                 headers params (if body (slurp body) "") code)
+      :summary "Give Slack our authorization code so we can be helpful!"
+      (auth-slack code)
       (ok "Application authorized!"))))
