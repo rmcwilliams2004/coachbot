@@ -24,7 +24,6 @@
             [coachbot.env :as env]
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
-            [schema.core :as s]
             [taoensso.timbre :as log]))
 
 (defn auth-slack [code]
