@@ -18,20 +18,25 @@
 ;
 
 (ns coachbot.oauth
-  (:require [clj-http.client :as client]
+  (:require [cheshire.core :as cheshire]
+            [clj-http.client :as client]
+            [clojure.walk :as walk]
+            [coachbot.env :as env]
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
-            [taoensso.timbre :as log]
-            [coachbot.env :as env]
-            [cheshire.core :as cheshire]))
+            [taoensso.timbre :as log]))
 
 (defn auth-slack [code]
-  (let [result (client/get "https://slack.com/api/oauth.access"
-                           {:query-params {:client_id @env/slack-client-id
-                                           :client_secret @env/slack-client-secret
-                                           :code code}})
-        body (cheshire/parse-string (:body result))]
+  (let [result
+        (client/get "https://slack.com/api/oauth.access"
+                    {:query-params {:client_id @env/slack-client-id
+                                    :client_secret @env/slack-client-secret
+                                    :code code}})
+        body (-> result
+                 :body
+                 cheshire/parse-string
+                 walk/keywordize-keys)]
     (log/infof "Authorization successful. Body: %s" body)))
 
 (defroutes oauth-routes
