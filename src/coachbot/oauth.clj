@@ -23,13 +23,16 @@
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [taoensso.timbre :as log]
-            [coachbot.env :as env]))
+            [coachbot.env :as env]
+            [cheshire.core :as cheshire]))
 
 (defn auth-slack [code]
-  (log/info (client/get "https://slack.com/api/oauth.access"
-                        {:query-params {:client_id @env/slack-client-id
-                                        :client_secret @env/slack-client-secret
-                                        :code code}})))
+  (let [result (client/get "https://slack.com/api/oauth.access"
+                           {:query-params {:client_id @env/slack-client-id
+                                           :client_secret @env/slack-client-secret
+                                           :code code}})
+        body (cheshire/parse-string (:body result))]
+    (log/infof "Authorization successful. Body: %s" body)))
 
 (defroutes oauth-routes
   (context "/oauth" []
