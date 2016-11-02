@@ -17,20 +17,25 @@
 ; along with CoachBot.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-(ns coachbot.core-spec
+(ns coachbot.oauth-spec
   (:require [coachbot.handler :refer :all]
             [ring.mock.request :as mock]
             [speclj.core :refer :all]))
 
 (describe "OAuth"
-  (with-all response (app (-> (mock/request :get "/api/v1/oauth?code=test"))))
-  (with-all body (:body @response))
-  (with-all token-container (atom []))
-
+  (with response (app (-> (mock/request :get "/api/v1/oauth?code=test"))))
+  (with body (:body @response))
+  (with result-container (atom []))
 
   (it "Can GET OAuth request"
     (with-redefs [coachbot.slack/auth-slack
-                  (fn [code] (swap! @token-container conj code))]
+                  (fn [code _]
+                    (swap! @result-container conj code)
+                    true)]
       (should= 200 (:status @response))
       (should= "Application authorized!" @body)
-      (should= ["test"] @@token-container))))
+      (should= ["test"] @@result-container)))
+
+  (it "Responds poorly when the result is bad"
+    (with-redefs [coachbot.slack/auth-slack (fn [code _] false)]
+      (should-not @response))))

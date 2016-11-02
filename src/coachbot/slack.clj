@@ -43,7 +43,9 @@
       cheshire/parse-string
       walk/keywordize-keys))
 
-(defn- list-members [access-token]
+(defn list-members
+  "List the members of the team for the given access token."
+  [access-token]
   (let [user-list-result
         (get-url "https://slack.com/api/users.list" :token access-token)
 
@@ -62,7 +64,9 @@
                 :email email})))
       (log/errorf "Unable to get user list: %s" body))))
 
-(defn- send-message [access-token channel message]
+(defn send-message
+  "Send a message to a channel."
+  [access-token channel message]
   (log/infof "Sending '%s' to '%s'" message channel)
   (post-url "https://slack.com/api/chat.postMessage"
             :token access-token
@@ -70,7 +74,7 @@
             :text message
             :as_user true))
 
-(defn auth-slack [code]
+(defn auth-slack [code on-success]
   (let [auth-result
         (get-url "https://slack.com/api/oauth.access" :code code)
 
@@ -79,14 +83,9 @@
          :as body}
         (parse-body auth-result)]
     (if ok
-      (let [members (list-members access_token)]
+      (do
         (log/infof "Authorization successful. Body: %s" body)
-        (doseq [{:keys [id first-name]} members]
-          ; don't overrun the slack servers
-          (Thread/sleep 500)
-
-          (send-message bot_access_token id
-                        (format "Hello, %s." first-name))))
+        (on-success access_token bot_access_token))
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 

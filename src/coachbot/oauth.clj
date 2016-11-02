@@ -20,12 +20,22 @@
 (ns coachbot.oauth
   (:require [coachbot.slack :as slack]
             [compojure.api.sweet :refer :all]
-            [ring.util.http-response :refer :all]))
+            [ring.util.http-response :refer :all]
+            [taoensso.timbre :as log]))
+
+(defn- notify-users [access-token bot-access-token]
+  (let [members (slack/list-members access-token)]
+    (doseq [{:keys [id first-name]} members]
+      ; don't overrun the slack servers
+      (Thread/sleep 500)
+
+      (slack/send-message bot-access-token id
+                    (format "Hello, %s." first-name)))))
 
 (defroutes oauth-routes
   (context "/oauth" []
     (GET "/" []
       :query-params [code :- String]
       :summary "Give Slack our authorization code so we can be helpful!"
-      (when (slack/auth-slack code)
+      (when (slack/auth-slack code notify-users)
         (ok "Application authorized!")))))
