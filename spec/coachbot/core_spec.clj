@@ -29,7 +29,7 @@
 
 
   (it "Can GET OAuth request"
-    (with-redefs [coachbot.oauth/auth-slack
+    (with-redefs [coachbot.slack/auth-slack
                   (fn [code] (swap! @token-container conj code))]
       (should= 200 (:status @response))
       (should= "Application authorized!" @body)
