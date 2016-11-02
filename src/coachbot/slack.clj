@@ -65,7 +65,10 @@
 (defn- send-message [access-token channel message]
   (log/info "Sending %s to %s" message channel)
   (post-url "https://slack.com/api/chat.postMessage"
-            :token access-token :channel channel :text message))
+            :token access-token
+            :channel channel
+            :text message
+            :as_user true))
 
 (defn auth-slack [code]
   (let [auth-result
