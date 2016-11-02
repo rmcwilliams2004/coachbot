@@ -1,0 +1,5 @@
+<document> = list-commands | tell-coach
+<list-commands> = "list commands"
+<tell-coach> = "tell coach", ws, text
+<ws> = <#'\s+'>
+<text> = #"[^\"]*"
