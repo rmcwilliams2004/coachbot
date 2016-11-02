@@ -26,17 +26,30 @@
             [ring.util.http-response :refer :all]
             [taoensso.timbre :as log]))
 
+(defn- params [param-map]
+  (merge {:client_id @env/slack-client-id
+          :client_secret @env/slack-client-secret}
+         param-map))
+
+(defn- get [url & {:as param-map}]
+  (client/get url (:query-params (params param-map))))
+
 (defn auth-slack [code]
   (let [result
-        (client/get "https://slack.com/api/oauth.access"
-                    {:query-params {:client_id @env/slack-client-id
-                                    :client_secret @env/slack-client-secret
-                                    :code code}})
-        {:keys [ok] :as body} (-> result
-                                  :body
-                                  cheshire/parse-string
-                                  walk/keywordize-keys)]
+        (get "https://slack.com/api/oauth.access" :code code)
+        {:keys [ok access_token user_id team_name team_id]
+         {:keys [bot_user_id bot_access_token]} :bot
+         :as body}
+        (-> result
+            :body
+            cheshire/parse-string
+            walk/keywordize-keys)]
     (if ok
-      (log/infof "Authorization successful. Body: %s" body)
+      (let [_ (log/infof "Authorization successful. Body: %s" body)
+
+            user-list
+            (get "https://slack.com/api/users.list" :token access_token)]
+        (log/infof "User list response: %s" user-list))
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
+
