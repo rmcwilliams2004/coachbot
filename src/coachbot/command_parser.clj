@@ -20,7 +20,7 @@
 (ns coachbot.command-parser)
 
 (defn parse-command [regex command]
-  (let [full (into [] (re-seq regex command))
+  (let [full (vec (re-seq regex command))
         full-vec? (vector? full)
         first-full (first full)
         first-full-vec? (vector? first-full)
