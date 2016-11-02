@@ -52,7 +52,7 @@
     (if ok
       (->> members
            (filter #(not (:is_bot %)))
-           (filter #(not (= "slackbot" (:name %))))
+           (filter #(not= "slackbot" (:name %)))
            (map
              #(let [{:keys [id name real_name tz_label]
                      {:keys [first_name email]}
