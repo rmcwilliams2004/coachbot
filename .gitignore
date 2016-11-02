@@ -3,3 +3,6 @@
 /coachbot.iml
 /.lein-failures
 .env
+
+.floo
+.flooignore
