@@ -70,7 +70,7 @@
     (if ok
       (do
         (log/infof "Authorization successful. Body: %s" body)
-        (log/infof "User list: %s" (list-members access_token)))
+        (log/infof "User list: %s" (pr-str (list-members access_token))))
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 
