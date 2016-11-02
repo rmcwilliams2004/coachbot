@@ -31,25 +31,32 @@
           :client_secret @env/slack-client-secret}
          param-map))
 
-(defn- get [url & {:as param-map}]
+(defn- get-url [url & {:as param-map}]
   (client/get url {:query-params (params param-map)}))
+
+(defn- parse-body [result]
+  (-> result
+      :body
+      cheshire/parse-string
+      walk/keywordize-keys))
 
 (defn auth-slack [code]
   (let [result
-        (get "https://slack.com/api/oauth.access" :code code)
+        (get-url "https://slack.com/api/oauth.access" :code code)
+
         {:keys [ok access_token user_id team_name team_id]
          {:keys [bot_user_id bot_access_token]} :bot
          :as body}
-        (-> result
-            :body
-            cheshire/parse-string
-            walk/keywordize-keys)]
+        (parse-body result)]
     (if ok
       (let [_ (log/infof "Authorization successful. Body: %s" body)
 
-            user-list
-            (get "https://slack.com/api/users.list" :token access_token)]
-        (log/infof "User list response: %s" user-list))
+            user-list-result
+            (get-url "https://slack.com/api/users.list" :token access_token)
+
+            {:keys [ok members] :as body} (parse-body result)]
+        (log/infof "User list response: ok? %s members: %s%n body: %s"
+                   ok members body))
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 
