@@ -32,7 +32,7 @@
          param-map))
 
 (defn- get [url & {:as param-map}]
-  (client/get url (:query-params (params param-map))))
+  (client/get url {:query-params (params param-map)}))
 
 (defn auth-slack [code]
   (let [result
