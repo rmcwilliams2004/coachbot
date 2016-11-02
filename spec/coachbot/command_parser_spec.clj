@@ -24,9 +24,13 @@
 (describe "Command Parsing"
   (context "Simple commands"
     (it "should parse a simple command"
-      (should= ["list commands"]
-               (parse-command "list commands")))
+      (should= ["list commands"] (parse-command "list commands")))
 
     (it "should get a single argument"
       (should= ["tell coach" "i have a question"]
-               (parse-command "tell coach i have a question")))))
+               (parse-command "tell coach i have a question"))))
+
+  (context "Bad Commands"
+    (it "should throw nice exceptions for bad commands"
+      (should-throw IllegalArgumentException
+        #"Parse error" (parse-command "die scum")))))

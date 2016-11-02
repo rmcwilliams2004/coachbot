@@ -18,10 +18,14 @@
 ;
 
 (ns coachbot.command-parser
-  (:require [instaparse.core :as insta]))
+  (:require [clojure.java.io :as io]
+            [instaparse.core :as insta]))
 
-(def ^:private parser
+(def ^:private parse-governance
   (insta/parser (io/resource "commands.ebnf") :string-ci true))
 
 (defn parse-command [command]
-  )
+  (let [parsed-document (parse-governance command)]
+    (if (insta/failure? parsed-document)
+      (throw (IllegalArgumentException. (pr-str parsed-document)))
+      parsed-document)))
