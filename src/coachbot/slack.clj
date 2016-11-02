@@ -41,20 +41,20 @@
       walk/keywordize-keys))
 
 (defn auth-slack [code]
-  (let [result
+  (let [auth-result
         (get-url "https://slack.com/api/oauth.access" :code code)
 
         {:keys [ok access_token user_id team_name team_id]
          {:keys [bot_user_id bot_access_token]} :bot
          :as body}
-        (parse-body result)]
+        (parse-body auth-result)]
     (if ok
       (let [_ (log/infof "Authorization successful. Body: %s" body)
 
             user-list-result
             (get-url "https://slack.com/api/users.list" :token access_token)
 
-            {:keys [ok members] :as body} (parse-body result)]
+            {:keys [ok members] :as body} (parse-body user-list-result)]
         (log/infof "User list response: ok? %s members: %s%n body: %s"
                    ok members body))
       (log/errorf "Authorization failed. Body: %s" body))
