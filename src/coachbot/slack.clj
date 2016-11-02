@@ -40,6 +40,25 @@
       cheshire/parse-string
       walk/keywordize-keys))
 
+(defn- list-members [access-token]
+  (let [user-list-result
+        (get-url "https://slack.com/api/users.list" :token access-token)
+
+        {:keys [ok members] :as body}
+        (parse-body user-list-result)]
+    (if ok
+      (->> members
+           (filter #(not (:is_bot %)))
+           (filter #(not (= "slackbot" (:name %))))
+           (map
+             #(let [{:keys [id name real_name tz_label]
+                     {:keys [first_name email]}
+                     :profile} %]
+               {:id id :name name :real-name real_name
+                :timezone tz_label :first-name first_name
+                :email email})))
+      (log/errorf "Unable to get user list: %s" body))))
+
 (defn auth-slack [code]
   (let [auth-result
         (get-url "https://slack.com/api/oauth.access" :code code)
@@ -49,14 +68,9 @@
          :as body}
         (parse-body auth-result)]
     (if ok
-      (let [_ (log/infof "Authorization successful. Body: %s" body)
-
-            user-list-result
-            (get-url "https://slack.com/api/users.list" :token access_token)
-
-            {:keys [ok members] :as body} (parse-body user-list-result)]
-        (log/infof "User list response: ok? %s members: %s%n body: %s"
-                   ok members body))
+      (do
+        (log/infof "Authorization successful. Body: %s" body)
+        (log/infof "User list: %s" (list-members access_token)))
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 
