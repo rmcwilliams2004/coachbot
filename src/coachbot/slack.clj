@@ -63,7 +63,7 @@
       (log/errorf "Unable to get user list: %s" body))))
 
 (defn- send-message [access-token channel message]
-  (log/info "Sending %s to %s" message channel)
+  (log/infof "Sending '%s' to '%s'" message channel)
   (post-url "https://slack.com/api/chat.postMessage"
             :token access-token
             :channel channel
