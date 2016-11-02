@@ -17,26 +17,11 @@
 ; along with CoachBot.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-(ns coachbot.command-parser)
+(ns coachbot.command-parser
+  (:require [instaparse.core :as insta]))
 
-(defn parse-command [regex command]
-  (let [full (vec (re-seq regex command))
-        full-vec? (vector? full)
-        first-full (first full)
-        first-full-vec? (vector? first-full)
-        result (rest first-full)
-        result-vec? (vector? result)]
+(def ^:private parser
+  (insta/parser (io/resource "commands.ebnf") :string-ci true))
 
-    (if-not first-full-vec?
-      (throw (IllegalArgumentException.
-               (format
-                 (str "Regular expression should contain at least one group "
-                      "which is the command itself. %n"
-                      "Regex: %s%n"
-                      "Full result: %s (%s)%n"
-                      "First: %s (%s) %n"
-                      "Result: %s (%s)")
-                 regex full full-vec?
-                 first-full first-full-vec?
-                 result result-vec?)))
-      result)))
+(defn parse-command [command]
+  )

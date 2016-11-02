@@ -25,15 +25,8 @@
   (context "Simple commands"
     (it "should parse a simple command"
       (should= ["list commands"]
-               (parse-command #"(list commands)" "list commands")))
+               (parse-command "list commands")))
 
     (it "should get a single argument"
       (should= ["tell coach" "i have a question"]
-               (parse-command #"^(tell coach) (.*?)$"
-                              "tell coach i have a question"))))
-
-  (context "Bad patterns"
-    (it "should require the command itself to be in a group"
-      (should-throw IllegalArgumentException
-                    #"Regular expression should contain at least one group"
-                    (parse-command #"hello world" "hello world")))))
+               (parse-command "tell coach i have a question")))))
