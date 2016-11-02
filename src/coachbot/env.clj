@@ -23,7 +23,7 @@
   (let [val (System/getenv env-key)]
     (if-not val (f) val)))
 
-(defn- env
+(defn env
   ([env-key] (env-or env-key
                      #(throw (IllegalStateException.
                                (format "Environment variable missing: %s"

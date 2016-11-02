@@ -34,6 +34,9 @@
 (defn- get-url [url & {:as param-map}]
   (client/get url {:query-params (params param-map)}))
 
+(defn- post-url [url & {:as param-map}]
+  (client/post url {:form-params (params param-map)}))
+
 (defn- parse-body [result]
   (-> result
       :body
@@ -59,6 +62,11 @@
                 :email email})))
       (log/errorf "Unable to get user list: %s" body))))
 
+(defn- send-message [access-token channel message]
+  (log/info "Sending %s to %s" message channel)
+  (post-url "https://slack.com/api/chat.postMessage"
+            :token access-token :channel channel :text message))
+
 (defn auth-slack [code]
   (let [auth-result
         (get-url "https://slack.com/api/oauth.access" :code code)
@@ -68,9 +76,14 @@
          :as body}
         (parse-body auth-result)]
     (if ok
-      (do
+      (let [members (list-members access_token)]
         (log/infof "Authorization successful. Body: %s" body)
-        (log/infof "User list: %s" (pr-str (list-members access_token))))
+        (doseq [{:keys [id first-name]} members]
+          ; don't overrun the slack servers
+          (Thread/sleep 500)
+
+          (send-message bot_access_token id
+                        (format "Hello, %s." first-name))))
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 
