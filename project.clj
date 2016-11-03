@@ -19,14 +19,22 @@
 
 (defproject coachbot "0.1.0-SNAPSHOT"
   :description "Simple, elegant, automatic motivation"
-  :dependencies [[clj-http "3.3.0"]
+  :dependencies [[camel-snake-kebab "0.4.0"]
+                 [clj-http "3.3.0"]
+                 [com.fzakaria/slf4j-timbre "0.3.2"]
+                 [com.h2database/h2 "1.4.193"]
+                 [com.zaxxer/HikariCP "2.5.1"]
                  [com.taoensso/timbre "4.7.4"]
+                 [honeysql "0.8.1"]
                  [instaparse "1.4.3"]
+                 [metosin/compojure-api "1.1.9"]
+                 [mysql/mysql-connector-java "6.0.5"]
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/data.codec "0.1.0"]
                  [org.clojure/data.json "0.2.6"]
-                 [http-kit "2.2.0"]
-                 [metosin/compojure-api "1.1.9"]]
+                 [org.clojure/java.jdbc "0.6.1"]
+                 [org.flywaydb/flyway-core "4.0.3"]
+                 [http-kit "2.2.0"]]
   :ring {:handler coachbot.handler/app}
   :uberjar-name "server.jar"
   :test-paths ["spec"]

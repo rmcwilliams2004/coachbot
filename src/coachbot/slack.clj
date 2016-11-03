@@ -85,7 +85,12 @@
     (if ok
       (do
         (log/infof "Authorization successful. Body: %s" body)
-        (on-success access_token bot_access_token))
+        (on-success :access-token access_token
+                    :bot-access-token bot_access_token
+                    :user-id user_id
+                    :team-id team_id
+                    :team-name team_name
+                    :bot-user-id bot_user_id))
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 

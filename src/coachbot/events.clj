@@ -27,7 +27,7 @@
 (s/defschema EventMessage
   {s/Any s/Any})
 
-(defn- notify-users [access-token bot-access-token]
+(defn- auth-success [& {:keys [access-token bot-access-token] :as auth-data}]
   (let [members (slack/list-members access-token)]
     (doseq [{:keys [id first-name]} members]
       ; don't overrun the slack servers
@@ -40,7 +40,7 @@
   (GET "/oauth" []
     :query-params [code :- String]
     :summary "Give Slack our authorization code so we can be helpful!"
-    (if (slack/auth-slack code notify-users)
+    (if (slack/auth-slack code auth-success)
       (ok "Application authorized!")
       (unauthorized)))
 
