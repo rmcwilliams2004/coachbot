@@ -25,14 +25,7 @@
             [schema.core :as s]))
 
 (s/defschema EventMessage
-  {:token s/Str
-   :type s/Str
-   (s/optional-key :challenge) s/Str
-   (s/optional-key :team_id) s/Str
-   (s/optional-key :api_app_id) s/Str
-   (s/optional-key :event) {s/Any s/Any}
-   (s/optional-key :event_ts) s/Str
-   (s/optional-key :authed_users) [s/Str]})
+  {s/Any s/Any})
 
 (defn- notify-users [access-token bot-access-token]
   (let [members (slack/list-members access-token)]
