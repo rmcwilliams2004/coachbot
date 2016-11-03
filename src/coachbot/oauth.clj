@@ -37,5 +37,6 @@
     (GET "/" []
       :query-params [code :- String]
       :summary "Give Slack our authorization code so we can be helpful!"
-      (when (slack/auth-slack code notify-users)
-        (ok "Application authorized!")))))
+      (if (slack/auth-slack code notify-users)
+        (ok "Application authorized!")
+        (unauthorized)))))

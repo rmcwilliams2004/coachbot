@@ -38,4 +38,4 @@
 
   (it "Responds poorly when the result is bad"
     (with-redefs [coachbot.slack/auth-slack (fn [code _] false)]
-      (should-not @response))))
+      (should= 401 (:status @response)))))
