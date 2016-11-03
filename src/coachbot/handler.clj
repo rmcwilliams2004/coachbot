@@ -19,7 +19,7 @@
 
 (ns coachbot.handler
   (:require [coachbot.env :as env]
-            [coachbot.oauth :as oauth]
+            [coachbot.events :as events]
             [compojure.api.sweet :refer :all]
             [compojure.core :as cc]
             [compojure.route :as r]
@@ -46,7 +46,7 @@
   (middleware [wrap-dir-index]
     (context "/api/v1" []
       :tags ["APIs"]
-      oauth/oauth-routes)
+      events/event-routes)
 
     (undocumented (r/resources "/"))
 
