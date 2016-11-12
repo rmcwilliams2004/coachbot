@@ -55,12 +55,17 @@
                      {:keys [user text ts channel event_ts]
                       event_type :type} :event
                      :as event} is-bot-user?]
-  (if-not (is-bot-user? team_id user)
-    (try (let [[command] (parser/parse-command text)]
-           (case (str/lower-case command)
-             "hi" (hello-world team_id channel user)))
-         (catch Throwable t
-           (log/errorf t "Unable to handle event: %s" event)))))
+  (try
+    (if-not (is-bot-user? team_id user)
+      (let [[command] (parser/parse-command text)]
+        (case (str/lower-case command)
+          "hi" (hello-world team_id channel user)
+          (do
+            (log/errorf "Unexpected command: %s" command)
+            "Unexpected command"))))
+    (catch Exception t
+      (log/errorf t "Unable to handle event: %s" event)
+      "Unknown failure")))
 
 (defroutes event-routes
   (GET "/oauth" []
