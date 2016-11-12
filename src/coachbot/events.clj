@@ -45,12 +45,6 @@
 (defn- is-bot-user? [team-id user]
   (storage/is-bot-user? (env/datasource) team-id user))
 
-(defn hello-world [team_id channel user-id]
-  (let [[access-token bot-access-token]
-        (storage/get-access-tokens (env/datasource) team_id)
-        {:keys [first-name]} (slack/get-user-info access-token user-id)]
-    (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
-
 (defn- handle-unknown-failure [t event]
   (log/errorf t "Unable to handle event: %s" event)
   "Unknown failure")
@@ -59,6 +53,12 @@
   (log/errorf "Unable to parse command: %s" text)
   (log/debugf "Parse Result: %s" result)
   "Unparseable command")
+
+(defn hello-world [team_id channel user-id]
+  (let [[access-token bot-access-token]
+        (storage/get-access-tokens (env/datasource) team_id)
+        {:keys [first-name]} (slack/get-user-info access-token user-id)]
+    (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
 
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
