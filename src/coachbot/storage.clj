@@ -35,7 +35,7 @@
     [access_token bot_access_token]))
 
 (defn get-bot-user-id [ds team-id]
-  (let [query (-> (h/select [:access_token "bot_user_id"])
+  (let [query (-> (h/select [:bot_user_id "bot_user_id"])
                   (h/from :slack_teams)
                   (h/where [:= :team_id team-id])
                   sql/format)

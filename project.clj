@@ -26,6 +26,7 @@
                  [com.zaxxer/HikariCP "2.5.1"]
                  [com.taoensso/timbre "4.7.4"]
                  [honeysql "0.8.1"]
+                 [http-kit "2.2.0"]
                  [instaparse "1.4.3"]
                  [metosin/compojure-api "1.1.9"]
                  [mysql/mysql-connector-java "6.0.5"]
@@ -34,7 +35,7 @@
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/java.jdbc "0.6.1"]
                  [org.flywaydb/flyway-core "4.0.3"]
-                 [http-kit "2.2.0"]]
+                 [slingshot "0.12.2"]]
   :ring {:handler coachbot.handler/app}
   :uberjar-name "server.jar"
   :test-paths ["spec"]

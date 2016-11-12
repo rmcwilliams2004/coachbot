@@ -26,7 +26,8 @@
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log])
+  (:use [slingshot.slingshot :only [throw+ try+]]))
 
 (s/defschema EventMessage
   {s/Any s/Any})
@@ -50,11 +51,18 @@
         {:keys [first-name]} (slack/get-user-info access-token user-id)]
     (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
 
+(defn- handle-unknown-failure [t event]
+  (log/errorf t "Unable to handle event: %s" event)
+  "Unknown failure")
+
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
                      {:keys [user text ts channel event_ts]
                       event_type :type} :event
                      :as event}]
+  (when-not (= token @env/slack-verification-token)
+    (throw+ {:type ::access-denied}))
+
   (try
     (if-not (is-bot-user? team_id user)
       (let [[command] (parser/parse-command text)]
@@ -63,9 +71,7 @@
           (do
             (log/errorf "Unexpected command: %s" command)
             "Unexpected command"))))
-    (catch Exception t
-      (log/errorf t "Unable to handle event: %s" event)
-      "Unknown failure")))
+    (catch Exception t (handle-unknown-failure t event))))
 
 (defroutes event-routes
   (GET "/oauth" []
@@ -79,7 +85,9 @@
     :body [message EventMessage]
     :summary "Receive an event from Slack"
     (log/infof "Message received: %s" message)
-    (ok
-      (if-let [challenge-response (slack/challenge-response message)]
-        challenge-response
-        {:result (handle-event message)}))))
+    (try+ (ok
+           (if-let [challenge-response (slack/challenge-response message)]
+             challenge-response
+             {:result (handle-event message)}))
+         (catch [:type :coachbot.events/access-denied] _
+           (unauthorized)))))

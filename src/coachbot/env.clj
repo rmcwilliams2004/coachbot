@@ -45,7 +45,7 @@
 
 (def slack-client-secret (delay (env "SLACK_CLIENT_SECRET" nil)))
 
-(def slack-verification-token (delay (env "SLACK_VERIFICATION_TOKEN" nil)))
+(def slack-verification-token (delay (env "SLACK_VERIFICATION_TOKEN" "none")))
 
 (def port (delay (Integer/parseInt (env "PORT" "3000"))))
 

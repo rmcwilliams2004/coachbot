@@ -20,6 +20,7 @@
 (ns coachbot.handler-spec
   (:require [coachbot.db :as db]
             [coachbot.env :as env]
+            [coachbot.events :as events]
             [coachbot.handler :refer :all]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
@@ -83,17 +84,35 @@
         (should= {"challenge" "bob"} @body)))
 
     (context "Hello, World"
-      (with msg-from-bot {:token "92N8CeL4ZrPSLBjReXwg9Vhz", :team_id
-                          "T2T062KK4", :api_app_id "A2R05RSQ3",
+      (with team-id "T2T062KK4")
+      (with ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
+      (before (storage/store-slack-auth! @ds {:team-id @team-id
+                                              :team-name "test team"
+                                              :access-token "test123"
+                                              :user-id "test456"
+                                              :bot-access-token "test789"
+                                              :bot-user-id bot-user-id}))
+      (after (jdbc/execute! @ds ["drop all objects"]))
+
+      (with msg-from-bot {:token "none", :team_id
+                          @team-id, :api_app_id "A2R05RSQ3",
                           :event {:type "message", :user bot-user-id,
                                   :text "Hello, CoachBot.", :bot_id "B2X6M65DM",
                                   :ts "1478969450.268969", :channel "D2X65Q02Y",
                                   :event_ts "1478969450.268969"},
                           :type "event_callback", :authed_users ["U2X4SN7H9"]})
       (with msg-from-user
-            {:token "92N8CeL4ZrPSLBjReXwg9Vhz", :team_id "T2T062KK4",
+            {:token "none", :team_id @team-id,
              :api_app_id "A2R05RSQ3",
              :event {:type "message", :user "U2T161336", :text "hi",
+                     :ts "1478967753.000006", :channel "D2X6TCYJE",
+                     :event_ts "1478967753.000006"},
+             :type "event_callback", :authed_users ["U2X4SN7H9"]})
+
+      (with msg-bad-token
+            {:token "bad", :team_id @team-id,
+             :api_app_id "naughty",
+             :event {:type "message", :user "U2T161336", :text "die!",
                      :ts "1478967753.000006", :channel "D2X6TCYJE",
                      :event_ts "1478967753.000006"},
              :type "event_callback", :authed_users ["U2X4SN7H9"]})
@@ -108,27 +127,43 @@
                                   (mock/body
                                     (json/write-str @msg-from-bot))
                                   (mock/content-type "application/json"))))
+
+      (with bad-token-response
+            (app (-> (mock/request :post
+                                   "/api/v1/event")
+                     (mock/body
+                       (json/write-str @msg-bad-token))
+                     (mock/content-type "application/json"))))
       (with messages (atom []))
 
       (it "Ignores bot users"
-        (with-redefs [env/datasource (fn [] nil)
-                      storage/get-bot-user-id (fn [_ _] bot-user-id)
+        (with-redefs [env/datasource
+                      (fn [] @ds)
 
-                      storage/get-access-tokens
-                      (fn [_ _] [access-token bot-access-token])]
-          (should= 200 (:status @bot-response))))
-
-      (it "Handles the 'hi' event"
-        (with-redefs [env/datasource (fn [] nil)
-                      storage/get-bot-user-id (fn [_ _] bot-user-id)
-
-                      storage/get-access-tokens
-                      (fn [_ _] [access-token bot-access-token])
+                      events/handle-unknown-failure
+                      (fn [t _] (swap! @messages conj (str t)))
 
                       slack/get-user-info
                       (fn [_ _] {:first-name "Bill"})
 
                       slack/send-message!
                       (fn [_ _ msg] (swap! @messages conj msg))]
+          (should= 200 (:status @bot-response))
+          (should= [] @@messages)))
+
+      (it "Handles the 'hi' event"
+        (with-redefs [slack/get-user-info
+                      (fn [_ _] {:first-name "Bill"})
+
+                      slack/send-message!
+                      (fn [_ _ msg] (swap! @messages conj msg))]
           (should= 200 (:status @response))
-          (should= ["Hello, Bill"] @@messages))))))
+          (should= ["Hello, Bill"] @@messages)))
+
+      (it "Disallows bad activation tokens"
+        (with-redefs [slack/get-user-info
+                      (fn [_ _] {:first-name "Bill"})
+
+                      slack/send-message!
+                      (fn [_ _ msg] (swap! @messages conj msg))]
+          (should= 401 (:status @bad-token-response)))))))
