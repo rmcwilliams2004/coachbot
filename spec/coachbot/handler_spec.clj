@@ -40,6 +40,23 @@
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 
+(defn- message [& {:keys [event] :as msg}]
+  (let [base-event {:type "message", :user "U2T161336", :text "hi",
+                    :ts "1478967753.000006", :channel "D2X6TCYJE",
+                    :event_ts "1478967753.000006"}
+        result (merge {:token "none", :team_id team-id,
+                       :api_app_id "A2R05RSQ3",
+                       :type "event_callback", :authed_users ["U2X4SN7H9"]}
+                      (dissoc msg :event))
+        new-event (merge base-event event)]
+    (assoc result :event new-event)))
+
+(defn- send-event [req]
+  (app (-> (mock/request :post
+                         "/api/v1/event")
+           (mock/body (json/write-str req))
+           (mock/content-type "application/json"))))
+
 (describe "Events"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
 
@@ -71,122 +88,58 @@
 
   (context "Events"
     (context "Challenge"
-      (with response (app (-> (mock/request :post
-                                            "/api/v1/event")
-                              (mock/body
-                                (json/write-str {:challenge "bob"
-                                                 :token "abc"
-                                                 :type "url_verification"}))
-                              (mock/content-type "application/json"))))
+      (with response (send-event {:challenge "bob"
+                                  :token "abc"
+                                  :type "url_verification"}))
       (with body (json/read-str (slurp (:body @response))))
+
       (it "Responds to a challenge with the challenge phrase"
         (should= 200 (:status @response))
         (should= {"challenge" "bob"} @body)))
 
     (context "Hello, World"
-      (with team-id "T2T062KK4")
-      (with ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-      (before (storage/store-slack-auth! @ds {:team-id @team-id
-                                              :team-name "test team"
-                                              :access-token "test123"
-                                              :user-id "test456"
-                                              :bot-access-token "test789"
-                                              :bot-user-id bot-user-id}))
-      (after (jdbc/execute! @ds ["drop all objects"]))
+      (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
+      (before-all (storage/store-slack-auth! @ds {:team-id team-id
+                                                  :team-name "test team"
+                                                  :access-token "test123"
+                                                  :user-id "test456"
+                                                  :bot-access-token "test789"
+                                                  :bot-user-id bot-user-id}))
+      (after-all (jdbc/execute! @ds ["drop all objects"]))
 
-      (with msg-from-bot {:token "none", :team_id
-                          @team-id, :api_app_id "A2R05RSQ3",
-                          :event {:type "message", :user bot-user-id,
-                                  :text "Hello, CoachBot.", :bot_id "B2X6M65DM",
-                                  :ts "1478969450.268969", :channel "D2X65Q02Y",
-                                  :event_ts "1478969450.268969"},
-                          :type "event_callback", :authed_users ["U2X4SN7H9"]})
-      (with msg-from-user
-            {:token "none", :team_id @team-id,
-             :api_app_id "A2R05RSQ3",
-             :event {:type "message", :user "U2T161336", :text "hi",
-                     :ts "1478967753.000006", :channel "D2X6TCYJE",
-                     :event_ts "1478967753.000006"},
-             :type "event_callback", :authed_users ["U2X4SN7H9"]})
-
-      (with msg-bad-cmd
-            {:token "none", :team_id @team-id,
-             :api_app_id "A2R05RSQ3",
-             :event {:type "message", :user "U2T161336", :text "sup",
-                     :ts "1478967753.000006", :channel "D2X6TCYJE",
-                     :event_ts "1478967753.000006"},
-             :type "event_callback", :authed_users ["U2X4SN7H9"]})
-
-      (with msg-bad-token
-            {:token "bad", :team_id @team-id,
-             :api_app_id "naughty",
-             :event {:type "message", :user "U2T161336", :text "die!",
-                     :ts "1478967753.000006", :channel "D2X6TCYJE",
-                     :event_ts "1478967753.000006"},
-             :type "event_callback", :authed_users ["U2X4SN7H9"]})
-
-      (with response (app (-> (mock/request :post
-                                            "/api/v1/event")
-                              (mock/body
-                                (json/write-str @msg-from-user))
-                              (mock/content-type "application/json"))))
-
-      (with bad-cmd-response (app (-> (mock/request :post
-                                                    "/api/v1/event")
-                                      (mock/body
-                                        (json/write-str @msg-bad-cmd))
-                                      (mock/content-type "application/json"))))
-
-      (with bot-response (app (-> (mock/request :post
-                                                "/api/v1/event")
-                                  (mock/body
-                                    (json/write-str @msg-from-bot))
-                                  (mock/content-type "application/json"))))
-
-      (with bad-token-response
-            (app (-> (mock/request :post
-                                   "/api/v1/event")
-                     (mock/body
-                       (json/write-str @msg-bad-token))
-                     (mock/content-type "application/json"))))
       (with messages (atom []))
 
+      (around [it] (with-redefs [env/datasource
+                                 (fn [] @ds)
+
+                                 slack/get-user-info
+                                 (fn [_ _] {:first-name "Bill"})
+
+                                 slack/send-message!
+                                 (fn [_ _ msg] (swap! @messages conj msg))
+
+                                 events/handle-unknown-failure
+                                 (fn [t _] (swap! @messages conj (str t)))
+
+                                 events/handle-parse-failure
+                                 (fn [t _]
+                                   (swap! @messages conj
+                                          (format "Failed to parse: %s" t)))]
+                     (it)))
+
       (it "Ignores bot users"
-        (with-redefs [env/datasource
-                      (fn [] @ds)
-
-                      events/handle-unknown-failure
-                      (fn [t _] (swap! @messages conj (str t)))
-
-                      slack/get-user-info
-                      (fn [_ _] {:first-name "Bill"})
-
-                      slack/send-message!
-                      (fn [_ _ msg] (swap! @messages conj msg))]
-          (should= 200 (:status @bot-response))
-          (should= [] @@messages)))
+        (should= 200 (:status
+                       (send-event (message :event {:text "Hello, CoachBot."
+                                                    :user bot-user-id}))))
+        (should= [] @@messages))
 
       (it "Handles the 'hi' event"
-        (with-redefs [slack/get-user-info
-                      (fn [_ _] {:first-name "Bill"})
-
-                      slack/send-message!
-                      (fn [_ _ msg] (swap! @messages conj msg))]
-          (should= 200 (:status @response))
-          (should= ["Hello, Bill"] @@messages)))
+        (should= 200 (:status (send-event (message))))
+        (should= ["Hello, Bill"] @@messages))
 
       (it "Handles bad events"
-        (with-redefs [slack/get-user-info
-                      (fn [_ _] {:first-name "Bill"})
-
-                      slack/send-message!
-                      (fn [_ _ msg] (swap! @messages conj msg))]
-          (should= 200 (:status @bad-cmd-response))))
+        (should= 200 (:status (send-event (message :event {:text "sup"}))))
+        (should= ["Failed to parse: sup"] @@messages))
 
       (it "Disallows bad activation tokens"
-        (with-redefs [slack/get-user-info
-                      (fn [_ _] {:first-name "Bill"})
-
-                      slack/send-message!
-                      (fn [_ _ msg] (swap! @messages conj msg))]
-          (should= 401 (:status @bad-token-response)))))))
+        (should= 401 (:status (send-event (message :token "bad"))))))))

@@ -55,6 +55,11 @@
   (log/errorf t "Unable to handle event: %s" event)
   "Unknown failure")
 
+(defn- handle-parse-failure [text result]
+  (log/errorf "Unable to parse command: %s" text)
+  (log/debugf "Parse Result: %s" result)
+  "Unparseable command")
+
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
                      {:keys [user text ts channel event_ts]
@@ -72,9 +77,7 @@
             (log/errorf "Unexpected command: %s" command)
             "Unhandled command"))))
     (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
-      (log/errorf "Unable to parse command: %s" text)
-      (log/debugf "Parse Result: %s" result)
-      "Unparseable command")
+      (handle-parse-failure text result))
     (catch Exception t (handle-unknown-failure t event))))
 
 (defroutes event-routes
