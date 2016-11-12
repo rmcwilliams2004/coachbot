@@ -36,7 +36,7 @@
 (defn make-db-datasource
   "Create a new database connection pool."
   ([db-type db-url db-username db-password]
-   (make-db-datasource db-type db-url db-username db-password 15000 1))
+   (make-db-datasource db-type db-url db-username db-password 15000 2))
 
   ([db-type db-url db-username db-password conn-timeout max-conn]
    {:datasource

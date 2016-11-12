@@ -21,6 +21,8 @@
   :description "Simple, elegant, automatic motivation"
   :dependencies [[camel-snake-kebab "0.4.0"]
                  [clj-http "3.3.0"]
+                 [com.cemerick/drawbridge "0.0.7"
+                  :exclusions [ring/ring-core]]
                  [com.fzakaria/slf4j-timbre "0.3.2"]
                  [com.h2database/h2 "1.4.193"]
                  [com.zaxxer/HikariCP "2.5.1"]

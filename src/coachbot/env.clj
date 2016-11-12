@@ -35,9 +35,9 @@
     (env "DB_TYPE" "h2")
     (env "DB_URL" "jdbc:h2:cbdb")
     (env "DB_USER" "coachbot")
-    (env "DB_PASS" "coachbot")))
-
-(def db-max-conn (delay (env "DB_MAX_CONN" "10")))
+    (env "DB_PASS" "coachbot")
+    (Integer/parseInt (env "DB_CONN_TIMEOUT" "1000"))
+    (Integer/parseInt (env "DB_MAX_CONN" "10"))))
 
 (def slack-client-id (delay (env "SLACK_CLIENT_ID" nil)))
 
