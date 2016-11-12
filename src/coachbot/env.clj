@@ -17,7 +17,8 @@
 ; along with CoachBot.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-(ns coachbot.env (:require [coachbot.db :as db]))
+(ns coachbot.env
+  (:require [coachbot.db :as db]))
 
 (defn- env-or [env-key f]
   (let [val (System/getenv env-key)]
@@ -30,14 +31,15 @@
                                        env-key)))))
   ([env-key default-value] (env-or env-key #(identity default-value))))
 
-(defn datasource []
-  (db/make-db-datasource
-    (env "DB_TYPE" "h2")
-    (env "DB_URL" "jdbc:h2:./cbdb")
-    (env "DB_USER" "coachbot")
-    (env "DB_PASS" "coachbot")
-    (Integer/parseInt (env "DB_CONN_TIMEOUT" "1000"))
-    (Integer/parseInt (env "DB_MAX_CONN" "10"))))
+(def ^:private ds (delay (db/make-db-datasource
+                           (env "DB_TYPE" "h2")
+                           (env "DB_URL" "jdbc:h2:./cbdb")
+                           (env "DB_USER" "coachbot")
+                           (env "DB_PASS" "coachbot")
+                           (Integer/parseInt (env "DB_CONN_TIMEOUT" "1000"))
+                           (Integer/parseInt (env "DB_MAX_CONN" "10")))))
+
+(defn datasource [] @ds)
 
 (def slack-client-id (delay (env "SLACK_CLIENT_ID" nil)))
 
