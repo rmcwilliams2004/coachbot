@@ -7,7 +7,7 @@ CREATE TABLE slack_teams (
   bot_user_id      VARCHAR(255) NOT NULL,
   bot_access_token VARCHAR(255) NOT NULL,
   created_date     TIMESTAMP                     DEFAULT CURRENT_TIMESTAMP,
-  updated_date     TIMESTAMP                     DEFAULT CURRENT_TIMESTAMP,
+  updated_date     TIMESTAMP AS current_timestamp(),
   PRIMARY KEY (id),
   UNIQUE (team_id)
 );

@@ -24,13 +24,6 @@
             [honeysql.core :as sql]
             [honeysql.helpers :as h]))
 
-(defn store-slack-auth [ds {:keys [team-id] :as auth-data}]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (jdbc/delete! conn :slack_teams ["team_id = ?" team-id])
-    (jdbc/insert! conn :slack_teams (cske/transform-keys csk/->snake_case
-                                                         auth-data))))
-
 (defn get-access-tokens [ds team-id]
   (let [query (-> (h/select [:access_token "access_token"]
                             [:bot_access_token "bot_access_token"])
@@ -39,3 +32,13 @@
                   sql/format)
         [{:keys [access_token bot_access_token]}] (jdbc/query ds query)]
     [access_token bot_access_token]))
+
+(defn store-slack-auth [ds {:keys [team-id] :as auth-data}]
+  (jdbc/with-db-transaction
+    [conn ds]
+    (let [new-record (cske/transform-keys csk/->snake_case
+                                          auth-data)
+          [a _] (get-access-tokens ds team-id)]
+      (if a
+        (jdbc/update! conn :slack_teams new-record ["team_id = ?" team-id])
+        (jdbc/insert! conn :slack_teams new-record)))))
