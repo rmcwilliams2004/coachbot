@@ -18,8 +18,7 @@
 ;
 
 (ns coachbot.handler
-  (:require [cemerick.drawbridge :as drawbridge]
-            [coachbot.env :as env]
+  (:require [coachbot.env :as env]
             [coachbot.events :as events]
             [compojure.api.sweet :refer :all]
             [compojure.core :as cc]
@@ -60,10 +59,7 @@
         (content-type
           (ok (str "dZKR113j9JugTDth1wM-T9XhMbnY42GNLKIKfNXqsbU."
                    "g6QAiw8SpNPpxhMk9osyvfJoM3skZlmzD3qxEna4sgg"))
-          "text/plain")))
-
-    (let [nrepl-handler (cemerick.drawbridge/ring-handler)]
-      (undocumented (ANY "/repl" request (nrepl-handler request))))))
+          "text/plain")))))
 
 (defn -main
   "Main function. Invoked to run the application using httpkit."
