@@ -47,7 +47,7 @@
                                   (.setUsername db-username)
                                   (.setPassword db-password)
                                   (.setAutoCommit false)
-                                  (.setMaxConnections max-conn))))}))
+                                  (.setMaximumPoolSize max-conn))))}))
 
 (def array-of-bytes-type (Class/forName "[B"))
 
