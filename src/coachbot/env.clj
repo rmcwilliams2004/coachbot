@@ -30,13 +30,12 @@
                                        env-key)))))
   ([env-key default-value] (env-or env-key #(identity default-value))))
 
-(def datasource
-  (delay
-    (db/make-db-datasource
-      (env "DB_TYPE" "h2")
-      (env "DB_URL" "jdbc:h2:cbdb")
-      (env "DB_USER" "coachbot")
-      (env "DB_PASS" "coachbot"))))
+(defn datasource []
+  (db/make-db-datasource
+    (env "DB_TYPE" "h2")
+    (env "DB_URL" "jdbc:h2:cbdb")
+    (env "DB_USER" "coachbot")
+    (env "DB_PASS" "coachbot")))
 
 (def slack-client-id (delay (env "SLACK_CLIENT_ID" nil)))
 

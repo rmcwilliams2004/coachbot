@@ -74,14 +74,15 @@
             :text message
             :as_user true))
 
-(defn auth-slack [code on-success]
+(defn get-slack-auth [code]
   (let [auth-result
-        (get-url "https://slack.com/api/oauth.access" :code code)
+        (get-url "https://slack.com/api/oauth.access" :code code)]
+    (parse-body auth-result)))
 
-        {:keys [ok access_token user_id team_name team_id]
+(defn auth-slack [code on-success]
+  (let [{:keys [ok access_token user_id team_name team_id]
          {:keys [bot_user_id bot_access_token]} :bot
-         :as body}
-        (parse-body auth-result)]
+         :as body} (get-slack-auth code)]
     (if ok
       (do
         (log/infof "Authorization successful. Body: %s" body)

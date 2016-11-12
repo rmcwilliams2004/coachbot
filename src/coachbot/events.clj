@@ -19,15 +19,18 @@
 
 (ns coachbot.events
   (:require [coachbot.slack :as slack]
+            [coachbot.storage :as storage]
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
             [taoensso.timbre :as log]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [coachbot.env :as env]))
 
 (s/defschema EventMessage
   {s/Any s/Any})
 
 (defn- auth-success [& {:keys [access-token bot-access-token] :as auth-data}]
+  (storage/store-slack-auth (env/datasource) auth-data)
   (let [members (slack/list-members access-token)]
     (doseq [{:keys [id first-name]} members]
       ; don't overrun the slack servers
