@@ -45,9 +45,10 @@
   (storage/is-bot-user? (env/datasource) team-id user))
 
 (defn hello-world [team_id channel user-id]
-  (let [[access-token _] (storage/get-access-tokens (env/datasource) team_id)
+  (let [[access-token bot-access-token]
+        (storage/get-access-tokens (env/datasource) team_id)
         {:keys [first-name]} (slack/get-user-info access-token user-id)]
-    (slack/send-message! access-token channel (str "Hello, " first-name))))
+    (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
 
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
