@@ -41,20 +41,29 @@
     (after-all (jdbc/execute! @ds ["drop all objects"]))
 
     (before-all (store-slack-auth
+                  @ds {:access-token "oldat"
+                       :bot-access-token "oldbat"
+                       :user-id user-id
+                       :team-id team-id
+                       :team-name team-name
+                       :bot-user-id bot-user-id})
+
+                (store-slack-auth
                   @ds {:access-token access-token
-                      :bot-access-token bot-access-token
-                      :user-id user-id
-                      :team-id team-id
-                      :team-name team-name
-                      :bot-user-id bot-user-id}))
+                       :bot-access-token bot-access-token
+                       :user-id user-id
+                       :team-id team-id
+                       :team-name team-name
+                       :bot-user-id bot-user-id}))
 
     (before-all (store-slack-auth
                   @ds {:access-token "another one"
-                      :bot-access-token "stuff"
-                      :user-id  "bits"
-                      :team-id "some-dumb-team"
-                      :team-name "some dumb team"
-                      :bot-user-id "some-bot-id"}))
+                       :bot-access-token "stuff"
+                       :user-id "bits"
+                       :team-id "some-dumb-team"
+                       :team-name "some dumb team"
+                       :bot-user-id "some-bot-id"}))
+
     (it "should have stored the slack auth stuff"
       (should= [access-token bot-access-token]
                (get-access-tokens @ds team-id)))))
