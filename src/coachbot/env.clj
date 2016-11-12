@@ -33,7 +33,7 @@
 (defn datasource []
   (db/make-db-datasource
     (env "DB_TYPE" "h2")
-    (env "DB_URL" "jdbc:h2:cbdb")
+    (env "DB_URL" "jdbc:h2:./cbdb")
     (env "DB_USER" "coachbot")
     (env "DB_PASS" "coachbot")
     (Integer/parseInt (env "DB_CONN_TIMEOUT" "1000"))
@@ -46,3 +46,5 @@
 (def slack-verification-token (delay (env "SLACK_VERIFICATION_TOKEN" nil)))
 
 (def port (delay (Integer/parseInt (env "PORT" "3000"))))
+
+(def log-level (delay (keyword (env "LOG_LEVEL" "info"))))

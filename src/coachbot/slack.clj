@@ -43,6 +43,14 @@
       cheshire/parse-string
       walk/keywordize-keys))
 
+(defn- transform-user-info [user-record]
+  (let [{:keys [id name real_name tz_label]
+         {:keys [first_name email]}
+         :profile} user-record]
+    {:id id :name name :real-name real_name
+     :timezone tz_label :first-name first_name
+     :email email}))
+
 (defn list-members
   "List the members of the team for the given access token."
   [access-token]
@@ -55,16 +63,22 @@
       (->> members
            (filter #(not (:is_bot %)))
            (filter #(not= "slackbot" (:name %)))
-           (map
-             #(let [{:keys [id name real_name tz_label]
-                     {:keys [first_name email]}
-                     :profile} %]
-               {:id id :name name :real-name real_name
-                :timezone tz_label :first-name first_name
-                :email email})))
+           (map transform-user-info))
       (log/errorf "Unable to get user list: %s" body))))
 
-(defn send-message
+(defn get-user-info "Gets information about a user."
+  [access-token user-id]
+  (let [user-info-result
+        (get-url "https://slack.com/api/users.info"
+                 :token access-token :user user-id)
+
+        {:keys [ok user] :as body}
+        (parse-body user-info-result)]
+    (if ok
+      (transform-user-info user)
+      (log/errorf "Unable to get user info: %s" body))))
+
+(defn send-message!
   "Send a message to a channel."
   [access-token channel message]
   (log/infof "Sending '%s' to '%s'" message channel)
@@ -95,3 +109,5 @@
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 
+(defn challenge-response [{:keys [challenge]}]
+  (when challenge {:challenge challenge}))

@@ -33,7 +33,18 @@
         [{:keys [access_token bot_access_token]}] (jdbc/query ds query)]
     [access_token bot_access_token]))
 
-(defn store-slack-auth [ds {:keys [team-id] :as auth-data}]
+(defn get-bot-user-id [ds team-id]
+  (let [query (-> (h/select [:access_token "bot_user_id"])
+                  (h/from :slack_teams)
+                  (h/where [:= :team_id team-id])
+                  sql/format)
+        [{:keys [bot_user_id]}] (jdbc/query ds query)]
+    bot_user_id))
+
+(defn is-bot-user? [ds team-id user]
+  (= (get-bot-user-id ds team-id) user))
+
+(defn store-slack-auth! [ds {:keys [team-id] :as auth-data}]
   (jdbc/with-db-transaction
     [conn ds]
     (let [new-record (cske/transform-keys csk/->snake_case

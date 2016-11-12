@@ -40,7 +40,7 @@
 
     (after-all (jdbc/execute! @ds ["drop all objects"]))
 
-    (before-all (store-slack-auth
+    (before-all (store-slack-auth!
                   @ds {:access-token "oldat"
                        :bot-access-token "oldbat"
                        :user-id user-id
@@ -48,7 +48,7 @@
                        :team-name team-name
                        :bot-user-id bot-user-id})
 
-                (store-slack-auth
+                (store-slack-auth!
                   @ds {:access-token access-token
                        :bot-access-token bot-access-token
                        :user-id user-id
@@ -56,7 +56,7 @@
                        :team-name team-name
                        :bot-user-id bot-user-id}))
 
-    (before-all (store-slack-auth
+    (before-all (store-slack-auth!
                   @ds {:access-token "another one"
                        :bot-access-token "stuff"
                        :user-id "bits"

@@ -25,7 +25,6 @@
             [compojure.route :as r]
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
-            [schema.core :as s]
             [taoensso.timbre :as log])
   (:gen-class))
 
@@ -61,7 +60,7 @@
 (defn -main
   "Main function. Invoked to run the application using httpkit."
   []
-  (log/set-level! :info)
+  (log/set-level! @env/log-level)
   (let [port @env/port]
     (log/infof "Getting ready to listen on port %d" port)
     (srv/run-server app {:port port})))

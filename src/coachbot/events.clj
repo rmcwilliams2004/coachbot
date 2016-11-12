@@ -18,26 +18,45 @@
 ;
 
 (ns coachbot.events
-  (:require [coachbot.slack :as slack]
+  (:require [clojure.string :as str]
+            [coachbot.command-parser :as parser]
+            [coachbot.env :as env]
+            [coachbot.slack :as slack]
             [coachbot.storage :as storage]
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
-            [taoensso.timbre :as log]
             [schema.core :as s]
-            [coachbot.env :as env]))
+            [taoensso.timbre :as log]))
 
 (s/defschema EventMessage
   {s/Any s/Any})
 
 (defn- auth-success [& {:keys [access-token bot-access-token] :as auth-data}]
-  (storage/store-slack-auth (env/datasource) auth-data)
+  (storage/store-slack-auth! (env/datasource) auth-data)
   (let [members (slack/list-members access-token)]
     (doseq [{:keys [id first-name]} members]
       ; don't overrun the slack servers
       (Thread/sleep 500)
 
-      (slack/send-message bot-access-token id
-                          (format "Hello, %s." first-name)))))
+      (slack/send-message! bot-access-token id
+                           (format "Hello, %s." first-name)))))
+
+(defn- is-bot-user? [team-id user]
+  (storage/is-bot-user? (env/datasource) team-id user))
+
+(defn hello-world [team_id channel user-id]
+  (let [[access-token _] (storage/get-access-tokens (env/datasource) team_id)
+        {:keys [first-name]} (slack/get-user-info access-token user-id)]
+    (slack/send-message! access-token channel (str "Hello, " first-name))))
+
+(defn handle-event [{:keys [token team_id api_app_id
+                            type authed_users]
+                     {:keys [user text ts channel event_ts]
+                      event_type :type} :event} is-bot-user?]
+  (if-not (is-bot-user? team_id user)
+    (let [[command] (parser/parse-command text)]
+      (case (str/lower-case command)
+        "hi" (hello-world team_id channel user)))))
 
 (defroutes event-routes
   (GET "/oauth" []
@@ -51,4 +70,7 @@
     :body [message EventMessage]
     :summary "Receive an event from Slack"
     (log/infof "Message received: %s" message)
-    (ok (when (:challenge message) (select-keys message [:challenge])))))
+    (ok
+      (if-let [challenge-response (slack/challenge-response message)]
+        challenge-response
+        {:result (handle-event message is-bot-user?)}))))
