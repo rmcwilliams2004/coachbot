@@ -24,9 +24,6 @@
             [compojure.core :as cc]
             [compojure.route :as r]
             [org.httpkit.server :as srv]
-            [ring.middleware.keyword-params :as keyword-params]
-            [ring.middleware.nested-params :as nested-params]
-            [ring.middleware.params :as params]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [taoensso.timbre :as log])
