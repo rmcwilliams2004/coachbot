@@ -82,11 +82,12 @@
   "Send a message to a channel."
   [access-token channel message]
   (log/infof "Sending '%s' to '%s'" message channel)
-  (post-url "https://slack.com/api/chat.postMessage"
-            :token access-token
-            :channel channel
-            :text message
-            :as_user true))
+  (let [result (post-url "https://slack.com/api/chat.postMessage"
+                         :token access-token
+                         :channel channel
+                         :text message
+                         :as_user true)]
+    (log/debugf "Result of message dispatch: %s" result)))
 
 (defn get-slack-auth [code]
   (let [auth-result
