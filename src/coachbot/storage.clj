@@ -22,7 +22,8 @@
             [camel-snake-kebab.extras :as cske]
             [clojure.java.jdbc :as jdbc]
             [honeysql.core :as sql]
-            [honeysql.helpers :as h]))
+            [honeysql.helpers :as h]
+            [taoensso.timbre :as log]))
 
 (defn get-access-tokens [ds team-id]
   (let [query (-> (h/select [:access_token "access_token"]
@@ -39,6 +40,7 @@
                   (h/where [:= :team_id team-id])
                   sql/format)
         [{:keys [bot_user_id]}] (jdbc/query ds query)]
+    (log/debugf "Bot user ID: %s" bot_user_id)
     bot_user_id))
 
 (defn is-bot-user? [ds team-id user]

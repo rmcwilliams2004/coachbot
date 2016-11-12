@@ -54,7 +54,7 @@
                             type authed_users]
                      {:keys [user text ts channel event_ts]
                       event_type :type} :event
-                     :as event} is-bot-user?]
+                     :as event}]
   (try
     (if-not (is-bot-user? team_id user)
       (let [[command] (parser/parse-command text)]
@@ -82,4 +82,4 @@
     (ok
       (if-let [challenge-response (slack/challenge-response message)]
         challenge-response
-        {:result (handle-event message is-bot-user?)}))))
+        {:result (handle-event message)}))))
