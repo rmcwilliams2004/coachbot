@@ -37,6 +37,8 @@
     (env "DB_USER" "coachbot")
     (env "DB_PASS" "coachbot")))
 
+(def db-max-conn (delay (env "DB_MAX_CONN" "10")))
+
 (def slack-client-id (delay (env "SLACK_CLIENT_ID" nil)))
 
 (def slack-client-secret (delay (env "SLACK_CLIENT_SECRET" nil)))
