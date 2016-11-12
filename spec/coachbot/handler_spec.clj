@@ -109,6 +109,14 @@
                      :event_ts "1478967753.000006"},
              :type "event_callback", :authed_users ["U2X4SN7H9"]})
 
+      (with msg-bad-cmd
+            {:token "none", :team_id @team-id,
+             :api_app_id "A2R05RSQ3",
+             :event {:type "message", :user "U2T161336", :text "sup",
+                     :ts "1478967753.000006", :channel "D2X6TCYJE",
+                     :event_ts "1478967753.000006"},
+             :type "event_callback", :authed_users ["U2X4SN7H9"]})
+
       (with msg-bad-token
             {:token "bad", :team_id @team-id,
              :api_app_id "naughty",
@@ -122,6 +130,13 @@
                               (mock/body
                                 (json/write-str @msg-from-user))
                               (mock/content-type "application/json"))))
+
+      (with bad-cmd-response (app (-> (mock/request :post
+                                                    "/api/v1/event")
+                                      (mock/body
+                                        (json/write-str @msg-bad-cmd))
+                                      (mock/content-type "application/json"))))
+
       (with bot-response (app (-> (mock/request :post
                                                 "/api/v1/event")
                                   (mock/body
@@ -159,6 +174,14 @@
                       (fn [_ _ msg] (swap! @messages conj msg))]
           (should= 200 (:status @response))
           (should= ["Hello, Bill"] @@messages)))
+
+      (it "Handles bad events"
+        (with-redefs [slack/get-user-info
+                      (fn [_ _] {:first-name "Bill"})
+
+                      slack/send-message!
+                      (fn [_ _ msg] (swap! @messages conj msg))]
+          (should= 200 (:status @bad-cmd-response))))
 
       (it "Disallows bad activation tokens"
         (with-redefs [slack/get-user-info

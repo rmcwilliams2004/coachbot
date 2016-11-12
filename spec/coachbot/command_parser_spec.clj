@@ -32,5 +32,6 @@
 
   (context "Bad Commands"
     (it "should throw nice exceptions for bad commands"
-      (should-throw IllegalArgumentException
-        #"Parse error" (parse-command "die scum")))))
+      (should-throw Exception
+        #":type :coachbot.command-parser/parse-failure"
+        (parse-command "die scum")))))

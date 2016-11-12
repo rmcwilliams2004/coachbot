@@ -19,13 +19,14 @@
 
 (ns coachbot.command-parser
   (:require [clojure.java.io :as io]
-            [instaparse.core :as insta]))
+            [instaparse.core :as insta])
+  (:use [slingshot.slingshot :only [throw+ try+]]))
 
 (def ^:private parse-governance
   (insta/parser (io/resource "commands.ebnf") :string-ci true))
 
 (defn parse-command [command]
-  (let [parsed-document (parse-governance command)]
-    (if (insta/failure? parsed-document)
-      (throw (IllegalArgumentException. (pr-str parsed-document)))
-      parsed-document)))
+  (let [result (parse-governance command)]
+    (if (insta/failure? result)
+      (throw+ {:type ::parse-failure :result (pr-str result)})
+      result)))

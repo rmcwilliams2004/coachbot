@@ -63,14 +63,18 @@
   (when-not (= token @env/slack-verification-token)
     (throw+ {:type ::access-denied}))
 
-  (try
+  (try+
     (if-not (is-bot-user? team_id user)
       (let [[command] (parser/parse-command text)]
         (case (str/lower-case command)
           "hi" (hello-world team_id channel user)
           (do
             (log/errorf "Unexpected command: %s" command)
-            "Unexpected command"))))
+            "Unhandled command"))))
+    (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
+      (log/errorf "Unable to parse command: %s" text)
+      (log/debugf "Parse Result: %s" result)
+      "Unparseable command")
     (catch Exception t (handle-unknown-failure t event))))
 
 (defroutes event-routes
@@ -89,5 +93,5 @@
            (if-let [challenge-response (slack/challenge-response message)]
              challenge-response
              {:result (handle-event message)}))
-         (catch [:type :coachbot.events/access-denied] _
+         (catch [:type ::access-denied] _
            (unauthorized)))))
