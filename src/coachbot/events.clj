@@ -53,11 +53,14 @@
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
                      {:keys [user text ts channel event_ts]
-                      event_type :type} :event} is-bot-user?]
+                      event_type :type} :event
+                     :as event} is-bot-user?]
   (if-not (is-bot-user? team_id user)
-    (let [[command] (parser/parse-command text)]
-      (case (str/lower-case command)
-        "hi" (hello-world team_id channel user)))))
+    (try (let [[command] (parser/parse-command text)]
+           (case (str/lower-case command)
+             "hi" (hello-world team_id channel user)))
+         (catch Throwable t
+           (log/errorf t "Unable to handle event: %s" event)))))
 
 (defroutes event-routes
   (GET "/oauth" []
