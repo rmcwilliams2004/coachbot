@@ -42,9 +42,6 @@
       (slack/send-message! bot-access-token id
                            (format "Hello, %s." first-name)))))
 
-(defn- is-bot-user? [team-id user]
-  (storage/is-bot-user? (env/datasource) team-id user))
-
 (defn- handle-unknown-failure [t event]
   (log/errorf t "Unable to handle event: %s" event)
   "Unknown failure")
@@ -69,13 +66,14 @@
     (throw+ {:type ::access-denied}))
 
   (try+
-    (if-not (is-bot-user? team_id user)
+    (if-not (storage/is-bot-user? (env/datasource) team_id user)
       (let [[command] (parser/parse-command text)]
         (case (str/lower-case command)
           "hi" (hello-world team_id channel user)
           (do
             (log/errorf "Unexpected command: %s" command)
-            "Unhandled command"))))
+            "Unhandled command")))
+      "Ignoring message from myself")
     (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
       (handle-parse-failure text result))
     (catch Exception t (handle-unknown-failure t event))))
