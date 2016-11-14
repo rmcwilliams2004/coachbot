@@ -12,3 +12,21 @@ CREATE TABLE slack_coaching_users (
   PRIMARY KEY (id)
 )
   ENGINE = InnoDB;
+
+CREATE TABLE base_questions (
+  id           MEDIUMINT NOT NULL AUTO_INCREMENT,
+  question     VARCHAR(255),
+  created_date TIMESTAMP          DEFAULT CURRENT_TIMESTAMP,
+  updated_date TIMESTAMP          DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+)
+  ENGINE = InnoDB;
+
+CREATE TABLE question_answers (
+  id            MEDIUMINT NOT NULL AUTO_INCREMENT,
+  question_id   MEDIUMINT NOT NULL,
+  slack_user_id MEDIUMINT NOT NULL,
+  answer        MEDIUMTEXT,
+  PRIMARY KEY (id)
+)
+  ENGINE = InnoDB;
