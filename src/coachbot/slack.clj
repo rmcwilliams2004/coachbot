@@ -45,12 +45,12 @@
       walk/keywordize-keys))
 
 (defn- transform-user-info [user-record]
-  (let [{:keys [id name real_name tz_label]
-         {:keys [first_name email]}
+  (let [{:keys [id team_id name real_name tz]
+         {:keys [first_name last_name email]}
          :profile} user-record]
-    {:id id :name name :real-name real_name
-     :timezone tz_label :first-name first_name
-     :email email}))
+    {:id id :team-id team_id :name name :real-name real_name
+     :timezone tz :first-name first_name
+     :last-name last_name :email email}))
 
 (defn list-members
   "List the members of the team for the given access token."
@@ -62,7 +62,7 @@
         (parse-body user-list-result)]
     (if ok
       (->> members
-           (filter #(not (:is_bot %)))
+           (filter #(not (and (:is_bot %) (:deleted %))))
            (filter #(not= "slackbot" (:name %)))
            (map transform-user-info))
       (ss/throw+ {:type ::user-list-error :body body}))))

@@ -61,8 +61,8 @@
         {:keys [first-name]} (slack/get-user-info access-token user-id)]
     (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
 
-(defn help [team-id channel user-id]
-  (let [[access-token bot-access-token]
+(defn help [team-id channel]
+  (let [[_ bot-access-token]
         (storage/get-access-tokens (env/datasource) team-id)]
     (slack/send-message! bot-access-token channel
                          (str "Here are the commands I respond to:\n"
@@ -82,7 +82,7 @@
       (let [[command & args] (parser/parse-command text)]
         (case (str/lower-case command)
           "hi" (hello-world team_id channel user)
-          "help" (help team_id channel user)
+          "help" (help team_id channel)
           (do
             (log/errorf "Unexpected command: %s" command)
             "Unhandled command")))
