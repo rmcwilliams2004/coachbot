@@ -66,7 +66,10 @@
     (after-all (jdbc/execute! @ds ["drop all objects"]))
 
     (it "Can GET OAuth request"
-      (with-redefs [coachbot.slack/get-slack-auth
+      (with-redefs [coachbot.slack/list-members
+                    (fn [_] nil)
+
+                    coachbot.slack/get-slack-auth
                     (fn [_]
                       {:ok true
                        :team_id team-id
@@ -97,6 +100,8 @@
         (should= 200 (:status @response))
         (should= {"challenge" "bob"} @body)))
 
+    ;; Note: the events-spec refers to this spec when explaining to devs why
+    ;; there is no coverage for the "hi" command there.
     (context "Hello, World"
       (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
       (before-all (storage/store-slack-auth! @ds {:team-id team-id

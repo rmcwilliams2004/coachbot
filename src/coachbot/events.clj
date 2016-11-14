@@ -26,8 +26,8 @@
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
-            [taoensso.timbre :as log])
-  (:use [slingshot.slingshot :only [throw+ try+]]))
+            [slingshot.slingshot :as ss]
+            [taoensso.timbre :as log]))
 
 (s/defschema EventMessage
   {s/Any s/Any})
@@ -39,8 +39,12 @@
       ; don't overrun the slack servers
       (Thread/sleep 500)
 
-      (slack/send-message! bot-access-token id
-                           (format "Hello, %s." first-name)))))
+      (slack/send-message!
+        bot-access-token id
+        (format (str "Hello, %s. I'm a coaching robot. To get started, you "
+                     "can say 'start coaching', otherwise say 'help' to see "
+                     "what commands I respond to.")
+                first-name)))))
 
 (defn- handle-unknown-failure [t event]
   (log/errorf t "Unable to handle event: %s" event)
@@ -51,11 +55,19 @@
   (log/debugf "Parse Result: %s" result)
   "Unparseable command")
 
-(defn hello-world [team_id channel user-id]
+(defn hello-world [team-id channel user-id]
   (let [[access-token bot-access-token]
-        (storage/get-access-tokens (env/datasource) team_id)
+        (storage/get-access-tokens (env/datasource) team-id)
         {:keys [first-name]} (slack/get-user-info access-token user-id)]
     (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
+
+(defn help [team-id channel user-id]
+  (let [[access-token bot-access-token]
+        (storage/get-access-tokens (env/datasource) team-id)]
+    (slack/send-message! bot-access-token channel
+                         (str "Here are the commands I respond to:\n"
+                              " • hi -- checks if I'm listening\n"
+                              " • help -- display this help message"))))
 
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
@@ -63,13 +75,14 @@
                       event_type :type} :event
                      :as event}]
   (when-not (= token @env/slack-verification-token)
-    (throw+ {:type ::access-denied}))
+    (ss/throw+ {:type ::access-denied}))
 
-  (try+
+  (ss/try+
     (if-not (storage/is-bot-user? (env/datasource) team_id user)
-      (let [[command] (parser/parse-command text)]
+      (let [[command & args] (parser/parse-command text)]
         (case (str/lower-case command)
           "hi" (hello-world team_id channel user)
+          "help" (help team_id channel user)
           (do
             (log/errorf "Unexpected command: %s" command)
             "Unhandled command")))
@@ -90,9 +103,9 @@
     :body [message EventMessage]
     :summary "Receive an event from Slack"
     (log/infof "Message received: %s" message)
-    (try+ (ok
-           (if-let [challenge-response (slack/challenge-response message)]
-             challenge-response
-             {:result (handle-event message)}))
-         (catch [:type ::access-denied] _
-           (unauthorized)))))
+    (ss/try+ (ok
+            (if-let [challenge-response (slack/challenge-response message)]
+              challenge-response
+              {:result (handle-event message)}))
+          (catch [:type ::access-denied] _
+            (unauthorized)))))

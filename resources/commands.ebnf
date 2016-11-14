@@ -1,5 +1,5 @@
-<document> = list-commands | hi | tell-coach
-<list-commands> = "list commands"
+<document> = help | hi | tell-coach
+<help> = "help"
 <hi> = "hi"
 <tell-coach> = "tell coach", ws, text
 <ws> = <#'\s+'>

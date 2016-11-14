@@ -24,6 +24,7 @@
             [coachbot.env :as env]
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
+            [slingshot.slingshot :as ss]
             [taoensso.timbre :as log]))
 
 (defn- params [param-map]
@@ -64,7 +65,7 @@
            (filter #(not (:is_bot %)))
            (filter #(not= "slackbot" (:name %)))
            (map transform-user-info))
-      (log/errorf "Unable to get user list: %s" body))))
+      (ss/throw+ {:type ::user-list-error :body body}))))
 
 (defn get-user-info "Gets information about a user."
   [access-token user-id]
