@@ -24,9 +24,7 @@
             [coachbot.handler :refer :all]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
-            [clojure.data.json :as json]
             [clojure.java.jdbc :as jdbc]
-            [ring.mock.request :as mock]
             [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
@@ -43,10 +41,10 @@
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
   (before-all (storage/store-slack-auth! @ds {:team-id team-id
-                                              :team-name "test team"
-                                              :access-token "test123"
-                                              :user-id "test456"
-                                              :bot-access-token "test789"
+                                              :team-name team-name
+                                              :access-token access-token
+                                              :user-id user-id
+                                              :bot-access-token bot-access-token
                                               :bot-user-id bot-user-id}))
   (after-all (jdbc/execute! @ds ["drop all objects"]))
 
@@ -76,4 +74,11 @@
                               :event {:text "help"}})
         (should= [(str "Here are the commands I respond to:\n"
                        " • hi -- checks if I'm listening\n"
-                       " • help -- display this help message")] @@messages)))))
+                       " • help -- display this help message")] @@messages))))
+
+  (context "Start and stop coaching"
+    (it "starts coaching for a user"
+      )
+
+    (it "stops coaching for a user"
+      )))
