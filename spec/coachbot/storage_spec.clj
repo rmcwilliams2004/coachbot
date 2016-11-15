@@ -41,6 +41,13 @@
 (def user1-id "A1B235678")
 (def user2-id "A1BCDEFGH")
 
+(def first-team {:access-token access-token
+                 :bot-access-token bot-access-token
+                 :user-id user-id
+                 :team-id team-id
+                 :team-name team-name
+                 :bot-user-id bot-user-id})
+
 (def user1 {:id user1-id,
             :team-id team-id,
             :name "scstarkey",
@@ -73,13 +80,7 @@
                        :team-name team-name
                        :bot-user-id bot-user-id})
 
-                (storage/store-slack-auth!
-                  @ds {:access-token access-token
-                       :bot-access-token bot-access-token
-                       :user-id user-id
-                       :team-id team-id
-                       :team-name team-name
-                       :bot-user-id bot-user-id})
+                (storage/store-slack-auth! @ds first-team)
 
                 (storage/store-slack-auth!
                   @ds {:access-token another-access-token
@@ -101,13 +102,7 @@
 
     (after-all (jdbc/execute! @ds ["drop all objects"]))
 
-    (before-all (storage/store-slack-auth!
-                  @ds {:access-token access-token
-                       :bot-access-token bot-access-token
-                       :user-id user-id
-                       :team-id team-id
-                       :team-name team-name
-                       :bot-user-id bot-user-id})
+    (before-all (storage/store-slack-auth! @ds first-team)
                 (storage/add-coaching-user! @ds user1)
                 (storage/add-coaching-user! @ds user2))
 
