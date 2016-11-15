@@ -113,3 +113,10 @@
 
 (defn challenge-response [{:keys [challenge]}]
   (when challenge {:challenge challenge}))
+
+(comment
+  (let [team-id "T2T062KK4"
+        access-token "xoxp-95006087650-95040037108-99964369076-1775b7e66d8ad310cbef99577fdd2f1d"
+        bot-access-token "xoxb-99162755587-VhDUuBhAjXHbT4sr2eoCYXCH"]
+    (list-members access-token)
+    ))

@@ -18,7 +18,7 @@
 ;
 
 (ns coachbot.storage-spec
-  (:require [coachbot.storage :refer :all]
+  (:require [coachbot.storage :as storage]
             [clojure.java.jdbc :as jdbc]
             [coachbot.db :as db]
             [speclj.core :refer :all]
@@ -34,13 +34,38 @@
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 
+(def another-access-token "another one")
+(def another-bot-access-token "stuff")
+(def another-team-id "some-dumb-team")
+
+(def user1-id "A1B235678")
+(def user2-id "A1BCDEFGH")
+
+(def user1 {:id user1-id,
+            :team-id team-id,
+            :name "scstarkey",
+            :real-name "Stephen Starkey",
+            :timezone "America/Chicago",
+            :first-name "Stephen",
+            :last-name "Starkey",
+            :email "stephen@couragelabs.com"})
+
+(def user2 {:id user2-id,
+            :team-id team-id,
+            :name "travis",
+            :real-name "Travis Marsh",
+            :timezone "America/Los_Angeles",
+            :first-name "Travis",
+            :last-name "Marsh",
+            :email "travis.marsh@gmail.com"})
+
 (describe "Storing data for later use"
   (context "Slack teams"
     (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
 
     (after-all (jdbc/execute! @ds ["drop all objects"]))
 
-    (before-all (store-slack-auth!
+    (before-all (storage/store-slack-auth!
                   @ds {:access-token "oldat"
                        :bot-access-token "oldbat"
                        :user-id user-id
@@ -48,22 +73,44 @@
                        :team-name team-name
                        :bot-user-id bot-user-id})
 
-                (store-slack-auth!
+                (storage/store-slack-auth!
                   @ds {:access-token access-token
                        :bot-access-token bot-access-token
                        :user-id user-id
                        :team-id team-id
                        :team-name team-name
-                       :bot-user-id bot-user-id}))
+                       :bot-user-id bot-user-id})
 
-    (before-all (store-slack-auth!
-                  @ds {:access-token "another one"
-                       :bot-access-token "stuff"
+                (storage/store-slack-auth!
+                  @ds {:access-token another-access-token
+                       :bot-access-token another-bot-access-token
                        :user-id "bits"
-                       :team-id "some-dumb-team"
+                       :team-id another-team-id
                        :team-name "some dumb team"
                        :bot-user-id "some-bot-id"}))
 
     (it "should have stored the slack auth stuff"
       (should= [access-token bot-access-token]
-               (get-access-tokens @ds team-id)))))
+               (storage/get-access-tokens @ds team-id))
+
+      (should= [another-access-token another-bot-access-token]
+               (storage/get-access-tokens @ds another-team-id))))
+
+  (context "Slack coaching users"
+    (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
+
+    (after-all (jdbc/execute! @ds ["drop all objects"]))
+
+    (before-all (storage/store-slack-auth!
+                  @ds {:access-token access-token
+                       :bot-access-token bot-access-token
+                       :user-id user-id
+                       :team-id team-id
+                       :team-name team-name
+                       :bot-user-id bot-user-id})
+                (storage/add-coaching-user! @ds user1)
+                (storage/add-coaching-user! @ds user2))
+
+    (it "should have stored the slack auth stuff"
+      (should= user1 (storage/get-coaching-user @ds team-id user1-id))
+      (should= user2 (storage/get-coaching-user @ds team-id user2-id)))))

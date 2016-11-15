@@ -23,7 +23,8 @@
             [clojure.java.jdbc :as jdbc]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.set :as set]))
 
 (defn get-access-tokens [ds team-id]
   (let [query (-> (h/select [:access_token "access_token"]
@@ -55,3 +56,37 @@
       (if a
         (jdbc/update! conn :slack_teams new-record ["team_id = ?" team-id])
         (jdbc/insert! conn :slack_teams new-record)))))
+
+(defn- get-team-id [ds team-id]
+  (let [team-id-query (-> (h/select :id)
+                          (h/from :slack_teams)
+                          (h/where [:= :team_id team-id])
+                          sql/format)
+        [{team-id :id}] (jdbc/query ds team-id-query)]
+    team-id))
+
+(defn add-coaching-user! [ds {:keys [team-id] :as user}]
+  (jdbc/with-db-transaction
+    [conn ds]
+    (let [team-id (get-team-id ds team-id)
+
+          new-record (as-> user x
+                           (cske/transform-keys csk/->snake_case x)
+                           (assoc x :team_id team-id)
+                           (set/rename-keys x {:id :remote_user_id}))]
+      (jdbc/insert! conn :slack_coaching_users new-record))))
+
+(defn get-coaching-user [ds team-id user-id]
+  (let [team-internal-id (get-team-id ds team-id)
+        query (-> (h/select :*)
+                  (h/from :slack_coaching_users)
+                  (h/where [:and
+                            [:= :team_id team-internal-id]
+                            [:= :remote_user_id user-id]])
+                  sql/format)
+        [user] (jdbc/query ds query)]
+    (as-> user x
+          (cske/transform-keys csk/->kebab-case x)
+          (dissoc x :created-date :updated-date :id :team-id)
+          (assoc x :team-id team-id)
+          (set/rename-keys x {:remote-user-id :id}))))
