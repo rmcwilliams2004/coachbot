@@ -34,7 +34,7 @@
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 
-(def another-access-token "another one")
+(def another-access-token "another_one")
 (def another-bot-access-token "stuff")
 (def another-team-id "some-dumb-team")
 
