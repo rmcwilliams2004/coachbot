@@ -19,6 +19,7 @@
 
 (ns coachbot.events
   (:require [clojure.string :as str]
+            [coachbot.coaching-process :as coaching]
             [coachbot.command-parser :as parser]
             [coachbot.env :as env]
             [coachbot.slack :as slack]
@@ -64,10 +65,13 @@
 (defn help [team-id channel]
   (let [[_ bot-access-token]
         (storage/get-access-tokens (env/datasource) team-id)]
-    (slack/send-message! bot-access-token channel
-                         (str "Here are the commands I respond to:\n"
-                              " • hi -- checks if I'm listening\n"
-                              " • help -- display this help message"))))
+    (slack/send-message!
+      bot-access-token channel
+      (str "Here are the commands I respond to:\n"
+           " • hi -- checks if I'm listening\n"
+           " • help -- display this help message\n"
+           " • start coaching -- send daily motivational questions\n"
+           " • stop coaching -- stop sending questions"))))
 
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
@@ -83,6 +87,8 @@
         (case (str/lower-case command)
           "hi" (hello-world team_id channel user)
           "help" (help team_id channel)
+          "start coaching" (coaching/start-coaching team_id channel user)
+          "stop coaching" (coaching/stop-coaching team_id channel user)
           (do
             (log/errorf "Unexpected command: %s" command)
             "Unhandled command")))
@@ -104,8 +110,8 @@
     :summary "Receive an event from Slack"
     (log/infof "Message received: %s" message)
     (ss/try+ (ok
-            (if-let [challenge-response (slack/challenge-response message)]
-              challenge-response
-              {:result (handle-event message)}))
-          (catch [:type ::access-denied] _
-            (unauthorized)))))
+               (if-let [challenge-response (slack/challenge-response message)]
+                 challenge-response
+                 {:result (handle-event message)}))
+             (catch [:type ::access-denied] _
+               (unauthorized)))))

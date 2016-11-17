@@ -22,12 +22,31 @@
             [coachbot.slack :as slack]
             [coachbot.env :as env]))
 
+(def team-id "def456")
+
+(def user0-id "abc123")
+(def user1-id "blah")
+(def user1 {:team-id team-id :remote-user-id user1-id
+            :email "blah@there.com" :timezone "America/Chicago"
+            :real-name "bblah" :first-name "Bill" :last-name "Blah"
+            :name "Bill Blah"})
+
+(def user2-id "meh")
+(def user2 {:team-id team-id :remote-user-id user2-id
+            :email "meh@here.com" :timezone "America/Chicago"
+            :real-name "cmeh" :first-name "Cathy" :last-name "Meh"
+            :name "Cathy Meh"})
+
+(def users {user0-id {:first-name "Bill"}
+            user1-id user1
+            user2-id user2})
+
 (defn mock-event-boundary [messages ds it]
   (with-redefs
     [env/datasource (fn [] ds)
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))
-     slack/get-user-info (fn [_ _] {:first-name "Bill"})
+     slack/get-user-info (fn [_ user-id] (users user-id))
      events/handle-unknown-failure (fn [t _] (swap! messages conj (str t)))
      events/handle-parse-failure (fn [t _]
                                    (swap! messages conj

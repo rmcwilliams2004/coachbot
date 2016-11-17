@@ -34,14 +34,12 @@
 
 (def access-token "gobbledygook")
 (def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
-(def user-id "abc123")
-(def team-id "def456")
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 (def channel-id "D2X6TCYJE")
 
 (defn- message [& {:keys [event] :as msg}]
-  (let [base-event {:type "message", :user "U2T161336", :text "hi",
+  (let [base-event {:type "message", :user user0-id, :text "hi",
                     :ts "1478967753.000006", :channel channel-id,
                     :event_ts "1478967753.000006"}
         result (merge {:token "none", :team_id team-id,
@@ -74,7 +72,7 @@
                       {:ok true
                        :team_id team-id
                        :team_name team-name
-                       :user_id user-id
+                       :user_id user0-id
                        :access_token access-token
                        :bot {:bot_access_token bot-access-token
                              :bot_user_id bot-user-id}})

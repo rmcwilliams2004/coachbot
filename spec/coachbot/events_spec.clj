@@ -33,8 +33,6 @@
 
 (def access-token "gobbledygook")
 (def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
-(def user-id "abc123")
-(def team-id "def456")
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 
@@ -49,7 +47,7 @@
                                          {:team-id team-id
                                           :team-name team-name
                                           :access-token access-token
-                                          :user-id user-id
+                                          :user-id user0-id
                                           :bot-access-token bot-access-token
                                           :bot-user-id bot-user-id}))
   (after-all (jdbc/execute! @ds ["drop all objects"]))
@@ -58,39 +56,38 @@
 
   (around-all [it] (mock-event-boundary @messages @ds it))
 
-  (with-all user1-id "blah")
-  (with-all user1 {:team-id team-id :remote-user-id @user1-id
-                   :email "blah@there.com" :timezone "America/Chicago"
-                   :real-name "bblah" :first-name "Bill" :last-name "Blah"
-                   :name "Bill Blah"})
 
   ;; Note: the "hi" command is covered in the handler-spec
 
   (context "help"
-    (before (handle-event @user1-id "help"))
+    (before (handle-event user1-id "help"))
 
     (it "responds to help command properly"
-      (should= [(str @user1-id ": Here are the commands I respond to:\n"
-                     " • hi -- checks if I'm listening\n"
-                     " • help -- display this help message")] @@messages)))
+      (should=
+        [(str user1-id ": Here are the commands I respond to:\n"
+              " • hi -- checks if I'm listening\n"
+              " • help -- display this help message\n"
+              " • start coaching -- send daily motivational questions\n"
+              " • stop coaching -- stop sending questions")] @@messages)))
 
   (context "Start and stop coaching"
     (before-all (swap! @messages empty))
-    (with-all user2-id "meh")
-    (with-all user2 {:team-id team-id :remote-user-id @user2-id
-                     :email "meh@here.com" :timezone "America/Chicago"
-                     :real-name "cmeh" :first-name "Cathy" :last-name "Meh"
-                     :name "Cathy Meh"})
 
-    (before-all (storage/add-coaching-user! @ds @user1)
-                (storage/add-coaching-user! @ds @user2)
-                (handle-event @user1-id "start coaching")
-                (handle-event @user2-id "start coaching")
+    (before-all (handle-event user1-id "start coaching")
+                (handle-event user2-id "start coaching")
                 (coaching/new-questions @ds team-id)
-                (handle-event @user2-id "stop coaching")
+                (handle-event user2-id "stop coaching")
                 (coaching/new-questions @ds team-id)
-                (handle-event @user1-id "stop coaching")
+                (handle-event user1-id "stop coaching")
                 (coaching/new-questions @ds team-id))
 
     (it "starts and stops coaching for users properly"
-      #_(should= [] @@messages))))
+      #_(should=
+          [(str user1-id ": Thanks! We'll start sending you messages soon.")
+           (str user2-id ": Thanks! We'll start sending you messages soon.")
+           (str user1-id ": first question")
+           (str user2-id ": first question")
+           (str user2-id ": No problem! We'll stop sending messages.")
+           (str user1-id ": second question")
+           (str user1-id ": No problem! We'll stop sending messages.")]
+          @@messages))))

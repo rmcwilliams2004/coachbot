@@ -17,13 +17,24 @@
 ; along with CoachBot.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-(ns coachbot.coaching-process)
+(ns coachbot.coaching-process
+  (:require [coachbot.env :as env]
+            [coachbot.slack :as slack]
+            [coachbot.storage :as storage]))
 
-(defn start-coaching [ds team-id user-id]
-  )
+(defn start-coaching [team-id channel user-id]
+  (let [[access-token bot-access-token]
+        (storage/get-access-tokens (env/datasource) team-id)]
+    (storage/add-coaching-user! (env/datasource)
+                                (slack/get-user-info access-token user-id))
+    (slack/send-message! bot-access-token channel
+                         "Thanks! We'll start sending you messages soon.")))
 
-(defn stop-coaching [ds team-id user-id]
-  )
+(defn stop-coaching [team-id channel user-id]
+  (let [[_ bot-access-token] (storage/get-access-tokens (env/datasource)
+                                                        team-id)]
+    (slack/send-message! bot-access-token channel
+                         "No problem! We'll stop sending messages.")))
 
 (defn new-question
   "Sends a new question to a specific individual."
