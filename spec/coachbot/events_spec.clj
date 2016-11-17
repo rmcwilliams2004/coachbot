@@ -18,12 +18,11 @@
 ;
 
 (ns coachbot.events-spec
-  (:require [coachbot.db :as db]
-            [coachbot.env :as env]
+  (:require [coachbot.coaching-process :as coaching]
+            [coachbot.db :as db]
             [coachbot.events :as events]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
-            [coachbot.slack :as slack]
             [coachbot.storage :as storage]
             [clojure.java.jdbc :as jdbc]
             [speclj.core :refer :all]
@@ -39,37 +38,59 @@
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 
-(defn handle-event [text]
+(defn handle-event [user-id text]
   (events/handle-event {:token "none" :team_id team-id
-                        :event {:text text}}))
+                        :event {:text text :user user-id
+                                :channel user-id}}))
 
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-  (before-all (storage/store-slack-auth! @ds {:team-id team-id
-                                              :team-name team-name
-                                              :access-token access-token
-                                              :user-id user-id
-                                              :bot-access-token bot-access-token
-                                              :bot-user-id bot-user-id}))
+  (before-all (storage/store-slack-auth! @ds
+                                         {:team-id team-id
+                                          :team-name team-name
+                                          :access-token access-token
+                                          :user-id user-id
+                                          :bot-access-token bot-access-token
+                                          :bot-user-id bot-user-id}))
   (after-all (jdbc/execute! @ds ["drop all objects"]))
 
-  (with messages (atom []))
+  (with-all messages (atom []))
 
-  (around [it] (mock-event-boundary @messages @ds it))
+  (around-all [it] (mock-event-boundary @messages @ds it))
+
+  (with-all user1-id "blah")
+  (with-all user1 {:team-id team-id :remote-user-id @user1-id
+                   :email "blah@there.com" :timezone "America/Chicago"
+                   :real-name "bblah" :first-name "Bill" :last-name "Blah"
+                   :name "Bill Blah"})
 
   ;; Note: the "hi" command is covered in the handler-spec
 
   (context "help"
+    (before (handle-event @user1-id "help"))
+
     (it "responds to help command properly"
-      (do
-        (handle-event "help")
-        (should= [(str "Here are the commands I respond to:\n"
-                       " • hi -- checks if I'm listening\n"
-                       " • help -- display this help message")] @@messages))))
+      (should= [(str @user1-id ": Here are the commands I respond to:\n"
+                     " • hi -- checks if I'm listening\n"
+                     " • help -- display this help message")] @@messages)))
 
   (context "Start and stop coaching"
-    (it "starts coaching for a user"
-      )
+    (before-all (swap! @messages empty))
+    (with-all user2-id "meh")
+    (with-all user2 {:team-id team-id :remote-user-id @user2-id
+                     :email "meh@here.com" :timezone "America/Chicago"
+                     :real-name "cmeh" :first-name "Cathy" :last-name "Meh"
+                     :name "Cathy Meh"})
 
-    (it "stops coaching for a user"
-      )))
+    (before-all (storage/add-coaching-user! @ds @user1)
+                (storage/add-coaching-user! @ds @user2)
+                (handle-event @user1-id "start coaching")
+                (handle-event @user2-id "start coaching")
+                (coaching/new-questions @ds team-id)
+                (handle-event @user2-id "stop coaching")
+                (coaching/new-questions @ds team-id)
+                (handle-event @user1-id "stop coaching")
+                (coaching/new-questions @ds team-id))
+
+    (it "starts and stops coaching for users properly"
+      #_(should= [] @@messages))))

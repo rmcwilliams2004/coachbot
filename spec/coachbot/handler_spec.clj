@@ -38,10 +38,11 @@
 (def team-id "def456")
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
+(def channel-id "D2X6TCYJE")
 
 (defn- message [& {:keys [event] :as msg}]
   (let [base-event {:type "message", :user "U2T161336", :text "hi",
-                    :ts "1478967753.000006", :channel "D2X6TCYJE",
+                    :ts "1478967753.000006", :channel channel-id,
                     :event_ts "1478967753.000006"}
         result (merge {:token "none", :team_id team-id,
                        :api_app_id "A2R05RSQ3",
@@ -123,7 +124,7 @@
 
       (it "Handles the 'hi' event"
         (should= 200 (:status (send-event (message))))
-        (should= ["Hello, Bill"] @@messages))
+        (should= [(str channel-id ": Hello, Bill")] @@messages))
 
       (it "Handles bad events"
         (should= 200 (:status (send-event (message :event {:text "sup"}))))

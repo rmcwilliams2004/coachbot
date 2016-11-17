@@ -17,19 +17,21 @@
 ; along with CoachBot.  If not, see <http://www.gnu.org/licenses/>.
 ;
 
-(ns coachbot.mocking
-  (:require [coachbot.events :as events]
-            [coachbot.slack :as slack]
-            [coachbot.env :as env]))
+(ns coachbot.coaching-process)
 
-(defn mock-event-boundary [messages ds it]
-  (with-redefs
-    [env/datasource (fn [] ds)
-     slack/send-message! (fn [_ channel msg]
-                           (swap! messages conj (str channel ": " msg)))
-     slack/get-user-info (fn [_ _] {:first-name "Bill"})
-     events/handle-unknown-failure (fn [t _] (swap! messages conj (str t)))
-     events/handle-parse-failure (fn [t _]
-                                   (swap! messages conj
-                                          (format "Failed to parse: %s" t)))]
-    (it)))
+(defn start-coaching [ds team-id user-id]
+  )
+
+(defn stop-coaching [ds team-id user-id]
+  )
+
+(defn new-question
+  "Sends a new question to a specific individual."
+  [ds team-id user-id]
+  )
+
+(defn new-questions
+  "Sends new questions to everyone on a given team that has signed up for
+   coaching."
+  [ds team-id]
+  )
