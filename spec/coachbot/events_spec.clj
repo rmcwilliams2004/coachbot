@@ -22,6 +22,7 @@
             [coachbot.env :as env]
             [coachbot.events :as events]
             [coachbot.handler :refer :all]
+            [coachbot.mocking :refer :all]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
             [clojure.java.jdbc :as jdbc]
@@ -38,6 +39,10 @@
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 
+(defn handle-event [text]
+  (events/handle-event {:token "none" :team_id team-id
+                        :event {:text text}}))
+
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
   (before-all (storage/store-slack-auth! @ds {:team-id team-id
@@ -50,28 +55,14 @@
 
   (with messages (atom []))
 
-  (around [it] (with-redefs [env/datasource
-                             (fn [] @ds)
-
-                             slack/send-message!
-                             (fn [_ _ msg] (swap! @messages conj msg))
-
-                             events/handle-unknown-failure
-                             (fn [t _] (swap! @messages conj (str t)))
-
-                             events/handle-parse-failure
-                             (fn [t _]
-                               (swap! @messages conj
-                                      (format "Failed to parse: %s" t)))]
-                 (it)))
+  (around [it] (mock-event-boundary @messages @ds it))
 
   ;; Note: the "hi" command is covered in the handler-spec
 
   (context "help"
     (it "responds to help command properly"
       (do
-        (events/handle-event {:token "none" :team_id team-id
-                              :event {:text "help"}})
+        (handle-event "help")
         (should= [(str "Here are the commands I respond to:\n"
                        " • hi -- checks if I'm listening\n"
                        " • help -- display this help message")] @@messages))))

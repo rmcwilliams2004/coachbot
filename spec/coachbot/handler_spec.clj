@@ -20,9 +20,8 @@
 (ns coachbot.handler-spec
   (:require [coachbot.db :as db]
             [coachbot.env :as env]
-            [coachbot.events :as events]
             [coachbot.handler :refer :all]
-            [coachbot.slack :as slack]
+            [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [clojure.data.json :as json]
             [clojure.java.jdbc :as jdbc]
@@ -114,23 +113,7 @@
 
       (with messages (atom []))
 
-      (around [it] (with-redefs [env/datasource
-                                 (fn [] @ds)
-
-                                 slack/get-user-info
-                                 (fn [_ _] {:first-name "Bill"})
-
-                                 slack/send-message!
-                                 (fn [_ _ msg] (swap! @messages conj msg))
-
-                                 events/handle-unknown-failure
-                                 (fn [t _] (swap! @messages conj (str t)))
-
-                                 events/handle-parse-failure
-                                 (fn [t _]
-                                   (swap! @messages conj
-                                          (format "Failed to parse: %s" t)))]
-                     (it)))
+      (around [it] (mock-event-boundary @messages @ds it))
 
       (it "Ignores bot users"
         (should= 200 (:status
