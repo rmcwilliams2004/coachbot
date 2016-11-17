@@ -73,7 +73,11 @@
   (context "Start and stop coaching"
     (before-all (swap! @messages empty))
 
-    (before-all (handle-event user1-id "start coaching")
+    (before-all (log/set-level! :info)
+                (storage/replace-base-questions! @ds ["first question"
+                                                      "second question"
+                                                      "third question"])
+                (handle-event user1-id "start coaching")
                 (handle-event user2-id "start coaching")
                 (coaching/new-questions @ds team-id)
                 (handle-event user2-id "stop coaching")

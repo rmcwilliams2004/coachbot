@@ -20,7 +20,8 @@
 (ns coachbot.coaching-process
   (:require [coachbot.env :as env]
             [coachbot.slack :as slack]
-            [coachbot.storage :as storage]))
+            [coachbot.storage :as storage]
+            [taoensso.timbre :as log]))
 
 (defn start-coaching [team-id channel user-id]
   (let [[access-token bot-access-token]
@@ -31,8 +32,11 @@
                          "Thanks! We'll start sending you messages soon.")))
 
 (defn stop-coaching [team-id channel user-id]
-  (let [[_ bot-access-token] (storage/get-access-tokens (env/datasource)
-                                                        team-id)]
+  (let [[access-token bot-access-token]
+        (storage/get-access-tokens (env/datasource)
+                                   team-id)]
+    (storage/remove-coaching-user! (env/datasource)
+                                   (slack/get-user-info access-token user-id))
     (slack/send-message! bot-access-token channel
                          "No problem! We'll stop sending messages.")))
 
@@ -47,6 +51,7 @@
   "Sends new questions to everyone on a given team that has signed up for
    coaching."
   [ds team-id]
-  ;; get list of coaching clients
+  (let [users (storage/list-coaching-users ds team-id)]
+    (log/infof "Sending new questions to: %s" users))
   ;; call new-question on each of them
   )

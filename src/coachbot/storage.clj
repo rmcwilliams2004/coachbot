@@ -76,6 +76,13 @@
                            (set/rename-keys x {:id :remote_user_id}))]
       (jdbc/insert! conn :slack_coaching_users new-record))))
 
+(defn remove-coaching-user! [ds {:keys [email team-id] :as user}]
+  (jdbc/with-db-transaction
+    [conn ds]
+    (let [team-id (get-team-id ds team-id)]
+      (jdbc/delete! conn :slack_coaching_users
+                    ["email = ? AND team_id = ?" email team-id]))))
+
 (defn get-coaching-user [ds team-id user-id]
   (let [team-internal-id (get-team-id ds team-id)
         query (-> (h/select :*)
@@ -90,3 +97,16 @@
           (dissoc x :created-date :updated-date :id :team-id)
           (assoc x :team-id team-id)
           (set/rename-keys x {:remote-user-id :id}))))
+
+(defn list-coaching-users [ds team-id]
+  (log/infof "list-coaching-users: %s" team-id))
+
+(defn replace-base-questions!
+  "Used to replace the default base questions for testing. Give it a
+   datasource and a list of strings."
+  [ds questions]
+  (jdbc/execute! ds ["delete from base_questions"])
+
+  (->> questions
+       (map #(hash-map :question %))
+       (jdbc/insert-multi! ds :base_questions)))
