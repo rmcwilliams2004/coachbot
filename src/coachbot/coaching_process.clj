@@ -39,10 +39,14 @@
 (defn new-question
   "Sends a new question to a specific individual."
   [ds team-id user-id]
+  ;; get last question asked
+  ;; if answered, choose new question, else re-send prior question
   )
 
 (defn new-questions
   "Sends new questions to everyone on a given team that has signed up for
    coaching."
   [ds team-id]
+  ;; get list of coaching clients
+  ;; call new-question on each of them
   )
