@@ -18,13 +18,13 @@
 ;
 
 (ns coachbot.events-spec
-  (:require [coachbot.coaching-process :as coaching]
+  (:require [clojure.java.jdbc :as jdbc]
+            [coachbot.coaching-process :as coaching]
             [coachbot.db :as db]
             [coachbot.events :as events]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
-            [clojure.java.jdbc :as jdbc]
             [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
