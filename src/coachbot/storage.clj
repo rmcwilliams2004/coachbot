@@ -21,11 +21,11 @@
   (:require [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
             [clojure.java.jdbc :as jdbc]
+            [clojure.set :as set]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [taoensso.timbre :as log]
-            [clojure.set :as set]
-            [clojure.pprint :as pprint]))
+            [coachbot.db :as db]))
 
 (defn get-access-tokens [ds team-id]
   (let [query (-> (h/select [:access_token "access_token"]
@@ -81,44 +81,40 @@
   (jdbc/with-db-transaction
     [conn ds]
     (let [team-id (get-team-id ds team-id)]
-      (jdbc/delete! conn :slack_coaching_users
+      (jdbc/update! conn :slack_coaching_users
+                    {:active 0}
                     ["email = ? AND team_id = ?" email team-id]))))
 
 (defn- convert-user [team-id user]
-  (let [result (as-> user x
-                    (cske/transform-keys csk/->kebab-case x)
-                    (dissoc x :created-date :updated-date :id :team-id)
-                    (assoc x :team-id team-id)
-                    (set/rename-keys x {:remote-user-id :id}))]
-    (pprint/pprint user)
-    (pprint/pprint result)
-    result))
+  (as-> user x
+        (cske/transform-keys csk/->kebab-case x)
+        (dissoc x :created-date :updated-date :id :team-id :active)
+        (assoc x :team-id team-id)
+        (set/rename-keys x {:remote-user-id :id})))
+
+(defn- coaching-users-query [team-internal-id & user-id]
+  (let [where-clause [:and
+                      [:= :team_id team-internal-id]]
+        where-clause (if user-id
+                       (conj where-clause [:= :remote_user_id user-id])
+                       (conj where-clause [:= :active 1]))]
+    (-> (h/select :*)
+        (h/from :slack_coaching_users)
+        (h/where where-clause)
+        sql/format)))
+
+(defn- get-coaching-user-raw [ds team-id user-id]
+  (let [team-internal-id (get-team-id ds team-id)
+        query (coaching-users-query team-internal-id user-id)]
+    (first (jdbc/query ds query))))
 
 (defn get-coaching-user [ds team-id user-id]
-  (let [team-internal-id (get-team-id ds team-id)
-        query (-> (h/select :*)
-                  (h/from :slack_coaching_users)
-                  (h/where [:and
-                            [:= :team_id team-internal-id]
-                            [:= :remote_user_id user-id]])
-                  sql/format)
-        [user] (jdbc/query ds query)]
-    (convert-user team-id user)))
+  (convert-user team-id (get-coaching-user-raw ds team-id user-id)))
 
 (defn list-coaching-users [ds team-id]
   (let [team-internal-id (get-team-id ds team-id)
-        query (-> (h/select :scu.*
-                            [:asked.question_id :asked_qid]
-                            [:answer.question_id :answered_qid])
-                  (h/from [:slack_coaching_users :scu])
-                  (h/left-join [:question_answers :answer]
-                               [:= :answer.slack_user_id :scu.id]
-                               [:questions_asked :asked]
-                               [:= :asked.slack_user_id :scu.id])
-                  (h/where [:= :team_id team-internal-id])
-                  sql/format)
+        query (coaching-users-query team-internal-id)
         users (jdbc/query ds query)]
-    (println query)
     (map (partial convert-user team-id) users)))
 
 (defn replace-base-questions!
@@ -130,3 +126,70 @@
   (->> questions
        (map #(hash-map :question %))
        (jdbc/insert-multi! ds :base_questions)))
+
+(defn same-question-for-sending! [ds qid {slack-user-id :id} send-fn]
+  (jdbc/with-db-transaction [conn ds]
+    (let [user-id-query (-> (h/select :id)
+                            (h/from :slack_coaching_users)
+                            (h/where [:= :remote_user_id slack-user-id])
+                            sql/format)
+          [{user-id :id}] (jdbc/query conn user-id-query)
+          base-query (-> (h/select :id :question)
+                         (h/from :base_questions))
+          query (-> (if qid (h/where base-query [:= :id qid])
+                            base-query)
+                    (h/order-by :id)
+                    (h/limit 1)
+                    sql/format)
+          {new-qid :id :keys [question]} (first (jdbc/query conn query))]
+      (send-fn question)
+      (jdbc/insert! conn :questions_asked {:slack_user_id user-id
+                                           :question_id new-qid})
+      (jdbc/update! ds :slack_coaching_users
+                    {:asked_qid new-qid} ["id = ?" user-id]))))
+
+(defn- find-next-question [ds qid]
+  (let [query (-> (h/select :*)
+                  (h/from :base_questions)
+                  (h/where [:> :id qid])
+                  sql/format)]
+    (->> query (jdbc/query ds) first :id)))
+
+(defn next-question-for-sending! [ds qid user send-fn]
+  (let [qid
+        (if-not qid qid (find-next-question ds qid))]
+    (same-question-for-sending! ds qid user send-fn)))
+
+(defn submit-answer! [ds team-id user-id qid text]
+  (jdbc/with-db-transaction [conn ds]
+    (let [{:keys [id]} (get-coaching-user-raw ds team-id user-id)]
+      (jdbc/insert! ds :question_answers {:slack_user_id id
+                                          :question_id qid
+                                          :answer text})
+      (jdbc/update! ds :slack_coaching_users
+                    {:answered_qid qid} ["id = ?" id]))))
+
+(defn list-questions-asked [ds team-id user-id]
+  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-id)
+        query (-> (h/select :bq.question)
+                  (h/from [:questions_asked :qa])
+                  (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
+                  (h/where [:= :slack_user_id id])
+                  (h/order-by :qa.created_date)
+                  sql/format)]
+    (jdbc/query ds query)))
+
+(defn list-answers [ds team-id user-id]
+  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-id)
+        query (-> (h/select :bq.question :qa.answer)
+                  (h/from [:question_answers :qa])
+                  (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
+                  (h/where [:= :slack_user_id id])
+                  (h/order-by :qa.created_date)
+                  sql/format)]
+    (->> query
+         (jdbc/query ds)
+         (map #(let [{:keys [question answer]} %]
+                {:question question
+                 :answer (db/extract-character-data answer)})))))
+

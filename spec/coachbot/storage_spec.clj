@@ -66,6 +66,9 @@
             :last-name "Marsh",
             :email "travis.marsh@gmail.com"})
 
+(defn extra-fields [user]
+  (assoc user :answered-qid nil :asked-qid nil))
+
 (describe "Storing data for later use"
   (context "Slack teams"
     (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
@@ -107,5 +110,7 @@
                 (storage/add-coaching-user! @ds user2))
 
     (it "should have stored the slack auth stuff"
-      (should= user1 (storage/get-coaching-user @ds team-id user1-id))
-      (should= user2 (storage/get-coaching-user @ds team-id user2-id)))))
+      (should= (extra-fields user1)
+               (storage/get-coaching-user @ds team-id user1-id))
+      (should= (extra-fields user2)
+               (storage/get-coaching-user @ds team-id user2-id)))))

@@ -68,33 +68,57 @@
               " • hi -- checks if I'm listening\n"
               " • help -- display this help message\n"
               " • start coaching -- send daily motivational questions\n"
-              " • stop coaching -- stop sending questions")] @@messages)))
+              " • stop coaching -- stop sending questions\n"
+              " • next question -- ask a new question")] @@messages)))
 
   (context "Start and stop coaching"
     (before-all (swap! @messages empty))
 
-    (before-all (log/set-level! :info)
-                (storage/replace-base-questions! @ds ["first question"
+    (before-all (storage/replace-base-questions! @ds ["first question"
                                                       "second question"
-                                                      "third question"])
+                                                      "third question"
+                                                      "fourth question"])
                 (handle-event user1-id "start coaching")
                 (handle-event user2-id "start coaching")
-                (coaching/new-questions @ds team-id)
+                (coaching/new-questions! team-id)
                 (handle-event user1-id "some fun answer")
                 (handle-event user2-id "another fun answer")
                 (handle-event user2-id "stop coaching")
-                (coaching/new-questions @ds team-id)
+                (coaching/new-questions! team-id)
                 (handle-event user1-id "some confused answer")
+                (log/set-level! :info)
+                (coaching/new-questions! team-id)
+                (handle-event user1-id "some fun answer")
+                (handle-event user1-id "next question")
                 (handle-event user1-id "stop coaching")
-                (coaching/new-questions @ds team-id))
+                (coaching/new-questions! team-id))
 
     (it "starts and stops coaching for users properly"
-      #_(should=
-          [(str user1-id ": Thanks! We'll start sending you messages soon.")
-           (str user2-id ": Thanks! We'll start sending you messages soon.")
-           (str user1-id ": first question")
-           (str user2-id ": first question")
-           (str user2-id ": No problem! We'll stop sending messages.")
-           (str user1-id ": second question")
-           (str user1-id ": No problem! We'll stop sending messages.")]
-          @@messages))))
+      (should=
+        [(str user1-id ": Thanks! We'll start sending you messages soon.")
+         (str user2-id ": Thanks! We'll start sending you messages soon.")
+         (str user1-id ": first question")
+         (str user2-id ": first question")
+         (str user2-id ": No problem! We'll stop sending messages.")
+         (str user1-id ": second question")
+         (str user1-id ": third question")
+         (str user1-id ": fourth question")
+         (str user1-id ": No problem! We'll stop sending messages.")]
+        @@messages)
+
+      (should= [{:question "first question"}
+                {:question "second question"}
+                {:question "third question"}
+                {:question "fourth question"}]
+               (storage/list-questions-asked @ds team-id user1-id))
+
+      (should= [{:question "first question", :answer "some fun answer"}
+                {:question "second question", :answer "some confused answer"}
+                {:question "third question", :answer "some fun answer"}]
+               (storage/list-answers @ds team-id user1-id))
+
+      (should= [{:question "first question"}]
+               (storage/list-questions-asked @ds team-id user2-id))
+
+      (should= [{:question "first question", :answer "another fun answer"}]
+               (storage/list-answers @ds team-id user2-id)))))

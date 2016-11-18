@@ -23,7 +23,7 @@
             [coachbot.storage :as storage]
             [taoensso.timbre :as log]))
 
-(defn start-coaching [team-id channel user-id]
+(defn start-coaching! [team-id channel user-id]
   (let [[access-token bot-access-token]
         (storage/get-access-tokens (env/datasource) team-id)]
     (storage/add-coaching-user! (env/datasource)
@@ -31,7 +31,7 @@
     (slack/send-message! bot-access-token channel
                          "Thanks! We'll start sending you messages soon.")))
 
-(defn stop-coaching [team-id channel user-id]
+(defn stop-coaching! [team-id channel user-id]
   (let [[access-token bot-access-token]
         (storage/get-access-tokens (env/datasource)
                                    team-id)]
@@ -40,22 +40,34 @@
     (slack/send-message! bot-access-token channel
                          "No problem! We'll stop sending messages.")))
 
-(defn new-question
+(defn new-question!
   "Sends a new question to a specific individual."
-  [ds user]
-  (log/infof "new-question: %s" user)
+  [{:keys [id asked-qid answered-qid team-id] :as user} & channel]
 
-  ;; if answered, choose new question, else re-send prior question
-  )
+  (let [ds (env/datasource)
 
-(defn new-questions
+        [_ bot-access-token]
+        (storage/get-access-tokens (env/datasource) team-id)
+
+        send-fn (partial slack/send-message! bot-access-token
+                         (if channel channel id))]
+    (if (= asked-qid answered-qid)
+      (storage/next-question-for-sending! ds asked-qid user send-fn)
+      (storage/same-question-for-sending! ds asked-qid user send-fn))))
+
+(defn new-questions!
   "Sends new questions to everyone on a given team that has signed up for
    coaching."
-  [ds team-id]
-  (doall (map (partial new-question ds)
-              (storage/list-coaching-users ds team-id))))
+  [team-id]
+  (doall (map (partial new-question!)
+              (storage/list-coaching-users (env/datasource) team-id))))
 
-(defn submit-text [team_id user text]
+(defn submit-text! [team-id user-id text]
   ;; If there is an outstanding for the user, submit that
   ;; Otherwise store it someplace for a live person to review
-  )
+  (let [{:keys [asked-qid]}
+        (storage/get-coaching-user (env/datasource) team-id user-id)]
+    (if asked-qid
+      (storage/submit-answer! (env/datasource) team-id user-id asked-qid text)
+      (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
+                 user-id text))))

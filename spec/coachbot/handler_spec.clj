@@ -115,7 +115,7 @@
 
       (around [it]
               (with-redefs
-                [coaching/submit-text
+                [coaching/submit-text!
                  (fn [_ _ t]
                    (swap! @messages conj (format "Text submitted: %s" t)))]
                 (mock-event-boundary @messages @ds it)))
