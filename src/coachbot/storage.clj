@@ -145,7 +145,7 @@
       (send-fn question)
       (jdbc/insert! conn :questions_asked {:slack_user_id user-id
                                            :question_id new-qid})
-      (jdbc/update! ds :slack_coaching_users
+      (jdbc/update! conn :slack_coaching_users
                     {:asked_qid new-qid} ["id = ?" user-id]))))
 
 (defn- find-next-question [ds qid]
@@ -162,11 +162,11 @@
 
 (defn submit-answer! [ds team-id user-id qid text]
   (jdbc/with-db-transaction [conn ds]
-    (let [{:keys [id]} (get-coaching-user-raw ds team-id user-id)]
-      (jdbc/insert! ds :question_answers {:slack_user_id id
+    (let [{:keys [id]} (get-coaching-user-raw conn team-id user-id)]
+      (jdbc/insert! conn :question_answers {:slack_user_id id
                                           :question_id qid
                                           :answer text})
-      (jdbc/update! ds :slack_coaching_users
+      (jdbc/update! conn :slack_coaching_users
                     {:answered_qid qid} ["id = ?" id]))))
 
 (defn list-questions-asked [ds team-id user-id]
