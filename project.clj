@@ -20,7 +20,7 @@
 (defproject coachbot "0.1.0-SNAPSHOT"
   :description "Simple, elegant, automatic motivation"
   :dependencies [[camel-snake-kebab "0.4.0"]
-                 [clj-http "3.3.0"]
+                 [clj-http "3.4.1"]
                  [com.fzakaria/slf4j-timbre "0.3.2"]
                  [com.h2database/h2 "1.4.193"]
                  [com.zaxxer/HikariCP "2.5.1"]
