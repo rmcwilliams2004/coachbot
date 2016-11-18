@@ -1,0 +1,10 @@
+ALTER TABLE question_answers
+  ADD created_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+CREATE TABLE unhandled_text (
+  id            MEDIUMINT NOT NULL AUTO_INCREMENT,
+  slack_user_id MEDIUMINT NOT NULL,
+  content       MEDIUMTEXT,
+  created_date  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+);

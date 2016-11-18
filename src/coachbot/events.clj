@@ -52,9 +52,8 @@
   "Unknown failure")
 
 (defn- handle-parse-failure [text result]
-  (log/errorf "Unable to parse command: %s" text)
-  (log/debugf "Parse Result: %s" result)
-  "Unparseable command")
+  (log/warnf "Unable to parse command: %s" text)
+  (log/debugf "Parse Result: %s" result))
 
 (defn hello-world [team-id channel user-id]
   (let [[access-token bot-access-token]
@@ -94,7 +93,8 @@
             "Unhandled command")))
       "Ignoring message from myself")
     (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
-      (handle-parse-failure text result))
+      (handle-parse-failure text result)
+      (coaching/submit-text team_id user text))
     (catch Exception t (handle-unknown-failure t event))))
 
 (defroutes event-routes

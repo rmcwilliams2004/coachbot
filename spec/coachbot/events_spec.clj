@@ -26,7 +26,8 @@
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.pprint :as pprint]))
 
 ;todo Kill this evil hack.
 (log/set-level! :error)
@@ -80,8 +81,11 @@
                 (handle-event user1-id "start coaching")
                 (handle-event user2-id "start coaching")
                 (coaching/new-questions @ds team-id)
+                (handle-event user1-id "some fun answer")
+                (handle-event user2-id "another fun answer")
                 (handle-event user2-id "stop coaching")
                 (coaching/new-questions @ds team-id)
+                (handle-event user1-id "some confused answer")
                 (handle-event user1-id "stop coaching")
                 (coaching/new-questions @ds team-id))
 

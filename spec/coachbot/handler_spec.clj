@@ -27,7 +27,8 @@
             [clojure.java.jdbc :as jdbc]
             [ring.mock.request :as mock]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [coachbot.coaching-process :as coaching]))
 
 ;todo Kill this evil hack.
 (log/set-level! :error)
@@ -112,7 +113,12 @@
 
       (with messages (atom []))
 
-      (around [it] (mock-event-boundary @messages @ds it))
+      (around [it]
+              (with-redefs
+                [coaching/submit-text
+                 (fn [_ _ t]
+                   (swap! @messages conj (format "Text submitted: %s" t)))]
+                (mock-event-boundary @messages @ds it)))
 
       (it "Ignores bot users"
         (should= 200 (:status
@@ -126,7 +132,7 @@
 
       (it "Handles bad events"
         (should= 200 (:status (send-event (message :event {:text "sup"}))))
-        (should= ["Failed to parse: sup"] @@messages))
+        (should= ["Text submitted: sup"] @@messages))
 
       (it "Disallows bad activation tokens"
         (should= 401 (:status (send-event (message :token "bad"))))))))

@@ -24,7 +24,8 @@
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [taoensso.timbre :as log]
-            [clojure.set :as set]))
+            [clojure.set :as set]
+            [clojure.pprint :as pprint]))
 
 (defn get-access-tokens [ds team-id]
   (let [query (-> (h/select [:access_token "access_token"]
@@ -83,6 +84,13 @@
       (jdbc/delete! conn :slack_coaching_users
                     ["email = ? AND team_id = ?" email team-id]))))
 
+(defn- convert-user [team-id user]
+  (as-> user x
+        (cske/transform-keys csk/->kebab-case x)
+        (dissoc x :created-date :updated-date :id :team-id)
+        (assoc x :team-id team-id)
+        (set/rename-keys x {:remote-user-id :id})))
+
 (defn get-coaching-user [ds team-id user-id]
   (let [team-internal-id (get-team-id ds team-id)
         query (-> (h/select :*)
@@ -92,14 +100,17 @@
                             [:= :remote_user_id user-id]])
                   sql/format)
         [user] (jdbc/query ds query)]
-    (as-> user x
-          (cske/transform-keys csk/->kebab-case x)
-          (dissoc x :created-date :updated-date :id :team-id)
-          (assoc x :team-id team-id)
-          (set/rename-keys x {:remote-user-id :id}))))
+    (convert-user team-id user)))
 
 (defn list-coaching-users [ds team-id]
-  (log/infof "list-coaching-users: %s" team-id))
+  (let [team-internal-id (get-team-id ds team-id)
+        query (-> (h/select :*)
+                  (h/from :slack_coaching_users)
+                  (h/where [:and
+                            [:= :team_id team-internal-id]])
+                  sql/format)
+        users (jdbc/query ds query)]
+    (map (partial convert-user team-id) users)))
 
 (defn replace-base-questions!
   "Used to replace the default base questions for testing. Give it a

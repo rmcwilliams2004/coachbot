@@ -42,7 +42,8 @@
 
 (defn new-question
   "Sends a new question to a specific individual."
-  [ds team-id user-id]
+  [ds user]
+  (log/infof "new-question: %s" user)
   ;; get last question asked
   ;; if answered, choose new question, else re-send prior question
   )
@@ -51,7 +52,10 @@
   "Sends new questions to everyone on a given team that has signed up for
    coaching."
   [ds team-id]
-  (let [users (storage/list-coaching-users ds team-id)]
-    (log/infof "Sending new questions to: %s" users))
-  ;; call new-question on each of them
+  (doall (map (partial new-question ds)
+              (storage/list-coaching-users ds team-id))))
+
+(defn submit-text [team_id user text]
+  ;; If there is an outstanding for the user, submit that
+  ;; Otherwise store it someplace for a live person to review
   )

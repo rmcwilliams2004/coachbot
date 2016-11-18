@@ -20,7 +20,8 @@
 (ns coachbot.mocking
   (:require [coachbot.events :as events]
             [coachbot.slack :as slack]
-            [coachbot.env :as env]))
+            [coachbot.env :as env]
+            [coachbot.coaching-process :as coaching]))
 
 (def team-id "def456")
 
@@ -47,8 +48,5 @@
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))
      slack/get-user-info (fn [_ user-id] (users user-id))
-     events/handle-unknown-failure (fn [t _] (swap! messages conj (str t)))
-     events/handle-parse-failure (fn [t _]
-                                   (swap! messages conj
-                                          (format "Failed to parse: %s" t)))]
+     events/handle-unknown-failure (fn [t _] (swap! messages conj (str t)))]
     (it)))
