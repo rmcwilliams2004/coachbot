@@ -44,7 +44,7 @@
   "Sends a new question to a specific individual."
   [ds user]
   (log/infof "new-question: %s" user)
-  ;; get last question asked
+
   ;; if answered, choose new question, else re-send prior question
   )
 

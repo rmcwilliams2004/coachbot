@@ -85,11 +85,14 @@
                     ["email = ? AND team_id = ?" email team-id]))))
 
 (defn- convert-user [team-id user]
-  (as-> user x
-        (cske/transform-keys csk/->kebab-case x)
-        (dissoc x :created-date :updated-date :id :team-id)
-        (assoc x :team-id team-id)
-        (set/rename-keys x {:remote-user-id :id})))
+  (let [result (as-> user x
+                    (cske/transform-keys csk/->kebab-case x)
+                    (dissoc x :created-date :updated-date :id :team-id)
+                    (assoc x :team-id team-id)
+                    (set/rename-keys x {:remote-user-id :id}))]
+    (pprint/pprint user)
+    (pprint/pprint result)
+    result))
 
 (defn get-coaching-user [ds team-id user-id]
   (let [team-internal-id (get-team-id ds team-id)
@@ -104,12 +107,18 @@
 
 (defn list-coaching-users [ds team-id]
   (let [team-internal-id (get-team-id ds team-id)
-        query (-> (h/select :*)
-                  (h/from :slack_coaching_users)
-                  (h/where [:and
-                            [:= :team_id team-internal-id]])
+        query (-> (h/select :scu.*
+                            [:asked.question_id :asked_qid]
+                            [:answer.question_id :answered_qid])
+                  (h/from [:slack_coaching_users :scu])
+                  (h/left-join [:question_answers :answer]
+                               [:= :answer.slack_user_id :scu.id]
+                               [:questions_asked :asked]
+                               [:= :asked.slack_user_id :scu.id])
+                  (h/where [:= :team_id team-internal-id])
                   sql/format)
         users (jdbc/query ds query)]
+    (println query)
     (map (partial convert-user team-id) users)))
 
 (defn replace-base-questions!
