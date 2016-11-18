@@ -57,7 +57,6 @@
 
   (around-all [it] (mock-event-boundary @messages @ds it))
 
-
   ;; Note: the "hi" command is covered in the handler-spec
 
   (context "help"
