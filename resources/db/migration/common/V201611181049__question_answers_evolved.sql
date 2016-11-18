@@ -5,8 +5,10 @@ CREATE TABLE questions_asked (
   id            MEDIUMINT NOT NULL AUTO_INCREMENT,
   slack_user_id MEDIUMINT NOT NULL,
   question_id   MEDIUMINT NOT NULL,
-  created_date  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+  created_date  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id)
+)
+  ENGINE = InnoDB;
 
 ALTER TABLE questions_asked
   ADD CONSTRAINT fk_qasked_scu FOREIGN KEY (slack_user_id)
@@ -22,7 +24,8 @@ CREATE TABLE unhandled_text (
   content       MEDIUMTEXT,
   created_date  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id)
-);
+)
+  ENGINE = InnoDB;
 
 ALTER TABLE unhandled_text
   ADD CONSTRAINT fk_scu_ut FOREIGN KEY (slack_user_id)
