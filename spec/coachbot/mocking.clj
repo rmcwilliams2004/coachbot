@@ -31,15 +31,18 @@
 (def user1-email "blah@there.com")
 (def user2-email "meh@here.com")
 
+(def user1-first-name "Bill")
+(def user2-first-name "Cathy")
+
 (def user1 {:team-id team-id :remote-user-id user1-id
             :email user1-email :timezone "America/Chicago"
-            :real-name "bblah" :first-name "Bill" :last-name "Blah"
+            :real-name "bblah" :first-name user1-first-name :last-name "Blah"
             :name "Bill Blah"})
 
 (def user2-id "meh")
 (def user2 {:team-id team-id :remote-user-id user2-id
             :email user2-email :timezone "America/Chicago"
-            :real-name "cmeh" :first-name "Cathy" :last-name "Meh"
+            :real-name "cmeh" :first-name user2-first-name :last-name "Meh"
             :name "Cathy Meh"})
 
 (def users {user0-id {:first-name "Bill"}

@@ -72,7 +72,10 @@
         where-clause (if user-email
                        (conj where-clause [:= :email user-email])
                        (conj where-clause [:= :active 1]))]
-    (-> (h/select :*)
+    (-> (h/select
+          :*,
+          [(sql/raw "timestampdiff(DAY, last_question_date, curdate())")
+           :days-since-question])
         (h/from :slack_coaching_users)
         (h/where where-clause)
         sql/format)))
@@ -87,7 +90,8 @@
   (when user
     (as-> user x
           (cske/transform-keys csk/->kebab-case x)
-          (dissoc x :created-date :updated-date :id :team-id :active)
+          (dissoc x :created-date :updated-date :last-question-date :id
+                  :team-id)
           (assoc x :team-id team-id)
           (set/rename-keys x {:remote-user-id :id}))))
 
@@ -152,7 +156,8 @@
       (jdbc/insert! conn :questions_asked {:slack_user_id user-id
                                            :question_id new-qid})
       (jdbc/update! conn :slack_coaching_users
-                    {:asked_qid new-qid} ["id = ?" user-id]))))
+                    {:asked_qid new-qid :last_question_date (db/now)}
+                    ["id  = ?" user-id]))))
 
 (defn- find-next-question [ds qid]
   (let [query (-> (h/select :*)
@@ -198,3 +203,12 @@
          (map #(let [{:keys [question answer]} %]
                 {:question question
                  :answer (db/extract-character-data answer)})))))
+
+(defn reset-all-coaching-users!
+  "Marks all coaching users as having last been asked a question a day ago"
+  [ds]
+  (jdbc/with-db-transaction [conn ds]
+    (jdbc/execute!
+      conn
+      [(str "update slack_coaching_users "
+            "set last_question_date = (curdate() - 1)")])))

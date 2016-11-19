@@ -88,16 +88,20 @@
         {:keys [email]} (slack/get-user-info access-token user-id)]
     (ss/try+
       (if-not (storage/is-bot-user? (env/datasource) team_id user-id)
-        (let [[command & args] (parser/parse-command text)]
-          (case (str/lower-case command)
-            "hi" (hello-world team_id channel user-id)
-            "help" (help team_id channel)
-            "start coaching" (coaching/start-coaching! team_id channel user-id)
-            "stop coaching" (coaching/stop-coaching! team_id channel user-id)
-            "next question" (coaching/next-question! team_id channel user-id)
-            (do
-              (log/errorf "Unexpected command: %s" command)
-              "Unhandled command")))
+        (try
+          (let [[command & args] (parser/parse-command text)]
+            (case (str/lower-case command)
+              "hi" (hello-world team_id channel user-id)
+              "help" (help team_id channel)
+              "start coaching"
+              (coaching/start-coaching! team_id channel user-id)
+
+              "stop coaching" (coaching/stop-coaching! team_id channel user-id)
+              "next question" (coaching/next-question! team_id channel user-id)
+              (do
+                (log/errorf "Unexpected command: %s" command)
+                "Unhandled command")))
+          (finally (coaching/event-occurred! team_id email)))
         "Ignoring message from myself")
       (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
         (handle-parse-failure text result)

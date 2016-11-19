@@ -41,6 +41,13 @@
                         :event {:text text :user user-id
                                 :channel user-id}}))
 
+(defn hi-from-everyone []
+  (handle-event user1-id "hi")
+  (handle-event user2-id "hi"))
+
+(def hello-user1 (str user1-id ": Hello, " user1-first-name))
+(def hello-user2 (str user2-id ": Hello, " user2-first-name))
+
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
   (before-all (storage/store-slack-auth! @ds
@@ -79,9 +86,11 @@
                                                       "fourth question"
                                                       "fifth question"
                                                       "sixth question"])
+
+                (hi-from-everyone)
                 (handle-event user1-id "next question")
                 (handle-event user2-id "start coaching")
-                (coaching/send-questions! team-id)
+                (hi-from-everyone)
                 (handle-event user1-id "start coaching")
                 (handle-event user1-id "some fun answer")
                 (handle-event user2-id "another fun answer")
@@ -89,8 +98,8 @@
                 (coaching/send-questions! team-id)
                 (handle-event user1-id "some confused answer")
                 (handle-event user1-id "stop coaching")
+                (storage/reset-all-coaching-users! @ds)
                 (handle-event user1-id "start coaching")
-                (coaching/send-questions! team-id)
 
                 ;; re-send same if not answered
                 (coaching/send-questions! team-id)
@@ -100,14 +109,17 @@
 
                 ;; send new one even if previous not answered
                 (handle-event user1-id "next question")
-                (coaching/send-questions! team-id)
-                (log/set-level! :error))
+                (coaching/send-questions! team-id))
 
     (it "starts and stops coaching for users properly"
       (should=
-        [(str user1-id ": first question")
+        [hello-user1
+         hello-user2
+         (str user1-id ": first question")
          (str user2-id ": Thanks! We'll start sending you messages soon.")
          (str user2-id ": first question")
+         hello-user1
+         hello-user2
          (str user1-id ": Thanks! We'll start sending you messages soon.")
          (str user2-id ": No problem! We'll stop sending messages.")
          (str user1-id ": second question")

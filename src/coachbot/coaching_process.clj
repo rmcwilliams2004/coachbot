@@ -106,3 +106,12 @@
         [access-token _] (storage/get-access-tokens ds team_id)
         user (ensure-user ds access-token team_id user-id)]
     (send-question! user channel)))
+
+(defn event-occurred! [team-id email]
+  (let [{:keys [active days-since-question] :as user}
+        (storage/get-coaching-user (env/datasource) team-id email)
+
+        should-send-question?
+        (or (nil? days-since-question) (pos? days-since-question))]
+    (when (and active should-send-question?)
+      (send-question-if-previous-answered! user))))

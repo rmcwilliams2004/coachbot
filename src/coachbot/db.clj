@@ -21,6 +21,8 @@
   (:require [clojure.java.jdbc :as jdbc])
   (:import (com.zaxxer.hikari HikariConfig HikariDataSource)
            (java.io ByteArrayInputStream)
+           (java.sql Timestamp)
+           (java.time Instant)
            (org.flywaydb.core Flyway)))
 
 (def migration-base "db/migration")
@@ -72,3 +74,5 @@
 
 (def extract-binary-data (comp slurp choose-binary-stream))
 (def extract-character-data (comp slurp choose-character-stream))
+
+(defn now [] (Timestamp/from (Instant/now)))
