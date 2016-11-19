@@ -104,7 +104,7 @@
                 (log/errorf "Unexpected command: %s" command)
                 "Unhandled command")))
           (finally (coaching/event-occurred! team_id email)))
-        "Ignoring message from myself")
+        "Ignoring message not from someone else in an IM to me.")
       (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
         (handle-parse-failure text result)
         (coaching/submit-text! team_id email text))
