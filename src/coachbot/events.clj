@@ -73,6 +73,20 @@
            " • stop coaching -- stop sending questions\n"
            " • next question -- ask a new question"))))
 
+(defn respond-to-event [team-id channel user-id text]
+  (let [[command & args] (parser/parse-command text)]
+    (case (str/lower-case command)
+      "hi" (hello-world team-id channel user-id)
+      "help" (help team-id channel)
+      "start coaching"
+      (coaching/start-coaching! team-id channel user-id)
+
+      "stop coaching" (coaching/stop-coaching! team-id channel user-id)
+      "next question" (coaching/next-question! team-id channel user-id)
+      (do
+        (log/errorf "Unexpected command: %s" command)
+        "Unhandled command"))))
+
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
                      {user-id :user
@@ -87,24 +101,12 @@
 
         {:keys [email]} (slack/get-user-info access-token user-id)]
     (ss/try+
-      (if (and
-            (not (storage/is-bot-user? (env/datasource) team_id user-id))
-            (slack/is-im-to-me? bot-access-token channel))
+      (if-not (storage/is-bot-user? (env/datasource) team_id user-id)
         (try
-          (let [[command & args] (parser/parse-command text)]
-            (case (str/lower-case command)
-              "hi" (hello-world team_id channel user-id)
-              "help" (help team_id channel)
-              "start coaching"
-              (coaching/start-coaching! team_id channel user-id)
-
-              "stop coaching" (coaching/stop-coaching! team_id channel user-id)
-              "next question" (coaching/next-question! team_id channel user-id)
-              (do
-                (log/errorf "Unexpected command: %s" command)
-                "Unhandled command")))
+          (when (slack/is-im-to-me? bot-access-token channel)
+            (respond-to-event team_id channel user-id text))
           (finally (coaching/event-occurred! team_id email)))
-        "Ignoring message not from someone else in an IM to me.")
+        "Ignoring message from myself.")
       (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
         (handle-parse-failure text result)
         (coaching/submit-text! team_id email text))

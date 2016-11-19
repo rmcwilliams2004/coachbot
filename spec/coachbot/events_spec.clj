@@ -103,8 +103,9 @@
                 (coaching/send-questions! team-id)
                 (handle-event user1-id "some confused answer")
                 (handle-event user1-id "stop coaching")
-                (storage/reset-all-coaching-users! @ds)
                 (handle-event user1-id "start coaching")
+                (storage/reset-all-coaching-users! @ds)
+                (handle-event user1-id "general" "hi")
 
                 ;; re-send same if not answered
                 (coaching/send-questions! team-id)
