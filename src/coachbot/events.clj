@@ -55,13 +55,13 @@
   (log/warnf "Unable to parse command: %s" text)
   (log/debugf "Parse Result: %s" result))
 
-(defn hello-world [team-id channel user-id]
+(defn- hello-world [team-id channel user-id]
   (let [[access-token bot-access-token]
         (storage/get-access-tokens (env/datasource) team-id)
         {:keys [first-name]} (slack/get-user-info access-token user-id)]
     (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
 
-(defn help [team-id channel]
+(defn- help [team-id channel]
   (let [[_ bot-access-token]
         (storage/get-access-tokens (env/datasource) team-id)]
     (slack/send-message!
@@ -73,7 +73,7 @@
            " • stop coaching -- stop sending questions\n"
            " • next question -- ask a new question"))))
 
-(defn respond-to-event [team-id channel user-id text]
+(defn- respond-to-event [team-id channel user-id text]
   (let [[command & args] (parser/parse-command text)]
     (case (str/lower-case command)
       "hi" (hello-world team-id channel user-id)
