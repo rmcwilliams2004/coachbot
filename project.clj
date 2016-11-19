@@ -45,7 +45,7 @@
                                   [ring/ring-mock "0.3.0"]
                                   [speclj "3.3.2"]]
                    :plugins [[lein-ancient "0.6.10"]
-                             [lein-bikeshed "0.4.0"]
+                             [lein-bikeshed "0.4.1"]
                              [lein-kibit "0.1.2"]
                              [ikitommi/lein-ring "0.9.8-FIX"]
                              [speclj "3.3.2"]]}

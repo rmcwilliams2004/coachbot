@@ -50,7 +50,7 @@
         (storage/get-access-tokens (env/datasource) team-id)
 
         send-fn (partial slack/send-message! bot-access-token
-                         (if channel channel user-id))]
+                         (or channel user-id))]
     (f ds send-fn)))
 
 (defn send-question!
