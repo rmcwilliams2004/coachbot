@@ -40,9 +40,22 @@
     (slack/send-message! bot-access-token channel
                          "No problem! We'll stop sending messages.")))
 
-(defn new-question!
+(defn send-question!
   "Sends a new question to a specific individual."
-  [{:keys [id asked-qid answered-qid team-id] :as user} & channel]
+  [{:keys [id asked-qid answered-qid team-id] :as user} & [channel]]
+
+  (let [ds (env/datasource)
+
+        [_ bot-access-token]
+        (storage/get-access-tokens (env/datasource) team-id)
+
+        send-fn (partial slack/send-message! bot-access-token
+                         (if channel channel id))]
+    (storage/next-question-for-sending! ds asked-qid user send-fn)))
+
+(defn send-question-if-previous-answered!
+  "Sends a new question to a specific individual."
+  [{:keys [id asked-qid answered-qid team-id] :as user} & [channel]]
 
   (let [ds (env/datasource)
 
@@ -53,13 +66,13 @@
                          (if channel channel id))]
     (if (= asked-qid answered-qid)
       (storage/next-question-for-sending! ds asked-qid user send-fn)
-      (storage/same-question-for-sending! ds asked-qid user send-fn))))
+      (storage/question-for-sending ds asked-qid user send-fn))))
 
-(defn new-questions!
+(defn send-questions!
   "Sends new questions to everyone on a given team that has signed up for
    coaching."
   [team-id]
-  (doall (map (partial new-question!)
+  (doall (map (partial send-question-if-previous-answered!)
               (storage/list-coaching-users (env/datasource) team-id))))
 
 (defn submit-text! [team-id user-email text]
@@ -72,3 +85,18 @@
                               text)
       (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
                  user-email text))))
+
+(defn- ensure-user [ds access-token team-id user-id]
+  (let [{:keys [email] :as user} (slack/get-user-info access-token user-id)
+        get-coaching-user #(storage/get-coaching-user ds team-id email)]
+    (if-let [result (get-coaching-user)] result
+      (do
+        (storage/add-coaching-user! ds user)
+        (storage/remove-coaching-user! ds user)
+        (get-coaching-user)))))
+
+(defn next-question! [team_id channel user-id]
+  (let [ds (env/datasource)
+        [access-token _] (storage/get-access-tokens ds team_id)
+        user (ensure-user ds access-token team_id user-id)]
+    (send-question! user channel)))

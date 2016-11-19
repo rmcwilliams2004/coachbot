@@ -76,44 +76,56 @@
     (before-all (storage/replace-base-questions! @ds ["first question"
                                                       "second question"
                                                       "third question"
-                                                      "fourth question"])
-                (log/set-level! :info)
-                (handle-event user1-id "start coaching")
+                                                      "fourth question"
+                                                      "fifth question"
+                                                      "sixth question"])
+                (handle-event user1-id "next question")
                 (handle-event user2-id "start coaching")
-                (coaching/new-questions! team-id)
+                (coaching/send-questions! team-id)
+                (handle-event user1-id "start coaching")
                 (handle-event user1-id "some fun answer")
                 (handle-event user2-id "another fun answer")
                 (handle-event user2-id "stop coaching")
-                (coaching/new-questions! team-id)
+                (coaching/send-questions! team-id)
                 (handle-event user1-id "some confused answer")
                 (handle-event user1-id "stop coaching")
                 (handle-event user1-id "start coaching")
-                (coaching/new-questions! team-id)
+                (coaching/send-questions! team-id)
+
+                ;; re-send same if not answered
+                (coaching/send-questions! team-id)
                 (handle-event user1-id "some fun answer")
-                (handle-event user1-id "next question")
                 (handle-event user1-id "stop coaching")
-                (coaching/new-questions! team-id)
+                (handle-event user1-id "next question")
+
+                ;; send new one even if previous not answered
+                (handle-event user1-id "next question")
+                (coaching/send-questions! team-id)
                 (log/set-level! :error))
 
     (it "starts and stops coaching for users properly"
       (should=
-        [(str user1-id ": Thanks! We'll start sending you messages soon.")
+        [(str user1-id ": first question")
          (str user2-id ": Thanks! We'll start sending you messages soon.")
-         (str user1-id ": first question")
          (str user2-id ": first question")
+         (str user1-id ": Thanks! We'll start sending you messages soon.")
          (str user2-id ": No problem! We'll stop sending messages.")
          (str user1-id ": second question")
          (str user1-id ": No problem! We'll stop sending messages.")
          (str user1-id ": Thanks! We'll start sending you messages soon.")
          (str user1-id ": third question")
+         (str user1-id ": third question")
+         (str user1-id ": No problem! We'll stop sending messages.")
          (str user1-id ": fourth question")
-         (str user1-id ": No problem! We'll stop sending messages.")]
+         (str user1-id ": fifth question")]
         @@messages)
 
       (should= [{:question "first question"}
                 {:question "second question"}
                 {:question "third question"}
-                {:question "fourth question"}]
+                {:question "third question"}
+                {:question "fourth question"}
+                {:question "fifth question"}]
                (storage/list-questions-asked @ds team-id user1-email))
 
       (should= [{:question "first question", :answer "some fun answer"}

@@ -94,9 +94,7 @@
             "help" (help team_id channel)
             "start coaching" (coaching/start-coaching! team_id channel user-id)
             "stop coaching" (coaching/stop-coaching! team_id channel user-id)
-            "next question"
-            (coaching/new-question!
-              (storage/get-coaching-user (env/datasource) team_id email))
+            "next question" (coaching/next-question! team_id channel user-id)
             (do
               (log/errorf "Unexpected command: %s" command)
               "Unhandled command")))

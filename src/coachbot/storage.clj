@@ -22,10 +22,10 @@
             [camel-snake-kebab.extras :as cske]
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
+            [coachbot.db :as db]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
-            [taoensso.timbre :as log]
-            [coachbot.db :as db]))
+            [taoensso.timbre :as log]))
 
 (defn get-access-tokens [ds team-id]
   (let [query (-> (h/select [:access_token "access_token"]
@@ -104,10 +104,11 @@
                            (assoc x :team_id team-id)
                            (set/rename-keys x {:id :remote_user_id}))]
       (if existing-record
-        (jdbc/update! conn :slack_coaching_users
-                      {:active 1}
-                      ["email = ? AND team_id = ?" email team-id])
-        (jdbc/insert! conn :slack_coaching_users new-record)))))
+        (do (jdbc/update! conn :slack_coaching_users
+                          {:active 1}
+                          ["email = ? AND team_id = ?" email team-id])
+            false)
+        (do (jdbc/insert! conn :slack_coaching_users new-record) true)))))
 
 (defn remove-coaching-user! [ds {:keys [email team-id]}]
   (jdbc/with-db-transaction
@@ -133,7 +134,7 @@
        (map #(hash-map :question %))
        (jdbc/insert-multi! ds :base_questions)))
 
-(defn same-question-for-sending! [ds qid {slack-user-id :id} send-fn]
+(defn question-for-sending [ds qid {slack-user-id :id} send-fn]
   (jdbc/with-db-transaction [conn ds]
     (let [user-id-query (-> (h/select :id)
                             (h/from :slack_coaching_users)
@@ -164,11 +165,11 @@
 (defn next-question-for-sending! [ds qid user send-fn]
   (let [qid
         (if-not qid qid (find-next-question ds qid))]
-    (same-question-for-sending! ds qid user send-fn)))
+    (question-for-sending ds qid user send-fn)))
 
 (defn submit-answer! [ds team-id user-email qid text]
   (jdbc/with-db-transaction [conn ds]
-    (let [{:keys [id] :as user} (get-coaching-user-raw conn team-id user-email)]
+    (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)]
       (jdbc/insert! conn :question_answers {:slack_user_id id
                                             :question_id qid
                                             :answer text})

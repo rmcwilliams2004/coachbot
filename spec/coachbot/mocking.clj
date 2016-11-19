@@ -21,7 +21,7 @@
   (:require [coachbot.events :as events]
             [coachbot.slack :as slack]
             [coachbot.env :as env]
-            [coachbot.coaching-process :as coaching]))
+            [taoensso.timbre :as log]))
 
 (def team-id "def456")
 
@@ -52,5 +52,8 @@
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))
      slack/get-user-info (fn [_ user-id] (users user-id))
-     events/handle-unknown-failure (fn [t _] (swap! messages conj (str t)))]
+     events/handle-unknown-failure
+     (fn [t _]
+       (log/error t)
+       (swap! messages conj (.getMessage t)))]
     (it)))
