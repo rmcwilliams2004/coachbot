@@ -111,5 +111,14 @@
       (log/errorf "Authorization failed. Body: %s" body))
     ok))
 
+(defn is-im-to-me?
+  "Returns the given channel if it IS an IM to the given bot access token,
+   otherwise nil"
+  [bot-access-token channel]
+  (let [ims (->> (get-url "https://slack.com/api/im.list"
+                          :token bot-access-token)
+                 parse-body :ims (map :id) (into #{}))]
+    (ims channel)))
+
 (defn challenge-response [{:keys [challenge]}]
   (when challenge {:challenge challenge}))

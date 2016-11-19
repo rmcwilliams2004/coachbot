@@ -36,10 +36,12 @@
 (def team-name "The Best Team Ever")
 (def bot-user-id "bot999")
 
-(defn handle-event [user-id text]
-  (events/handle-event {:token "none" :team_id team-id
-                        :event {:text text :user user-id
-                                :channel user-id}}))
+(defn handle-event
+  ([user-id channel text]
+   (events/handle-event {:token "none" :team_id team-id
+                         :event {:text text :user user-id :channel channel}}))
+  ([user-id text]
+   (handle-event user-id user-id text)))
 
 (defn hi-from-everyone []
   (handle-event user1-id "hi")
@@ -91,6 +93,9 @@
                 (handle-event user1-id "next question")
                 (handle-event user2-id "start coaching")
                 (hi-from-everyone)
+
+                ;; should be ignored since it's in a channel, not an IM
+                (handle-event user1-id "general" "hi")
                 (handle-event user1-id "start coaching")
                 (handle-event user1-id "some fun answer")
                 (handle-event user2-id "another fun answer")

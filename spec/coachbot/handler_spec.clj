@@ -41,7 +41,7 @@
 
 (defn- message [& {:keys [event] :as msg}]
   (let [base-event {:type "message", :user user0-id, :text "hi",
-                    :ts "1478967753.000006", :channel channel-id,
+                    :ts "1478967753.000006", :channel user0-id,
                     :event_ts "1478967753.000006"}
         result (merge {:token "none", :team_id team-id,
                        :api_app_id "A2R05RSQ3",
@@ -128,7 +128,12 @@
 
       (it "Handles the 'hi' event"
         (should= 200 (:status (send-event (message))))
-        (should= [(str channel-id ": Hello, Bill")] @@messages))
+        (should= [(str user0-id ": Hello, Bill")] @@messages))
+
+      (it "Ignores the 'hi' event in a public channel"
+        (should= 200 (:status (send-event (message :event {:channel
+                                                           channel-id}))))
+        (should= [] @@messages))
 
       (it "Handles bad events"
         (should= 200 (:status (send-event (message :event {:text "sup"}))))

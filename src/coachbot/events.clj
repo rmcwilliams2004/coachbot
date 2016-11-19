@@ -82,12 +82,14 @@
   (when-not (= token @env/slack-verification-token)
     (ss/throw+ {:type ::access-denied}))
 
-  (let [[access-token _]
+  (let [[access-token bot-access-token]
         (storage/get-access-tokens (env/datasource) team_id)
 
         {:keys [email]} (slack/get-user-info access-token user-id)]
     (ss/try+
-      (if-not (storage/is-bot-user? (env/datasource) team_id user-id)
+      (if (and
+            (not (storage/is-bot-user? (env/datasource) team_id user-id))
+            (slack/is-im-to-me? bot-access-token channel))
         (try
           (let [[command & args] (parser/parse-command text)]
             (case (str/lower-case command)

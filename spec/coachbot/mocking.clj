@@ -55,6 +55,7 @@
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))
      slack/get-user-info (fn [_ user-id] (users user-id))
+     slack/is-im-to-me? (fn [_ channel] (contains? users channel))
      events/handle-unknown-failure
      (fn [t _]
        (log/error t)
