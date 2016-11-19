@@ -24,49 +24,54 @@
             [taoensso.timbre :as log]))
 
 (defn start-coaching! [team-id channel user-id]
-  (let [[access-token bot-access-token]
-        (storage/get-access-tokens (env/datasource) team-id)]
-    (storage/add-coaching-user! (env/datasource)
-                                (slack/get-user-info access-token user-id))
+  (let [ds (env/datasource)
+
+        [access-token bot-access-token]
+        (storage/get-access-tokens ds team-id)]
+    (storage/add-coaching-user!
+      ds (slack/get-user-info access-token user-id))
     (slack/send-message! bot-access-token channel
                          "Thanks! We'll start sending you messages soon.")))
 
 (defn stop-coaching! [team-id channel user-id]
-  (let [[access-token bot-access-token]
-        (storage/get-access-tokens (env/datasource)
-                                   team-id)]
-    (storage/remove-coaching-user! (env/datasource)
-                                   (slack/get-user-info access-token user-id))
+  (let [ds (env/datasource)
+        [access-token bot-access-token]
+        (storage/get-access-tokens ds team-id)
+
+        user (slack/get-user-info access-token user-id)]
+    (storage/remove-coaching-user! ds user)
     (slack/send-message! bot-access-token channel
                          "No problem! We'll stop sending messages.")))
 
-(defn send-question!
-  "Sends a new question to a specific individual."
-  [{:keys [id asked-qid answered-qid team-id] :as user} & [channel]]
-
+(defn- with-sending-constructs [user-id team-id channel f]
   (let [ds (env/datasource)
 
         [_ bot-access-token]
         (storage/get-access-tokens (env/datasource) team-id)
 
         send-fn (partial slack/send-message! bot-access-token
-                         (if channel channel id))]
-    (storage/next-question-for-sending! ds asked-qid user send-fn)))
+                         (if channel channel user-id))]
+    (f ds send-fn)))
+
+(defn send-question!
+  "Sends a new question to a specific individual."
+  [{:keys [id asked-qid team-id] :as user} & [channel]]
+
+  (with-sending-constructs
+    id team-id channel
+    (fn [ds send-fn]
+      (storage/next-question-for-sending! ds asked-qid user send-fn))))
 
 (defn send-question-if-previous-answered!
   "Sends a new question to a specific individual."
   [{:keys [id asked-qid answered-qid team-id] :as user} & [channel]]
 
-  (let [ds (env/datasource)
-
-        [_ bot-access-token]
-        (storage/get-access-tokens (env/datasource) team-id)
-
-        send-fn (partial slack/send-message! bot-access-token
-                         (if channel channel id))]
-    (if (= asked-qid answered-qid)
-      (storage/next-question-for-sending! ds asked-qid user send-fn)
-      (storage/question-for-sending ds asked-qid user send-fn))))
+  (with-sending-constructs
+    id team-id channel
+    (fn [ds send-fn]
+      (if (= asked-qid answered-qid)
+        (storage/next-question-for-sending! ds asked-qid user send-fn)
+        (storage/question-for-sending ds asked-qid user send-fn)))))
 
 (defn send-questions!
   "Sends new questions to everyone on a given team that has signed up for
@@ -89,7 +94,8 @@
 (defn- ensure-user [ds access-token team-id user-id]
   (let [{:keys [email] :as user} (slack/get-user-info access-token user-id)
         get-coaching-user #(storage/get-coaching-user ds team-id email)]
-    (if-let [result (get-coaching-user)] result
+    (if-let [result (get-coaching-user)]
+      result
       (do
         (storage/add-coaching-user! ds user)
         (storage/remove-coaching-user! ds user)
