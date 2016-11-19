@@ -77,6 +77,7 @@
                                                       "second question"
                                                       "third question"
                                                       "fourth question"])
+                (log/set-level! :info)
                 (handle-event user1-id "start coaching")
                 (handle-event user2-id "start coaching")
                 (coaching/new-questions! team-id)
@@ -85,11 +86,14 @@
                 (handle-event user2-id "stop coaching")
                 (coaching/new-questions! team-id)
                 (handle-event user1-id "some confused answer")
+                (handle-event user1-id "stop coaching")
+                (handle-event user1-id "start coaching")
                 (coaching/new-questions! team-id)
                 (handle-event user1-id "some fun answer")
                 (handle-event user1-id "next question")
                 (handle-event user1-id "stop coaching")
-                (coaching/new-questions! team-id))
+                (coaching/new-questions! team-id)
+                (log/set-level! :error))
 
     (it "starts and stops coaching for users properly"
       (should=
@@ -99,6 +103,8 @@
          (str user2-id ": first question")
          (str user2-id ": No problem! We'll stop sending messages.")
          (str user1-id ": second question")
+         (str user1-id ": No problem! We'll stop sending messages.")
+         (str user1-id ": Thanks! We'll start sending you messages soon.")
          (str user1-id ": third question")
          (str user1-id ": fourth question")
          (str user1-id ": No problem! We'll stop sending messages.")]
@@ -108,15 +114,15 @@
                 {:question "second question"}
                 {:question "third question"}
                 {:question "fourth question"}]
-               (storage/list-questions-asked @ds team-id user1-id))
+               (storage/list-questions-asked @ds team-id user1-email))
 
       (should= [{:question "first question", :answer "some fun answer"}
                 {:question "second question", :answer "some confused answer"}
                 {:question "third question", :answer "some fun answer"}]
-               (storage/list-answers @ds team-id user1-id))
+               (storage/list-answers @ds team-id user1-email))
 
       (should= [{:question "first question"}]
-               (storage/list-questions-asked @ds team-id user2-id))
+               (storage/list-questions-asked @ds team-id user2-email))
 
       (should= [{:question "first question", :answer "another fun answer"}]
-               (storage/list-answers @ds team-id user2-id)))))
+               (storage/list-answers @ds team-id user2-email)))))

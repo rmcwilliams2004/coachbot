@@ -82,25 +82,29 @@
   (when-not (= token @env/slack-verification-token)
     (ss/throw+ {:type ::access-denied}))
 
-  (ss/try+
-    (if-not (storage/is-bot-user? (env/datasource) team_id user-id)
-      (let [[command & args] (parser/parse-command text)]
-        (case (str/lower-case command)
-          "hi" (hello-world team_id channel user-id)
-          "help" (help team_id channel)
-          "start coaching" (coaching/start-coaching! team_id channel user-id)
-          "stop coaching" (coaching/stop-coaching! team_id channel user-id)
-          "next question"
-          (coaching/new-question!
-            (storage/get-coaching-user (env/datasource) team_id user-id))
-          (do
-            (log/errorf "Unexpected command: %s" command)
-            "Unhandled command")))
-      "Ignoring message from myself")
-    (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
-      (handle-parse-failure text result)
-      (coaching/submit-text! team_id user-id text))
-    (catch Exception t (handle-unknown-failure t event))))
+  (let [[access-token _]
+        (storage/get-access-tokens (env/datasource) team_id)
+
+        {:keys [email]} (slack/get-user-info access-token user-id)]
+    (ss/try+
+      (if-not (storage/is-bot-user? (env/datasource) team_id user-id)
+        (let [[command & args] (parser/parse-command text)]
+          (case (str/lower-case command)
+            "hi" (hello-world team_id channel user-id)
+            "help" (help team_id channel)
+            "start coaching" (coaching/start-coaching! team_id channel user-id)
+            "stop coaching" (coaching/stop-coaching! team_id channel user-id)
+            "next question"
+            (coaching/new-question!
+              (storage/get-coaching-user (env/datasource) team_id email))
+            (do
+              (log/errorf "Unexpected command: %s" command)
+              "Unhandled command")))
+        "Ignoring message from myself")
+      (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
+        (handle-parse-failure text result)
+        (coaching/submit-text! team_id email text))
+      (catch Exception t (handle-unknown-failure t event)))))
 
 (defroutes event-routes
   (GET "/oauth" []

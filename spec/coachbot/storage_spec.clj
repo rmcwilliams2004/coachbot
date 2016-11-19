@@ -41,6 +41,9 @@
 (def user1-id "A1B235678")
 (def user2-id "A1BCDEFGH")
 
+(def user1-email "stephen@couragelabs.com")
+(def user2-email "travis.marsh@gmail.com")
+
 (def first-team {:access-token access-token
                  :bot-access-token bot-access-token
                  :user-id user-id
@@ -55,7 +58,7 @@
             :timezone "America/Chicago",
             :first-name "Stephen",
             :last-name "Starkey",
-            :email "stephen@couragelabs.com"})
+            :email user1-email})
 
 (def user2 {:id user2-id,
             :team-id team-id,
@@ -64,7 +67,7 @@
             :timezone "America/Los_Angeles",
             :first-name "Travis",
             :last-name "Marsh",
-            :email "travis.marsh@gmail.com"})
+            :email user2-email})
 
 (defn extra-fields [user]
   (assoc user :answered-qid nil :asked-qid nil))
@@ -111,6 +114,6 @@
 
     (it "should have stored the slack auth stuff"
       (should= (extra-fields user1)
-               (storage/get-coaching-user @ds team-id user1-id))
+               (storage/get-coaching-user @ds team-id user1-email))
       (should= (extra-fields user2)
-               (storage/get-coaching-user @ds team-id user2-id)))))
+               (storage/get-coaching-user @ds team-id user2-email)))))

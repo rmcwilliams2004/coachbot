@@ -62,12 +62,13 @@
   (doall (map (partial new-question!)
               (storage/list-coaching-users (env/datasource) team-id))))
 
-(defn submit-text! [team-id user-id text]
+(defn submit-text! [team-id user-email text]
   ;; If there is an outstanding for the user, submit that
   ;; Otherwise store it someplace for a live person to review
   (let [{:keys [asked-qid]}
-        (storage/get-coaching-user (env/datasource) team-id user-id)]
+        (storage/get-coaching-user (env/datasource) team-id user-email)]
     (if asked-qid
-      (storage/submit-answer! (env/datasource) team-id user-id asked-qid text)
+      (storage/submit-answer! (env/datasource) team-id user-email asked-qid
+                              text)
       (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
-                 user-id text))))
+                 user-email text))))

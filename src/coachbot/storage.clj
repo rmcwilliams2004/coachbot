@@ -66,50 +66,56 @@
         [{team-id :id}] (jdbc/query ds team-id-query)]
     team-id))
 
-(defn add-coaching-user! [ds {:keys [team-id] :as user}]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (let [team-id (get-team-id ds team-id)
-
-          new-record (as-> user x
-                           (cske/transform-keys csk/->snake_case x)
-                           (assoc x :team_id team-id)
-                           (set/rename-keys x {:id :remote_user_id}))]
-      (jdbc/insert! conn :slack_coaching_users new-record))))
-
-(defn remove-coaching-user! [ds {:keys [email team-id] :as user}]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (let [team-id (get-team-id ds team-id)]
-      (jdbc/update! conn :slack_coaching_users
-                    {:active 0}
-                    ["email = ? AND team_id = ?" email team-id]))))
-
-(defn- convert-user [team-id user]
-  (as-> user x
-        (cske/transform-keys csk/->kebab-case x)
-        (dissoc x :created-date :updated-date :id :team-id :active)
-        (assoc x :team-id team-id)
-        (set/rename-keys x {:remote-user-id :id})))
-
-(defn- coaching-users-query [team-internal-id & user-id]
+(defn- coaching-users-query [team-internal-id & [user-email]]
   (let [where-clause [:and
                       [:= :team_id team-internal-id]]
-        where-clause (if user-id
-                       (conj where-clause [:= :remote_user_id user-id])
+        where-clause (if user-email
+                       (conj where-clause [:= :email user-email])
                        (conj where-clause [:= :active 1]))]
     (-> (h/select :*)
         (h/from :slack_coaching_users)
         (h/where where-clause)
         sql/format)))
 
-(defn- get-coaching-user-raw [ds team-id user-id]
+(defn- get-coaching-user-raw [ds team-id user-email]
   (let [team-internal-id (get-team-id ds team-id)
-        query (coaching-users-query team-internal-id user-id)]
-    (first (jdbc/query ds query))))
+        query (coaching-users-query team-internal-id user-email)
+        [result] (jdbc/query ds query)]
+    result))
 
-(defn get-coaching-user [ds team-id user-id]
-  (convert-user team-id (get-coaching-user-raw ds team-id user-id)))
+(defn- convert-user [team-id user]
+  (when user
+    (as-> user x
+          (cske/transform-keys csk/->kebab-case x)
+          (dissoc x :created-date :updated-date :id :team-id :active)
+          (assoc x :team-id team-id)
+          (set/rename-keys x {:remote-user-id :id}))))
+
+(defn get-coaching-user [ds team-id user-email]
+  (convert-user team-id (get-coaching-user-raw ds team-id user-email)))
+
+(defn add-coaching-user! [ds {:keys [email team-id] :as user}]
+  (jdbc/with-db-transaction
+    [conn ds]
+    (let [existing-record (get-coaching-user conn team-id email)
+          team-id (get-team-id ds team-id)
+          new-record (as-> user x
+                           (cske/transform-keys csk/->snake_case x)
+                           (assoc x :team_id team-id)
+                           (set/rename-keys x {:id :remote_user_id}))]
+      (if existing-record
+        (jdbc/update! conn :slack_coaching_users
+                      {:active 1}
+                      ["email = ? AND team_id = ?" email team-id])
+        (jdbc/insert! conn :slack_coaching_users new-record)))))
+
+(defn remove-coaching-user! [ds {:keys [email team-id]}]
+  (jdbc/with-db-transaction
+    [conn ds]
+    (let [team-id (get-team-id ds team-id)]
+      (jdbc/update! conn :slack_coaching_users
+                    {:active 0}
+                    ["email = ? AND team_id = ?" email team-id]))))
 
 (defn list-coaching-users [ds team-id]
   (let [team-internal-id (get-team-id ds team-id)
@@ -160,17 +166,17 @@
         (if-not qid qid (find-next-question ds qid))]
     (same-question-for-sending! ds qid user send-fn)))
 
-(defn submit-answer! [ds team-id user-id qid text]
+(defn submit-answer! [ds team-id user-email qid text]
   (jdbc/with-db-transaction [conn ds]
-    (let [{:keys [id]} (get-coaching-user-raw conn team-id user-id)]
+    (let [{:keys [id] :as user} (get-coaching-user-raw conn team-id user-email)]
       (jdbc/insert! conn :question_answers {:slack_user_id id
-                                          :question_id qid
-                                          :answer text})
+                                            :question_id qid
+                                            :answer text})
       (jdbc/update! conn :slack_coaching_users
                     {:answered_qid qid} ["id = ?" id]))))
 
-(defn list-questions-asked [ds team-id user-id]
-  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-id)
+(defn list-questions-asked [ds team-id user-email]
+  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)
         query (-> (h/select :bq.question)
                   (h/from [:questions_asked :qa])
                   (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
@@ -179,8 +185,8 @@
                   sql/format)]
     (jdbc/query ds query)))
 
-(defn list-answers [ds team-id user-id]
-  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-id)
+(defn list-answers [ds team-id user-email]
+  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)
         query (-> (h/select :bq.question :qa.answer)
                   (h/from [:question_answers :qa])
                   (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
@@ -192,4 +198,3 @@
          (map #(let [{:keys [question answer]} %]
                 {:question question
                  :answer (db/extract-character-data answer)})))))
-
