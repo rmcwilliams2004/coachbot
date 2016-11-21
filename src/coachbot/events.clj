@@ -83,9 +83,8 @@
 
       "stop coaching" (coaching/stop-coaching! team-id channel user-id)
       "next question" (coaching/next-question! team-id channel user-id)
-      (do
-        (log/errorf "Unexpected command: %s" command)
-        "Unhandled command"))))
+      (do (log/errorf "Unexpected command: %s" command)
+          "Unhandled command"))))
 
 (defn handle-event [{:keys [token team_id api_app_id
                             type authed_users]
@@ -124,9 +123,7 @@
     :body [message EventMessage]
     :summary "Receive an event from Slack"
     (log/infof "Message received: %s" message)
-    (ss/try+ (ok
-               (if-let [challenge-response (slack/challenge-response message)]
-                 challenge-response
-                 {:result (handle-event message)}))
-             (catch [:type ::access-denied] _
-               (unauthorized)))))
+    (ss/try+ (ok (if-let [challenge-response (slack/challenge-response message)]
+                   challenge-response
+                   {:result (handle-event message)}))
+             (catch [:type ::access-denied] _ (unauthorized)))))
