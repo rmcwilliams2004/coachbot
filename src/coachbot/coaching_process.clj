@@ -23,6 +23,8 @@
             [coachbot.storage :as storage]
             [taoensso.timbre :as log]))
 
+(def thanks-for-answer "Thanks for your answer! See you again soon.")
+
 (defn start-coaching! [team-id channel user-id]
   (let [ds (env/datasource)
 
@@ -83,11 +85,15 @@
 (defn submit-text! [team-id user-email text]
   ;; If there is an outstanding for the user, submit that
   ;; Otherwise store it someplace for a live person to review
-  (let [{:keys [asked-qid]}
-        (storage/get-coaching-user (env/datasource) team-id user-email)]
+  (let [ds (env/datasource)
+        [_ bot-access-token] (storage/get-access-tokens ds team-id)
+
+        {:keys [id asked-qid]}
+        (storage/get-coaching-user ds team-id user-email)]
     (if asked-qid
-      (storage/submit-answer! (env/datasource) team-id user-email asked-qid
-                              text)
+      (do
+        (storage/submit-answer! ds team-id user-email asked-qid text)
+        (slack/send-message! bot-access-token id thanks-for-answer))
       (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
                  user-email text))))
 

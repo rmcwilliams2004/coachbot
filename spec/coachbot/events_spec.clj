@@ -50,6 +50,10 @@
 (def hello-user1 (str user1-id ": Hello, " user1-first-name))
 (def hello-user2 (str user2-id ": Hello, " user2-first-name))
 
+(defn uc [user-id content] (str user-id ": " content))
+(def u1c (partial uc user1-id))
+(def u2c (partial uc user2-id))
+
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
   (before-all (storage/store-slack-auth! @ds
@@ -85,9 +89,7 @@
     (before-all (storage/replace-base-questions! @ds ["first question"
                                                       "second question"
                                                       "third question"
-                                                      "fourth question"
-                                                      "fifth question"
-                                                      "sixth question"])
+                                                      "fourth question"])
 
                 (hi-from-everyone)
                 (handle-event user1-id "next question")
@@ -121,21 +123,25 @@
       (should=
         [hello-user1
          hello-user2
-         (str user1-id ": first question")
-         (str user2-id ": Thanks! We'll start sending you messages soon.")
-         (str user2-id ": first question")
+         (u1c "first question")
+         (u2c "Thanks! We'll start sending you messages soon.")
+         (u2c "first question")
          hello-user1
          hello-user2
-         (str user1-id ": Thanks! We'll start sending you messages soon.")
-         (str user2-id ": No problem! We'll stop sending messages.")
-         (str user1-id ": second question")
-         (str user1-id ": No problem! We'll stop sending messages.")
-         (str user1-id ": Thanks! We'll start sending you messages soon.")
-         (str user1-id ": third question")
-         (str user1-id ": third question")
-         (str user1-id ": No problem! We'll stop sending messages.")
-         (str user1-id ": fourth question")
-         (str user1-id ": fifth question")]
+         (u1c "Thanks! We'll start sending you messages soon.")
+         (u1c coaching/thanks-for-answer)
+         (u2c coaching/thanks-for-answer)
+         (u2c "No problem! We'll stop sending messages.")
+         (u1c "second question")
+         (u1c coaching/thanks-for-answer)
+         (u1c "No problem! We'll stop sending messages.")
+         (u1c "Thanks! We'll start sending you messages soon.")
+         (u1c "third question")
+         (u1c "third question")
+         (u1c coaching/thanks-for-answer)
+         (u1c "No problem! We'll stop sending messages.")
+         (u1c "fourth question")
+         (u1c "first question")]
         @@messages)
 
       (should= [{:question "first question"}
@@ -143,7 +149,7 @@
                 {:question "third question"}
                 {:question "third question"}
                 {:question "fourth question"}
-                {:question "fifth question"}]
+                {:question "first question"}]
                (storage/list-questions-asked @ds team-id user1-email))
 
       (should= [{:question "first question", :answer "some fun answer"}
