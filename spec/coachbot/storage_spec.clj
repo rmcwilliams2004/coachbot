@@ -70,7 +70,9 @@
             :email user2-email})
 
 (defn extra-fields [user]
-  (assoc user :answered-qid nil :asked-qid nil :days-since-question nil
+  (assoc user :answered-qid nil :asked-qid nil
+              :answered-cqid nil :asked-cqid nil
+              :days-since-question nil
               :active true))
 
 (describe "Storing data for later use"

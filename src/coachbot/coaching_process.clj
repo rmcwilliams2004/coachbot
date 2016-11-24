@@ -45,6 +45,14 @@
     (slack/send-message! bot-access-token channel
                          "No problem! We'll stop sending messages.")))
 
+(defn register-custom-question! [team-id user-id question]
+  (let [ds (env/datasource)
+        [access-token _]
+        (storage/get-access-tokens ds team-id)
+
+        user (slack/get-user-info access-token user-id)]
+    (storage/add-custom-question! ds user question)))
+
 (defn- with-sending-constructs [user-id team-id channel f]
   (let [ds (env/datasource)
 

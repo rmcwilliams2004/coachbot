@@ -23,7 +23,12 @@
             [coachbot.env :as env]
             [taoensso.timbre :as log]))
 
+(def access-token "gobbledygook")
+(def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
 (def team-id "def456")
+(def team-name "The Best Team Ever")
+(def bot-user-id "bot999")
+(def channel-id "D2X6TCYJE")
 
 (def user0-id "abc123")
 (def user1-id "blah")
@@ -34,13 +39,13 @@
 (def user1-first-name "Bill")
 (def user2-first-name "Cathy")
 
-(def user1 {:team-id team-id :remote-user-id user1-id
+(def user1 {:team-id team-id :id user1-id
             :email user1-email :timezone "America/Chicago"
             :real-name "bblah" :first-name user1-first-name :last-name "Blah"
             :name "Bill Blah"})
 
 (def user2-id "meh")
-(def user2 {:team-id team-id :remote-user-id user2-id
+(def user2 {:team-id team-id :id user2-id
             :email user2-email :timezone "America/Chicago"
             :real-name "cmeh" :first-name user2-first-name :last-name "Meh"
             :name "Cathy Meh"})
@@ -48,6 +53,13 @@
 (def users {user0-id {:first-name "Bill"}
             user1-id user1
             user2-id user2})
+
+(def slack-auth {:team-id team-id
+                 :team-name team-name
+                 :access-token access-token
+                 :user-id user0-id
+                 :bot-access-token bot-access-token
+                 :bot-user-id bot-user-id})
 
 (defn mock-event-boundary [messages ds it]
   (with-redefs

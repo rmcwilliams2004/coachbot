@@ -33,12 +33,6 @@
 ;todo Kill this evil hack.
 (log/set-level! :error)
 
-(def access-token "gobbledygook")
-(def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
-(def team-name "The Best Team Ever")
-(def bot-user-id "bot999")
-(def channel-id "D2X6TCYJE")
-
 (defn- message [& {:keys [event] :as msg}]
   (let [base-event {:type "message", :user user0-id, :text "hi",
                     :ts "1478967753.000006", :channel user0-id,
@@ -103,12 +97,7 @@
     ;; there is no coverage for the "hi" command there.
     (context "Hello, World"
       (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-      (before-all (storage/store-slack-auth! @ds {:team-id team-id
-                                                  :team-name "test team"
-                                                  :access-token "test123"
-                                                  :user-id "test456"
-                                                  :bot-access-token "test789"
-                                                  :bot-user-id bot-user-id}))
+      (before-all (storage/store-slack-auth! @ds slack-auth))
       (after-all (jdbc/execute! @ds ["drop all objects"]))
 
       (with messages (atom []))

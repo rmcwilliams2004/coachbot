@@ -138,13 +138,17 @@
        (map #(hash-map :question %))
        (jdbc/insert-multi! ds :base_questions)))
 
+(defn- get-user-id [conn slack-user-id]
+  (let [user-id-query (-> (h/select :id)
+                          (h/from :slack_coaching_users)
+                          (h/where [:= :remote_user_id slack-user-id])
+                          sql/format)]
+    (-> (jdbc/query conn user-id-query) first :id)))
+
 (defn question-for-sending [ds qid {slack-user-id :id} send-fn]
-  (jdbc/with-db-transaction [conn ds]
-    (let [user-id-query (-> (h/select :id)
-                            (h/from :slack_coaching_users)
-                            (h/where [:= :remote_user_id slack-user-id])
-                            sql/format)
-          [{user-id :id}] (jdbc/query conn user-id-query)
+  (jdbc/with-db-transaction
+    [conn ds]
+    (let [user-id (get-user-id conn slack-user-id)
           base-query (h/from (h/select :id :question) :base_questions)
           query (-> (if qid (h/where base-query [:= :id qid])
                             base-query)
@@ -159,6 +163,16 @@
                     {:asked_qid new-qid :last_question_date (db/now)}
                     ["id  = ?" user-id]))))
 
+(defn add-custom-question! [ds {:keys [team-id] slack-user-id :id} question]
+  (jdbc/with-db-transaction
+    [conn ds]
+    (let [user-id (get-user-id conn slack-user-id)
+          team-id (get-team-id ds team-id)
+          question-record {:slack_user_id user-id
+                           :team_id team-id
+                           :question question}]
+      (jdbc/insert! conn :custom_questions question-record))))
+
 (defn- find-next-question [ds qid]
   (let [query (-> (h/select :*)
                   (h/from :base_questions)
@@ -172,7 +186,8 @@
     (question-for-sending ds qid user send-fn)))
 
 (defn submit-answer! [ds team-id user-email qid text]
-  (jdbc/with-db-transaction [conn ds]
+  (jdbc/with-db-transaction
+    [conn ds]
     (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)]
       (jdbc/insert! conn :question_answers {:slack_user_id id
                                             :question_id qid
@@ -207,7 +222,8 @@
 (defn reset-all-coaching-users!
   "Marks all coaching users as having last been asked a question a day ago"
   [ds]
-  (jdbc/with-db-transaction [conn ds]
+  (jdbc/with-db-transaction
+    [conn ds]
     (jdbc/execute!
       conn
       [(str "update slack_coaching_users "

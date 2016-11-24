@@ -31,11 +31,6 @@
 ;todo Kill this evil hack.
 (log/set-level! :error)
 
-(def access-token "gobbledygook")
-(def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
-(def team-name "The Best Team Ever")
-(def bot-user-id "bot999")
-
 (defn handle-event
   ([user-id channel text]
    (events/handle-event {:token "none" :team_id team-id
@@ -56,13 +51,7 @@
 
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-  (before-all (storage/store-slack-auth! @ds
-                                         {:team-id team-id
-                                          :team-name team-name
-                                          :access-token access-token
-                                          :user-id user0-id
-                                          :bot-access-token bot-access-token
-                                          :bot-user-id bot-user-id}))
+  (before-all (storage/store-slack-auth! @ds slack-auth))
   (after-all (jdbc/execute! @ds ["drop all objects"]))
 
   (with-all messages (atom []))
