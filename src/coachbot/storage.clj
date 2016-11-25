@@ -205,7 +205,7 @@
     (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)
           answered-col (if cqid :cquestion_id :question_id)
           answered-ucol (if cqid :answered_cqid :answered_qid)
-          which-qid (if cqid cqid qid)]
+          which-qid (or cqid qid)]
       (jdbc/insert! conn :question_answers
                     {:slack_user_id id answered-col which-qid :answer text})
       (if cqid
