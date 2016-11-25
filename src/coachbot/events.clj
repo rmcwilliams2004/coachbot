@@ -74,7 +74,7 @@
            " • next question -- ask a new question"))))
 
 (defn- respond-to-event [team-id channel user-id text]
-  (let [[command & args :as all] (parser/parse-command text)]
+  (let [[command & args] (parser/parse-command text)]
     (case (str/lower-case command)
       "hi" (hello-world team-id channel user-id)
       "help" (help team-id channel)
