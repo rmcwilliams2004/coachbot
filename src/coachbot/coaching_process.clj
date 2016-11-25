@@ -96,11 +96,11 @@
   (let [ds (env/datasource)
         [_ bot-access-token] (storage/get-access-tokens ds team-id)
 
-        {:keys [id asked-qid]}
+        {:keys [id asked-qid answered-qid asked-cqid answered-cqid]}
         (storage/get-coaching-user ds team-id user-email)]
     (if asked-qid
       (do
-        (storage/submit-answer! ds team-id user-email asked-qid text)
+        (storage/submit-answer! ds team-id user-email asked-qid asked-cqid text)
         (slack/send-message! bot-access-token id thanks-for-answer))
       (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
                  user-email text))))

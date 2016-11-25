@@ -145,35 +145,50 @@
                           sql/format)]
     (-> (jdbc/query conn user-id-query) first :id)))
 
-(defn question-for-sending [ds qid {slack-user-id :id} send-fn]
+(defn question-for-sending [ds qid {:keys [team-id] slack-user-id :id} send-fn]
   (jdbc/with-db-transaction
     [conn ds]
     (let [user-id (get-user-id conn slack-user-id)
-          base-query (h/from (h/select :id :question) :base_questions)
-          query (-> (if qid (h/where base-query [:= :id qid])
-                            base-query)
-                    (h/order-by :id)
+          team-id (get-team-id ds team-id)
+          base-query (h/from (h/select :id :question
+                                       (sql/raw "'base' AS QTYPE"))
+                             :base_questions)
+          base-query (if qid (h/where base-query [:= :id qid])
+                             base-query)
+          custom-question-query
+          (-> (h/select :id :question (sql/raw "'custom' AS QTYPE"))
+              (h/from :custom_questions)
+              (h/where [:and
+                        [:= :team_id team-id]
+                        [:= :slack_user_id user-id]
+                        [:= :answered 0]]))
+
+          query (-> {:union-all [custom-question-query base-query]}
                     (h/limit 1)
                     sql/format)
-          {new-qid :id :keys [question]} (first (jdbc/query conn query))]
+          {new-qid :id :keys [question qtype]} (first (jdbc/query conn query))
+          custom-question? (= "custom" qtype)
+          custom-cols [:cquestion_id :asked_cqid]
+          base-cols [:question_id :asked_qid]
+          [qa-col asked-col] (if custom-question? custom-cols base-cols)]
+      (log/infof "%s/%s/%s" new-qid qtype question)
       (send-fn question)
-      (jdbc/insert! conn :questions_asked {:slack_user_id user-id
-                                           :question_id new-qid})
+      (jdbc/insert! conn :questions_asked
+                    {:slack_user_id user-id qa-col new-qid})
       (jdbc/update! conn :slack_coaching_users
-                    {:asked_qid new-qid :last_question_date (db/now)}
+                    {asked-col new-qid :last_question_date (db/now)}
                     ["id  = ?" user-id]))))
 
 (defn add-custom-question! [ds {:keys [team-id] slack-user-id :id} question]
   (jdbc/with-db-transaction
     [conn ds]
     (let [user-id (get-user-id conn slack-user-id)
-          team-id (get-team-id ds team-id)
-          question-record {:slack_user_id user-id
-                           :team_id team-id
-                           :question question}]
-      (jdbc/insert! conn :custom_questions question-record))))
+          team-id (get-team-id ds team-id)]
+      (jdbc/insert! conn :custom_questions {:slack_user_id user-id
+                                            :team_id team-id
+                                            :question question}))))
 
-(defn- find-next-question [ds qid]
+(defn- find-next-base-question [ds qid]
   (let [query (-> (h/select :*)
                   (h/from :base_questions)
                   (h/where [:> :id qid])
@@ -181,19 +196,22 @@
     (->> query (jdbc/query ds) first :id)))
 
 (defn next-question-for-sending! [ds qid user send-fn]
-  (let [qid
-        (if-not qid qid (find-next-question ds qid))]
+  (let [qid (if-not qid qid (find-next-base-question ds qid))]
     (question-for-sending ds qid user send-fn)))
 
-(defn submit-answer! [ds team-id user-email qid text]
+(defn submit-answer! [ds team-id user-email qid cqid text]
   (jdbc/with-db-transaction
     [conn ds]
-    (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)]
-      (jdbc/insert! conn :question_answers {:slack_user_id id
-                                            :question_id qid
-                                            :answer text})
-      (jdbc/update! conn :slack_coaching_users
-                    {:answered_qid qid} ["id = ?" id]))))
+    (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)
+          answered-col (if cqid :cquestion_id :question_id)
+          answered-ucol (if cqid :answered_cqid :answered_qid)
+          which-qid (if cqid cqid qid)]
+      (jdbc/insert! conn :question_answers
+                    {:slack_user_id id answered-col which-qid :answer text})
+      (if cqid
+        (jdbc/update! conn :custom_questions {:answered 1} ["id = ?" cqid])
+        (jdbc/update! conn :slack_coaching_users {:answered_qid qid}
+                      ["id = ?" id])))))
 
 (defn list-questions-asked [ds team-id user-email]
   (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)
@@ -216,8 +234,8 @@
     (->> query
          (jdbc/query ds)
          (map #(let [{:keys [question answer]} %]
-                {:question question
-                 :answer (db/extract-character-data answer)})))))
+                 {:question question
+                  :answer (db/extract-character-data answer)})))))
 
 (defn reset-all-coaching-users!
   "Marks all coaching users as having last been asked a question a day ago"

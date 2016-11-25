@@ -71,8 +71,7 @@
 
 (defn extra-fields [user]
   (assoc user :answered-qid nil :asked-qid nil
-              :answered-cqid nil :asked-cqid nil
-              :days-since-question nil
+              :asked-cqid nil :days-since-question nil
               :active true))
 
 (describe "Storing data for later use"

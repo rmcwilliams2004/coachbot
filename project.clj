@@ -25,7 +25,7 @@
                  [com.h2database/h2 "1.4.193"]
                  [com.zaxxer/HikariCP "2.5.1"]
                  [com.taoensso/timbre "4.7.4"]
-                 [honeysql "0.8.1"]
+                 [org.clojars.scstarkey/honeysql "0.8.2"]
                  [http-kit "2.2.0"]
                  [instaparse "1.4.3"]
                  [metosin/compojure-api "1.1.9"]

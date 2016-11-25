@@ -46,12 +46,26 @@
     (before-all
       (start-coaching! team-id user1-id user1-id)
       (next-question! team-id user1-id user1-id)
+      (submit-text! team-id user1-email "banswer1")
       (register-custom-question! team-id user1-id "you like fun?")
-      (submit-text! team-id user1-email "answer")
       (next-question! team-id user1-id user1-id)
-      (submit-text! team-id user1-email "answer")
+      (submit-text! team-id user1-email "qanswer1")
+      (submit-text! team-id user1-email "qanswer2")
+      (register-custom-question! team-id user1-id "how much?")
       (next-question! team-id user1-id user1-id)
-      (submit-text! team-id user1-email "answer"))
+      (submit-text! team-id user1-email "qanswer2")
+      (next-question! team-id user1-id user1-id)
+      (submit-text! team-id user1-email "banswer2"))
 
     (it "should ask a custom question before the next one in the rotation"
-      #_(should= ["things"] @@messages))))
+      (should= ["blah: Thanks! We'll start sending you messages soon."
+                "blah: first question"
+                "blah: Thanks for your answer! See you again soon."
+                "blah: you like fun?"
+                "blah: Thanks for your answer! See you again soon."
+                "blah: Thanks for your answer! See you again soon."
+                "blah: how much?"
+                "blah: Thanks for your answer! See you again soon."
+                "blah: second question"
+                "blah: Thanks for your answer! See you again soon."]
+               @@messages))))
