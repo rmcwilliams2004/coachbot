@@ -1,4 +1,7 @@
 ALTER TABLE slack_coaching_users
+  DROP FOREIGN KEY fk_scu_cqa;
+
+ALTER TABLE slack_coaching_users
   DROP COLUMN answered_cqid;
 
 ALTER TABLE questions_asked
