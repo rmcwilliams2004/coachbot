@@ -88,13 +88,7 @@
    And DB_MAX_CONN=2
    And DB_CONN_TIMEOUT=600000"
 
-  ;select qa.created_date, st.team_id, scu.email, bq.question,
-  ;       cq.question AS cquestion, qa.answer from question_answers qa
-  ;join slack_coaching_users scu on scu.id = qa.slack_user_id
-  ;join slack_teams st on st.id = scu.team_id
-  ;left outer join base_questions bq on bq.id = qa.question_id
-  ;left outer join custom_questions cq on cq.id = qa.cquestion_id
-  ;where timestampdiff(DAY, qa.created_date, now()) < 5;
+  ;; Get rid of annoying logging
   (log/set-level! :error)
 
   ;; Use this to see the last X days of answers
