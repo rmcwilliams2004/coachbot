@@ -33,6 +33,17 @@
 (s/defschema EventMessage
   {s/Any s/Any})
 
+(def ^:private events (atom {}))
+
+(def ^:private event-aliases (atom {}))
+
+(defn defevent [{:keys [command help aliases]} ef]
+  (swap! events assoc command {:help help :ef ef})
+
+  (let [aliases (or aliases [])]
+    (doseq [alias (conj aliases command)]
+      (swap! event-aliases assoc alias command))))
+
 (defn- auth-success [& {:keys [access-token bot-access-token] :as auth-data}]
   (storage/store-slack-auth! (env/datasource) auth-data)
   (let [members (slack/list-members access-token)]
@@ -61,32 +72,38 @@
         {:keys [first-name]} (slack/get-user-info access-token user-id)]
     (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
 
-(defn- help [team-id channel]
+(defn- help [team-id channel _]
   (let [[_ bot-access-token]
-        (storage/get-access-tokens (env/datasource) team-id)]
+        (storage/get-access-tokens (env/datasource) team-id)
+        body (str/join "\n"
+                       (map #(let [[command {:keys [help]}] %]
+                               (format " • %s -- %s" command help)) @events))]
+
     (slack/send-message!
       bot-access-token channel
-      (str "Here are the commands I respond to:\n"
-           " • hi -- checks if I'm listening\n"
-           " • help -- display this help message\n"
-           " • start coaching -- send daily motivational questions\n"
-           " • stop coaching -- stop sending questions\n"
-           " • next question -- ask a new question"))))
+      (str "Here are the commands I respond to:\n" body))))
+
+(defevent {:command "hi"
+           :help "checks if I'm listening"} hello-world)
+
+(defevent {:command "help"
+           :help "display this help message"} help)
+
+(defevent {:command "start coaching"
+           :help "send daily motivational questions"} coaching/start-coaching!)
+
+(defevent {:command "stop coaching"
+           :help "stop sending questions"} coaching/stop-coaching!)
+
+(defevent {:command "next question"
+           :help "ask a new question"
+           :aliases ["another question"]} coaching/next-question!)
 
 (defn- respond-to-event [team-id channel user-id text]
-  (let [[command & args] (parser/parse-command text)]
-    (case (str/lower-case command)
-      "hi" (hello-world team-id channel user-id)
-      "help" (help team-id channel)
-
-      "start coaching"
-      (coaching/start-coaching! team-id channel user-id)
-
-      "stop coaching" (coaching/stop-coaching! team-id channel user-id)
-
-      (or "next question" "another question")
-      (coaching/next-question! team-id channel user-id)
-
+  (let [[command & args] (parser/parse-command text)
+        {:keys [ef]} (@events (@event-aliases (str/lower-case command)))]
+    (if ef
+      (ef team-id channel user-id)
       (do (log/errorf "Unexpected command: %s" command)
           "Unhandled command"))))
 
