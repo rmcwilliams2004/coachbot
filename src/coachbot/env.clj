@@ -36,7 +36,7 @@
                            (env "DB_URL" "jdbc:h2:./cbdb")
                            (env "DB_USER" "coachbot")
                            (env "DB_PASS" "coachbot")
-                           (Integer/parseInt (env "DB_CONN_TIMEOUT" "1000"))
+                           (Integer/parseInt (env "DB_CONN_TIMEOUT" "10000"))
                            (Integer/parseInt (env "DB_MAX_CONN" "10")))))
 
 (defn datasource [] @ds)
