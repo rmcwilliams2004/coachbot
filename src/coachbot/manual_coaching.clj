@@ -92,16 +92,16 @@
   (log/set-level! :error)
 
   ;; Use this to see the last X days of answers
-  (pprint/print-table (list-answers 5))
+  (pprint/print-table (list-answers 6))
 
   ;; Use this to register a custom question.
   (let [team-id 1
-        user-id 1
-        question "Great! Which of his qualities do you want for yourself?"]
+        user-id 2
+        question "What part of 'CB' would be most valuable to focus on?"]
     (register-custom-question! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that
   ;; the above command returned.
-  (delete-custom-question! 11)
+  (delete-custom-question! 6)
 
   )

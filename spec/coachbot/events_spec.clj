@@ -105,7 +105,7 @@
                 (handle-event user1-id "next question")
 
                 ;; send new one even if previous not answered
-                (handle-event user1-id "next question")
+                (handle-event user1-id "another question")
                 (coaching/send-questions! team-id))
 
     (it "starts and stops coaching for users properly"

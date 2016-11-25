@@ -4,7 +4,7 @@
 <hi> = "hi"
 <start-coaching> = "start coaching"
 <stop-coaching> = "stop coaching"
-<next-question> = "next question"
+<next-question> = ("next question" | "another question")
 <tell-coach> = "tell coach", ws, text
 <ws> = <#'\s+'>
 <text> = #"[^\"]*"

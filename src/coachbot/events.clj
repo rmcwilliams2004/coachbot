@@ -74,7 +74,7 @@
            " • next question -- ask a new question"))))
 
 (defn- respond-to-event [team-id channel user-id text]
-  (let [[command & args] (parser/parse-command text)]
+  (let [[command & args :as all] (parser/parse-command text)]
     (case (str/lower-case command)
       "hi" (hello-world team-id channel user-id)
       "help" (help team-id channel)
@@ -82,7 +82,10 @@
       (coaching/start-coaching! team-id channel user-id)
 
       "stop coaching" (coaching/stop-coaching! team-id channel user-id)
-      "next question" (coaching/next-question! team-id channel user-id)
+
+      (or "next question" "another question")
+      (coaching/next-question! team-id channel user-id)
+
       (do (log/errorf "Unexpected command: %s" command)
           "Unhandled command"))))
 
