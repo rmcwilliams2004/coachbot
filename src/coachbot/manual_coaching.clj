@@ -24,8 +24,8 @@
             [coachbot.env :as env]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
-            [taoensso.timbre :as log]
-            [linked.core :as linked]))
+            [linked.core :as linked]
+            [taoensso.timbre :as log]))
 
 (defn list-answers
   ([max-days-back]
