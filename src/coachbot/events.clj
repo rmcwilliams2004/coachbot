@@ -78,6 +78,7 @@
     (case (str/lower-case command)
       "hi" (hello-world team-id channel user-id)
       "help" (help team-id channel)
+
       "start coaching"
       (coaching/start-coaching! team-id channel user-id)
 
