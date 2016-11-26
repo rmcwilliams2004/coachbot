@@ -19,11 +19,10 @@
 
 (ns coachbot.coaching-process
   (:require [coachbot.env :as env]
+            [coachbot.messages :as messages]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
             [taoensso.timbre :as log]))
-
-(def thanks-for-answer "Thanks for your answer! See you again soon.")
 
 (defn start-coaching! [team-id channel user-id]
   (let [ds (env/datasource)
@@ -33,7 +32,7 @@
     (storage/add-coaching-user!
       ds (slack/get-user-info access-token user-id))
     (slack/send-message! bot-access-token channel
-                         "Thanks! We'll start sending you messages soon.")))
+                         messages/coaching-hello)))
 
 (defn stop-coaching! [team-id channel user-id]
   (let [ds (env/datasource)
@@ -42,8 +41,7 @@
 
         user (slack/get-user-info access-token user-id)]
     (storage/remove-coaching-user! ds user)
-    (slack/send-message! bot-access-token channel
-                         "No problem! We'll stop sending messages.")))
+    (slack/send-message! bot-access-token channel messages/coaching-goodbye)))
 
 (defn register-custom-question! [team-id user-id question]
   (let [ds (env/datasource)
@@ -101,7 +99,7 @@
     (if asked-qid
       (do
         (storage/submit-answer! ds team-id user-email asked-qid asked-cqid text)
-        (slack/send-message! bot-access-token id thanks-for-answer))
+        (slack/send-message! bot-access-token id messages/thanks-for-answer))
       (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
                  user-email text))))
 

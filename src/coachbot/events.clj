@@ -83,21 +83,28 @@
       bot-access-token channel
       (str "Here are the commands I respond to:\n" body))))
 
-(defevent {:command "hi"
+(def hi-cmd "hi")
+(def help-cmd "help")
+(def start-coaching-cmd "start coaching")
+(def stop-coaching-cmd "stop coaching")
+(def next-question-cmd "next question")
+(def another-question-cmd "another question")
+
+(defevent {:command hi-cmd
            :help "checks if I'm listening"} hello-world)
 
-(defevent {:command "help"
+(defevent {:command help-cmd
            :help "display this help message"} help)
 
-(defevent {:command "start coaching"
+(defevent {:command start-coaching-cmd
            :help "send daily motivational questions"} coaching/start-coaching!)
 
-(defevent {:command "stop coaching"
+(defevent {:command stop-coaching-cmd
            :help "stop sending questions"} coaching/stop-coaching!)
 
-(defevent {:command "next question"
+(defevent {:command next-question-cmd
            :help "ask a new question"
-           :aliases ["another question"]} coaching/next-question!)
+           :aliases [another-question-cmd]} coaching/next-question!)
 
 (defn- respond-to-event [team-id channel user-id text]
   (let [[command & args] (parser/parse-command text)

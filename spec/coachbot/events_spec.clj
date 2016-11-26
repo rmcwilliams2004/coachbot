@@ -31,6 +31,17 @@
 ;todo Kill this evil hack.
 (log/set-level! :error)
 
+(def first-question "first question")
+(def second-question "second question")
+(def third-question "third question")
+(def fourth-question "fourth question")
+
+(def some-fun-answer "some fun answer")
+(def another-fun-answer "another fun answer")
+(def some-confused-answer "some confused answer")
+
+(def general "general")
+
 (defn handle-event
   ([user-id channel text]
    (events/handle-event {:token "none" :team_id team-id
@@ -44,10 +55,6 @@
 
 (def hello-user1 (str user1-id ": Hello, " user1-first-name))
 (def hello-user2 (str user2-id ": Hello, " user2-first-name))
-
-(defn uc [user-id content] (str user-id ": " content))
-(def u1c (partial uc user1-id))
-(def u2c (partial uc user2-id))
 
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
@@ -75,79 +82,78 @@
   (context "Start and stop coaching"
     (before-all (swap! @messages empty))
 
-    (before-all (storage/replace-base-questions! @ds ["first question"
-                                                      "second question"
-                                                      "third question"
-                                                      "fourth question"])
+    (before-all (storage/replace-base-questions!
+                  @ds [first-question second-question third-question
+                       fourth-question])
 
                 (hi-from-everyone)
-                (handle-event user1-id "next question")
-                (handle-event user2-id "start coaching")
+                (handle-event user1-id events/next-question-cmd)
+                (handle-event user2-id events/start-coaching-cmd)
                 (hi-from-everyone)
 
                 ;; should be ignored since it's in a channel, not an IM
-                (handle-event user1-id "general" "hi")
-                (handle-event user1-id "start coaching")
-                (handle-event user1-id "some fun answer")
-                (handle-event user2-id "another fun answer")
-                (handle-event user2-id "stop coaching")
+                (handle-event user1-id general events/hi-cmd)
+                (handle-event user1-id events/start-coaching-cmd)
+                (handle-event user1-id some-fun-answer)
+                (handle-event user2-id another-fun-answer)
+                (handle-event user2-id events/stop-coaching-cmd)
                 (coaching/send-questions! team-id)
-                (handle-event user1-id "some confused answer")
-                (handle-event user1-id "stop coaching")
-                (handle-event user1-id "start coaching")
+                (handle-event user1-id some-confused-answer)
+                (handle-event user1-id events/stop-coaching-cmd)
+                (handle-event user1-id events/start-coaching-cmd)
                 (storage/reset-all-coaching-users! @ds)
-                (handle-event user1-id "general" "hi")
+                (handle-event user1-id general events/hi-cmd)
 
                 ;; re-send same if not answered
                 (coaching/send-questions! team-id)
-                (handle-event user1-id "some fun answer")
-                (handle-event user1-id "stop coaching")
-                (handle-event user1-id "next question")
+                (handle-event user1-id some-fun-answer)
+                (handle-event user1-id events/stop-coaching-cmd)
+                (handle-event user1-id events/next-question-cmd)
 
                 ;; send new one even if previous not answered
-                (handle-event user1-id "another question")
+                (handle-event user1-id events/another-question-cmd)
                 (coaching/send-questions! team-id))
 
     (it "starts and stops coaching for users properly"
       (should=
         [hello-user1
          hello-user2
-         (u1c "first question")
-         (u2c "Thanks! We'll start sending you messages soon.")
-         (u2c "first question")
+         (u1c first-question)
+         u2-coaching-hello
+         (u2c first-question)
          hello-user1
          hello-user2
-         (u1c "Thanks! We'll start sending you messages soon.")
-         (u1c coaching/thanks-for-answer)
-         (u2c coaching/thanks-for-answer)
-         (u2c "No problem! We'll stop sending messages.")
-         (u1c "second question")
-         (u1c coaching/thanks-for-answer)
-         (u1c "No problem! We'll stop sending messages.")
-         (u1c "Thanks! We'll start sending you messages soon.")
-         (u1c "third question")
-         (u1c "third question")
-         (u1c coaching/thanks-for-answer)
-         (u1c "No problem! We'll stop sending messages.")
-         (u1c "fourth question")
-         (u1c "first question")]
+         u1-coaching-hello
+         u1-thanks-for-answer
+         u2-thanks-for-answer
+         u2-coaching-goodbye
+         (u1c second-question)
+         u1-thanks-for-answer
+         u1-coaching-goodbye
+         u1-coaching-hello
+         (u1c third-question)
+         (u1c third-question)
+         u1-thanks-for-answer
+         u1-coaching-goodbye
+         (u1c fourth-question)
+         (u1c first-question)]
         @@messages)
 
-      (should= [{:question "first question"}
-                {:question "second question"}
-                {:question "third question"}
-                {:question "third question"}
-                {:question "fourth question"}
-                {:question "first question"}]
+      (should= [{:question first-question}
+                {:question second-question}
+                {:question third-question}
+                {:question third-question}
+                {:question fourth-question}
+                {:question first-question}]
                (storage/list-questions-asked @ds team-id user1-email))
 
-      (should= [{:question "first question", :answer "some fun answer"}
-                {:question "second question", :answer "some confused answer"}
-                {:question "third question", :answer "some fun answer"}]
+      (should= [{:question first-question, :answer some-fun-answer}
+                {:question second-question, :answer some-confused-answer}
+                {:question third-question, :answer some-fun-answer}]
                (storage/list-answers @ds team-id user1-email))
 
-      (should= [{:question "first question"}]
+      (should= [{:question first-question}]
                (storage/list-questions-asked @ds team-id user2-email))
 
-      (should= [{:question "first question", :answer "another fun answer"}]
+      (should= [{:question first-question, :answer another-fun-answer}]
                (storage/list-answers @ds team-id user2-email)))))

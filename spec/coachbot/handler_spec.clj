@@ -117,7 +117,7 @@
 
       (it "Handles the 'hi' event"
         (should= 200 (:status (send-event (message))))
-        (should= [(str user0-id ": Hello, Bill")] @@messages))
+        (should= [(uc user0-id "Hello, Bill")] @@messages))
 
       (it "Ignores the 'hi' event in a public channel"
         (should= 200 (:status (send-event (message :event {:channel
