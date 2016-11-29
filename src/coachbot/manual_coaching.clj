@@ -34,6 +34,7 @@
          (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d')")
                         :date]
                        [:st.id :team_id] [:scu.id :uid]
+                       :scu.first_name
                        :bq.question
                        [:cq.question :cquestion]
                        [:qa.answer :qa])
@@ -53,10 +54,11 @@
              (h/order-by :st.id :scu.id :qa.created_date)
              sql/format)]
 
-     (map #(let [{:keys [date team_id uid question cquestion qa] :as rest} %
+     (map #(let [{:keys [date team_id uid first_name question cquestion qa]} %
                  q (or question cquestion)
                  ty (if cquestion "c" "b")]
-             (linked/map :d date :t team_id :u uid :ty ty :q q :a qa))
+             (linked/map :d date :t team_id :u uid :f first_name :ty ty :q q
+                         :a qa))
           (jdbc/query ds latest-answers-query))))
   ([] (list-answers 5)))
 
@@ -78,7 +80,7 @@
 (defn delete-custom-question! [question-id]
   (jdbc/with-db-transaction
     [conn (env/datasource)]
-    (jdbc/delete! conn :custom_questions ["id = ?" question-id])))
+    (first (jdbc/delete! conn :custom_questions ["id = ?" question-id]))))
 
 (comment
   "This is the work area for coaches, for now. You'll need the following
@@ -97,11 +99,11 @@
   ;; Use this to register a custom question.
   (let [team-id 1
         user-id 2
-        question "What part of 'CB' would be most valuable to focus on?"]
+        question "What part of 'CB' would be in between valuable to focus on?"]
     (register-custom-question! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that
   ;; the above command returned.
-  (delete-custom-question! 6)
+  (delete-custom-question! 15)
 
   )
