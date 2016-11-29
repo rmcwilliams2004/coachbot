@@ -47,7 +47,7 @@
 (defn- auth-success [& {:keys [access-token bot-access-token] :as auth-data}]
   (storage/store-slack-auth! (env/datasource) auth-data)
   (let [members (slack/list-members access-token)]
-    (doseq [{:keys [id first-name]} members]
+    (doseq [{:keys [id name first-name]} members]
       ; don't overrun the slack servers
       (Thread/sleep 500)
 
@@ -56,7 +56,7 @@
         (format (str "Hello, %s. I'm a coaching robot. To get started, you "
                      "can say 'start coaching', otherwise say 'help' to see "
                      "what commands I respond to.")
-                first-name)))))
+                (or first-name name))))))
 
 (defn- handle-unknown-failure [t event]
   (log/errorf t "Unable to handle event: %s" event)
@@ -69,8 +69,9 @@
 (defn- hello-world [team-id channel user-id]
   (let [[access-token bot-access-token]
         (storage/get-access-tokens (env/datasource) team-id)
-        {:keys [first-name]} (slack/get-user-info access-token user-id)]
-    (slack/send-message! bot-access-token channel (str "Hello, " first-name))))
+        {:keys [first-name name]} (slack/get-user-info access-token user-id)]
+    (slack/send-message! bot-access-token channel
+                         (str "Hello, " (or first-name name)))))
 
 (defn- help [team-id channel _]
   (let [[_ bot-access-token]

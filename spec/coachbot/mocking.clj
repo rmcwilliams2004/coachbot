@@ -33,6 +33,7 @@
 
 (def user0-id "abc123")
 (def user1-id "blah")
+(def user3-id "simple")
 
 (def user1-email "blah@there.com")
 (def user2-email "meh@here.com")
@@ -51,9 +52,15 @@
             :real-name "cmeh" :first-name user2-first-name :last-name "Meh"
             :name "Cathy Meh"})
 
+(def user3 {:team-id team-id :id user3-id
+            :email "suser@simple.com" :timezone "America/Chicago"
+            :first-name nil :last-name nil
+            :real-name "Simple User" :name "suser"})
+
 (def users {user0-id {:first-name "Bill"}
             user1-id user1
-            user2-id user2})
+            user2-id user2
+            user3-id user3})
 
 (defn uc [user-id content] (str user-id ": " content))
 (def u1c (partial uc user1-id))
