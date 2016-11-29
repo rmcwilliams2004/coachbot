@@ -59,7 +59,7 @@
       (submit-text! team-id user1-email "qanswer2")
       (register-custom-question! team-id user1-id how-much?)
       (next-question! team-id user1-id user1-id)
-      (submit-text! team-id user1-email "qanswer2")
+      (submit-text! team-id user1-email "qanswer3")
       (next-question! team-id user1-id user1-id)
       (submit-text! team-id user1-email "banswer2"))
 
@@ -74,4 +74,11 @@
                 u1-thanks-for-answer
                 (u1c second-question)
                 u1-thanks-for-answer]
-               @@messages))))
+               @@messages)
+
+      (should= [{:question first-question, :answer "banswer1"}
+                {:question you-like-fun?, :answer "qanswer1"}
+                {:question you-like-fun?, :answer "qanswer2"}
+                {:question how-much?, :answer "qanswer3"}
+                {:question second-question, :answer "banswer2"}]
+               (storage/list-answers @ds team-id user1-email)))))

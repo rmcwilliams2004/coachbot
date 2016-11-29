@@ -177,7 +177,10 @@
                     {:slack_user_id user-id qa-col new-qid})
       (jdbc/update! conn :slack_coaching_users
                     {asked-col new-qid :last_question_date (db/now)}
-                    ["id  = ?" user-id]))))
+                    ["id  = ?" user-id])
+      (when-not custom-question?
+        (jdbc/update! conn :slack_coaching_users
+                      {:asked_cqid nil} ["id  = ?" user-id])))))
 
 (defn add-custom-question! [ds {:keys [team-id] slack-user-id :id} question]
   (jdbc/with-db-transaction
@@ -204,7 +207,6 @@
     [conn ds]
     (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)
           answered-col (if cqid :cquestion_id :question_id)
-          answered-ucol (if cqid :answered_cqid :answered_qid)
           which-qid (or cqid qid)]
       (jdbc/insert! conn :question_answers
                     {:slack_user_id id answered-col which-qid :answer text})
@@ -225,17 +227,21 @@
 
 (defn list-answers [ds team-id user-email]
   (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)
-        query (-> (h/select :bq.question :qa.answer)
+        query (-> (h/select :bq.question
+                            [:cq.question :cquestion]
+                            [:qa.answer :qa])
                   (h/from [:question_answers :qa])
-                  (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
-                  (h/where [:= :slack_user_id id])
-                  (h/order-by :qa.created_date)
+                  (h/left-join [:base_questions :bq]
+                               [:= :bq.id :qa.question_id]
+                               [:custom_questions :cq]
+                               [:= :cq.id :qa.cquestion_id])
+                  (h/where [:= :qa.slack_user_id id])
                   sql/format)]
     (->> query
          (jdbc/query ds)
-         (map #(let [{:keys [question answer]} %]
-                 {:question question
-                  :answer (db/extract-character-data answer)})))))
+         (map #(let [{:keys [question cquestion qa]} %
+                     q (or question cquestion)]
+                {:question q :answer (db/extract-character-data qa)})))))
 
 (defn reset-all-coaching-users!
   "Marks all coaching users as having last been asked a question a day ago"
