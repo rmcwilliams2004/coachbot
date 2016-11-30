@@ -120,10 +120,10 @@
     (send-question! user channel)))
 
 (defn event-occurred! [team-id email]
-  (let [{:keys [active days-since-question] :as user}
+  (let [{:keys [active hours-since-question] :as user}
         (storage/get-coaching-user (env/datasource) team-id email)
 
         should-send-question?
-        (or (nil? days-since-question) (pos? days-since-question))]
+        (or (nil? hours-since-question) (>= hours-since-question 16))]
     (when (and active should-send-question?)
       (send-question-if-previous-answered! user))))

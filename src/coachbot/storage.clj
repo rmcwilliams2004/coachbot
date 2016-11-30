@@ -74,8 +74,8 @@
                        (conj where-clause [:= :active 1]))]
     (-> (h/select
           :*,
-          [(sql/raw "timestampdiff(DAY, last_question_date, curdate())")
-           :days-since-question])
+          [(sql/raw "timestampdiff(HOUR, last_question_date, curdate())")
+           :hours-since-question])
         (h/from :slack_coaching_users)
         (h/where where-clause)
         sql/format)))
@@ -244,11 +244,12 @@
                 {:question q :answer (db/extract-character-data qa)})))))
 
 (defn reset-all-coaching-users!
-  "Marks all coaching users as having last been asked a question a day ago"
+  "Marks all coaching users as having last been asked a question a day ago.
+   Only works against H2 because of the DATEADD function."
   [ds]
   (jdbc/with-db-transaction
     [conn ds]
     (jdbc/execute!
       conn
       [(str "update slack_coaching_users "
-            "set last_question_date = (curdate() - 1)")])))
+            "set last_question_date = DATEADD('HOUR', -16, CURDATE())")])))
