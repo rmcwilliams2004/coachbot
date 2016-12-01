@@ -31,10 +31,10 @@
   ([max-days-back]
    (let [ds (env/datasource)
          latest-answers-query
-         (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d')")
+         (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d %h')")
                         :date]
                        [:st.id :team_id] [:scu.id :uid]
-                       :scu.first_name
+                       :scu.name
                        :bq.question
                        [:cq.question :cquestion]
                        [:qa.answer :qa])
@@ -54,10 +54,10 @@
              (h/order-by :st.id :scu.id :qa.created_date)
              sql/format)]
 
-     (map #(let [{:keys [date team_id uid first_name question cquestion qa]} %
+     (map #(let [{:keys [date team_id uid name question cquestion qa]} %
                  q (or question cquestion)
                  ty (if cquestion "c" "b")]
-             (linked/map :d date :t team_id :u uid :f first_name :ty ty :q q
+             (linked/map :d date :t team_id :u uid :n name :ty ty :q q
                          :a qa))
           (jdbc/query ds latest-answers-query))))
   ([] (list-answers 5)))
@@ -91,10 +91,10 @@
    And DB_CONN_TIMEOUT=600000"
 
   ;; Get rid of annoying logging
-  (log/set-level! :error)
+  (log/set-level! :warn)
 
   ;; Use this to see the last X days of answers
-  (pprint/print-table (list-answers 6))
+  (pprint/print-table (list-answers 3))
 
   ;; Use this to register a custom question.
   (let [team-id 1

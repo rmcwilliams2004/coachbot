@@ -171,7 +171,6 @@
           custom-cols [:cquestion_id :asked_cqid]
           base-cols [:question_id :asked_qid]
           [qa-col asked-col] (if custom-question? custom-cols base-cols)]
-      (log/infof "%s/%s/%s" new-qid qtype question)
       (send-fn question)
       (jdbc/insert! conn :questions_asked
                     {:slack_user_id user-id qa-col new-qid})
