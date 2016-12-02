@@ -24,7 +24,10 @@
 (describe "Command Parsing"
   (context "Simple commands"
     (it "should parse a simple command"
-      (should= ["help"] (parse-command "help")))
+      (should= ["help"] (parse-command "help"))
+      (should= ["help"] (parse-command "Help"))
+      (should= ["help"] (parse-command "Help "))
+      (should= ["help"] (parse-command " Help")))
 
     (it "should get a single argument"
       (should= ["tell coach" "i have a question"]
