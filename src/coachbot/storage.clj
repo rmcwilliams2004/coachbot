@@ -74,7 +74,8 @@
                        (conj where-clause [:= :active 1]))]
     (-> (h/select
           :*,
-          [(sql/raw "timestampdiff(HOUR, last_question_date, curdate())")
+          [(sql/raw
+             "timestampdiff(HOUR, last_question_date, current_timestamp())")
            :hours-since-question])
         (h/from :slack_coaching_users)
         (h/where where-clause)
@@ -251,4 +252,5 @@
     (jdbc/execute!
       conn
       [(str "update slack_coaching_users "
-            "set last_question_date = DATEADD('HOUR', -16, CURDATE())")])))
+            "set last_question_date = DATEADD('HOUR', -16, "
+            "CURRENT_TIMESTAMP())")])))

@@ -106,4 +106,15 @@
   ;; the above command returned.
   (delete-custom-question! 15)
 
+  ;; Show a bunch of data about a single slack coaching user
+  (pprint/print-table
+    (jdbc/query
+      (env/datasource)
+      [(str "select *, "
+            "timestampdiff(HOUR, last_question_date, current_timestamp()) AS
+            hours_since, "
+            "current_timestamp as now "
+            "from slack_coaching_users where email = ?")
+       "travis@couragelabs.com"]))
+
   )
