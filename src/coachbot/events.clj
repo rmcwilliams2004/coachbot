@@ -179,8 +179,13 @@
     :body [message EventMessage]
     :summary "Receive an event from Slack"
     (log/infof "Message received: %s" message)
-    (ss/try+ (ok (if-let [challenge-response (slack/challenge-response message)]
-                   challenge-response
-                   {:result (handle-event message)}))
+    (ss/try+ (let [result
+                   (ok (if-let [challenge-response
+                                (slack/challenge-response message)]
+
+                         challenge-response
+                         {:result (handle-event message)}))]
+               (log/debugf "event result: %s" result)
+               result)
              (catch [:type ::access-denied] _ (unauthorized))
              (catch [:type ::queue-full] _ (service-unavailable)))))
