@@ -38,23 +38,6 @@
 
 (def ^:private event-aliases (atom {}))
 
-(defn make-queue-if-configured []
-  (when (env/event-queue-enabled?)
-    (log/infof "Event queue size: %d" @env/event-queue-size)
-    (let [q (LinkedBlockingQueue. (int @env/event-queue-size))
-          e (Executors/newFixedThreadPool 1)]
-      (.submit e (cast Callable
-                       #(while true
-                          (try
-                            (let [f (.take q)]
-                              (log/debug "Received event")
-                              (f))
-                            (catch Throwable t
-                              (log/error t "Unable to process event"))))))
-      q)))
-
-(def ^:private event-queue (delay (make-queue-if-configured)))
-
 (defn defevent [{:keys [command help aliases]} ef]
   (swap! events assoc command {:help help :ef ef})
 
@@ -155,12 +138,29 @@
         (coaching/submit-text! team_id email text))
       (catch Exception t (handle-unknown-failure t event)))))
 
+(defn make-queue-if-configured []
+  (when (env/event-queue-enabled?)
+    (log/infof "Event queue size: %d" @env/event-queue-size)
+    (let [q (LinkedBlockingQueue. (int @env/event-queue-size))
+          e (Executors/newFixedThreadPool 1)]
+      (.submit e (cast Callable
+                       #(while true
+                          (try
+                            (let [evt (.take q)]
+                              (log/debugf "Received event: %s" evt)
+                              (process-event evt))
+                            (catch Throwable t
+                              (log/error t "Unable to process event"))))))
+      q)))
+
+(def ^:private event-queue (delay (make-queue-if-configured)))
+
 (defn handle-event [{:keys [token] :as event}]
   (when-not (= token @env/slack-verification-token)
     (ss/throw+ {:type ::access-denied}))
 
   (if (env/event-queue-enabled?)
-    (if (.offer @event-queue #(handle-event event))
+    (if (.offer @event-queue event)
       (do
         (log/debugf "Queue depth %d" (.size @event-queue))
         "submitted")
