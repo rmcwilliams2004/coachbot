@@ -18,7 +18,8 @@
 ;
 
 (ns coachbot.handler-spec
-  (:require [coachbot.db :as db]
+  (:require [coachbot.coaching-process :as coaching]
+            [coachbot.db :as db]
             [coachbot.env :as env]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
@@ -27,8 +28,7 @@
             [clojure.java.jdbc :as jdbc]
             [ring.mock.request :as mock]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]
-            [coachbot.coaching-process :as coaching]))
+            [taoensso.timbre :as log]))
 
 ;todo Kill this evil hack.
 (log/set-level! :error)
@@ -103,10 +103,10 @@
       (with messages (atom []))
 
       (around [it]
-              (with-redefs
-                [coaching/submit-text!
-                 (fn [_ _ t]
-                   (swap! @messages conj (format "Text submitted: %s" t)))]
+          (with-redefs
+            [coaching/submit-text!
+             (fn [_ _ t]
+               (swap! @messages conj (format "Text submitted: %s" t)))]
                 (mock-event-boundary @messages @ds it)))
 
       (it "Ignores bot users"
