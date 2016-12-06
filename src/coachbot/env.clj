@@ -50,3 +50,9 @@
 (def port (delay (Integer/parseInt (env "PORT" "3000"))))
 
 (def log-level (delay (keyword (env "LOG_LEVEL" "info"))))
+
+(def event-queue-size (delay (let [s (env "EVENT_QUEUE_SIZE" nil)]
+                               (when s (Integer/parseInt s)))))
+
+(defn event-queue-enabled? []
+  @event-queue-size)

@@ -28,7 +28,8 @@
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [slingshot.slingshot :as ss]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log])
+  (:import (java.util.concurrent LinkedBlockingQueue Executors)))
 
 (s/defschema EventMessage
   {s/Any s/Any})
@@ -36,6 +37,23 @@
 (def ^:private events (atom {}))
 
 (def ^:private event-aliases (atom {}))
+
+(defn make-queue-if-configured []
+  (when (env/event-queue-enabled?)
+    (log/infof "Event queue size: %d" @env/event-queue-size)
+    (let [q (LinkedBlockingQueue. (int @env/event-queue-size))
+          e (Executors/newFixedThreadPool 1)]
+      (.submit e (cast Callable
+                       #(while true
+                          (try
+                            (let [f (.take q)]
+                              (log/debug "Received event")
+                              (f))
+                            (catch Throwable t
+                              (log/error t "Unable to process event"))))))
+      q)))
+
+(def ^:private event-queue (make-queue-if-configured))
 
 (defn defevent [{:keys [command help aliases]} ef]
   (swap! events assoc command {:help help :ef ef})
@@ -115,15 +133,12 @@
       (do (log/errorf "Unexpected command: %s" command)
           "Unhandled command"))))
 
-(defn handle-event [{:keys [token team_id api_app_id
-                            type authed_users]
-                     {user-id :user
-                      :keys [text ts channel event_ts]
-                      event_type :type} :event
-                     :as event}]
-  (when-not (= token @env/slack-verification-token)
-    (ss/throw+ {:type ::access-denied}))
-
+(defn- process-event [{:keys [team_id api_app_id
+                              type authed_users]
+                       {user-id :user
+                        :keys [text ts channel event_ts]
+                        event_type :type} :event
+                       :as event}]
   (let [[access-token bot-access-token]
         (storage/get-access-tokens (env/datasource) team_id)
 
@@ -140,6 +155,18 @@
         (coaching/submit-text! team_id email text))
       (catch Exception t (handle-unknown-failure t event)))))
 
+(defn handle-event [{:keys [token] :as event}]
+  (when-not (= token @env/slack-verification-token)
+    (ss/throw+ {:type ::access-denied}))
+
+  (if (env/event-queue-enabled?)
+    (if (.offer event-queue #(handle-event event))
+      (do
+        (log/debugf "Queue depth %d" (.size event-queue))
+        "submitted")
+      (ss/throw+ {:type ::queue-full}))
+    (process-event event)))
+
 (defroutes event-routes
   (GET "/oauth" []
     :query-params [code :- String]
@@ -155,4 +182,5 @@
     (ss/try+ (ok (if-let [challenge-response (slack/challenge-response message)]
                    challenge-response
                    {:result (handle-event message)}))
-             (catch [:type ::access-denied] _ (unauthorized)))))
+             (catch [:type ::access-denied] _ (unauthorized))
+             (catch [:type ::queue-full] _ (service-unavailable)))))
