@@ -53,7 +53,7 @@
                               (log/error t "Unable to process event"))))))
       q)))
 
-(def ^:private event-queue (make-queue-if-configured))
+(def ^:private event-queue (delay (make-queue-if-configured)))
 
 (defn defevent [{:keys [command help aliases]} ef]
   (swap! events assoc command {:help help :ef ef})
@@ -160,9 +160,9 @@
     (ss/throw+ {:type ::access-denied}))
 
   (if (env/event-queue-enabled?)
-    (if (.offer event-queue #(handle-event event))
+    (if (.offer @event-queue #(handle-event event))
       (do
-        (log/debugf "Queue depth %d" (.size event-queue))
+        (log/debugf "Queue depth %d" (.size @event-queue))
         "submitted")
       (ss/throw+ {:type ::queue-full}))
     (process-event event)))
