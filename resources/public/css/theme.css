@@ -34,6 +34,10 @@ h1, h2 {
     margin-bottom: 12px;
 }
 
+h1 a {
+    color: black;
+}
+
 h1.title, div.purpose {
     text-align: center;
 }
