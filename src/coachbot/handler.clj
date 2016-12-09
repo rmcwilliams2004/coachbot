@@ -18,7 +18,9 @@
 ;
 
 (ns coachbot.handler
-  (:require [coachbot.env :as env]
+  (:require [clojurewerkz.quartzite.scheduler :as qs]
+            [coachbot.coaching-process :as coaching]
+            [coachbot.env :as env]
             [coachbot.events :as events]
             [compojure.api.sweet :refer :all]
             [compojure.core :as cc]
@@ -61,6 +63,10 @@
   "Main function. Invoked to run the application using httpkit."
   []
   (log/set-level! @env/log-level)
-  (let [port @env/port]
+  (let [port @env/port
+        scheduler (qs/start (qs/initialize))]
+    (log/info "Starting scheduler")
+    (coaching/schedule-individual-coaching! scheduler)
+
     (log/infof "Getting ready to listen on port %d" port)
     (srv/run-server app {:port port})))

@@ -241,7 +241,7 @@
          (jdbc/query ds)
          (map #(let [{:keys [question cquestion qa]} %
                      q (or question cquestion)]
-                {:question q :answer (db/extract-character-data qa)})))))
+                 {:question q :answer (db/extract-character-data qa)})))))
 
 (defn reset-all-coaching-users!
   "Marks all coaching users as having last been asked a question a day ago.
@@ -254,3 +254,15 @@
       [(str "update slack_coaching_users "
             "set last_question_date = DATEADD('HOUR', -16, "
             "CURRENT_TIMESTAMP())")])))
+
+(defn list-coaching-users-across-all-teams [ds]
+  (let [users
+        (jdbc/query ds (->
+                         (h/select :st.team_id :scu.remote_user_id
+                                   :scu.asked_qid :scu.answered_qid)
+                         (h/from [:slack_teams :st])
+                         (h/join [:slack_coaching_users :scu]
+                                 [:= :scu.team_id :st.id])
+                         sql/format))]
+    (map #(let [{:keys [team_id] :as user} %]
+            (convert-user team_id user)) users)))

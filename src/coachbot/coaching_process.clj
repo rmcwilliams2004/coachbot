@@ -18,7 +18,11 @@
 ;
 
 (ns coachbot.coaching-process
-  (:require [coachbot.env :as env]
+  (:require [clojurewerkz.quartzite.jobs :as qj]
+            [clojurewerkz.quartzite.schedule.cron :as qc]
+            [clojurewerkz.quartzite.scheduler :as qs]
+            [clojurewerkz.quartzite.triggers :as qt]
+            [coachbot.env :as env]
             [coachbot.messages :as messages]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
@@ -74,6 +78,7 @@
   "Sends a new question to a specific individual."
   [{:keys [id asked-qid answered-qid team-id] :as user} & [channel]]
 
+  (log/debugf "Sending question to %s/%s" team-id id)
   (with-sending-constructs
     id team-id channel
     (fn [ds send-fn]
@@ -94,7 +99,7 @@
   (let [ds (env/datasource)
         [_ bot-access-token] (storage/get-access-tokens ds team-id)
 
-        {:keys [id asked-qid answered-qid asked-cqid answered-cqid]}
+        {:keys [id asked-qid asked-cqid]}
         (storage/get-coaching-user ds team-id user-email)]
     (if asked-qid
       (do
@@ -127,3 +132,22 @@
         (or (nil? hours-since-question) (>= hours-since-question 16))]
     (when (and active should-send-question?)
       (send-question-if-previous-answered! user))))
+
+(defn- send-next-question-to-everyone-everywhere! []
+  (let [ds (env/datasource)
+        users (storage/list-coaching-users-across-all-teams ds)]
+    (map send-question-if-previous-answered! users)))
+
+(qj/defjob DailyCoachingJob [ctx]
+  (send-next-question-to-everyone-everywhere!))
+
+(defn schedule-individual-coaching! [scheduler]
+  (let [job (qj/build
+              (qj/of-type DailyCoachingJob)
+              (qj/with-identity (qj/key "jobs.coaching.individual")))
+        trigger (qt/build
+                  (qt/with-identity (qt/key "triggers.daily-at-10-cst"))
+                  (qt/start-now)
+                  (qt/with-schedule (qc/schedule
+                                     (qc/cron-schedule "0 0 10 ? * *"))))]
+    (qs/schedule scheduler job trigger)))
