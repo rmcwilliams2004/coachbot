@@ -75,7 +75,11 @@
         [{:keys [uid tid]}] (jdbc/query ds user-info-query)
         [{:keys [generated_key]}]
         (coaching/register-custom-question! tid uid question)]
-    generated_key))
+    {:uid uid :tid tid :question-id generated_key}))
+
+(defn send-custom-question-now! [team-id user-id question]
+  (let [{:keys [uid tid]} (register-custom-question! team-id user-id question)]
+    (coaching/next-question! tid uid uid)))
 
 (defn delete-custom-question! [question-id]
   (jdbc/with-db-transaction
@@ -85,7 +89,7 @@
 (comment
   "This is the work area for coaches, for now. You'll need the following
    env variables set for your REPL pulled from 'heroku config':
-     DB_TYPE, DB_URL, DB_USER, DB_PASS
+     DB_TYPE, DB_URL, DB_USER, DB_PASS, SLACK_CLIENT_ID, SLACK_CLIENT_SECRET
 
    And DB_MAX_CONN=2
    And DB_CONN_TIMEOUT=600000"
@@ -101,6 +105,12 @@
         user-id 2
         question "What part of 'CB' would be in between valuable to focus on?"]
     (register-custom-question! team-id user-id question))
+
+  ;; Use this to send a custom question immediately.
+  (let [team-id 3
+        user-id 9
+        question "What has worked well for lowering your heart beat previosly"]
+    (send-custom-question-now! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that
   ;; the above command returned.
