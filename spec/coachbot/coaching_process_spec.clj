@@ -51,7 +51,6 @@
   (context "basic"
     (before-all
       (start-coaching! team-id user1-id user1-id)
-      (next-question! team-id user1-id user1-id)
       (submit-text! team-id user1-email "banswer1")
       (register-custom-question! team-id user1-id you-like-fun?)
       (next-question! team-id user1-id user1-id)

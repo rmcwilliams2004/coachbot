@@ -263,6 +263,7 @@
                          (h/from [:slack_teams :st])
                          (h/join [:slack_coaching_users :scu]
                                  [:= :scu.team_id :st.id])
+                         (h/where [:= :scu.active true])
                          sql/format))]
     (map #(let [{:keys [team_id] :as user} %]
             (convert-user team_id user)) users)))

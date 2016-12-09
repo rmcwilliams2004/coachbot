@@ -49,13 +49,6 @@
   ([user-id text]
    (handle-event user-id user-id text)))
 
-(defn hi-from-everyone []
-  (handle-event user1-id "hi")
-  (handle-event user2-id "hi"))
-
-(def hello-user1 (str user1-id ": Hello, " user1-first-name))
-(def hello-user2 (str user2-id ": Hello, " user2-first-name))
-
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
   (before-all (storage/store-slack-auth! @ds slack-auth))
@@ -86,13 +79,12 @@
                   @ds [first-question second-question third-question
                        fourth-question])
 
-                (hi-from-everyone)
+                (coaching/send-next-question-to-everyone-everywhere!)
                 (handle-event user1-id events/next-question-cmd)
                 (handle-event user2-id events/start-coaching-cmd)
-                (hi-from-everyone)
+                (coaching/send-next-question-to-everyone-everywhere!)
 
                 ;; should be ignored since it's in a channel, not an IM
-                (handle-event user1-id general events/hi-cmd)
                 (handle-event user1-id events/start-coaching-cmd)
                 (handle-event user1-id some-fun-answer)
                 (handle-event user2-id another-fun-answer)
@@ -102,7 +94,7 @@
                 (handle-event user1-id events/stop-coaching-cmd)
                 (handle-event user1-id events/start-coaching-cmd)
                 (storage/reset-all-coaching-users! @ds)
-                (handle-event user1-id general events/hi-cmd)
+                (coaching/send-questions! team-id)
 
                 ;; re-send same if not answered
                 (coaching/send-questions! team-id)
@@ -116,14 +108,11 @@
 
     (it "starts and stops coaching for users properly"
       (should=
-        [hello-user1
-         hello-user2
-         (u1c first-question)
+        [(u1c first-question)
          u2-coaching-hello
          (u2c first-question)
-         hello-user1
-         hello-user2
          u1-coaching-hello
+         (u1c first-question)
          u1-thanks-for-answer
          u2-thanks-for-answer
          u2-coaching-goodbye
@@ -133,6 +122,7 @@
          u1-coaching-hello
          (u1c third-question)
          (u1c third-question)
+         (u1c third-question)
          u1-thanks-for-answer
          u1-coaching-goodbye
          (u1c fourth-question)
@@ -140,7 +130,9 @@
         @@messages)
 
       (should= [{:question first-question}
+                {:question first-question}
                 {:question second-question}
+                {:question third-question}
                 {:question third-question}
                 {:question third-question}
                 {:question fourth-question}

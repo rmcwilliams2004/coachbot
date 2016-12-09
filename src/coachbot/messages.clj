@@ -21,4 +21,4 @@
 
 (def thanks-for-answer "Thanks for your answer! See you again soon.")
 (def coaching-goodbye "No problem! We'll stop sending messages.")
-(def coaching-hello "Thanks! We'll start sending you messages soon.")
+(def coaching-hello "Great! Here's your next question.")

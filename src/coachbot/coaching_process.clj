@@ -28,16 +28,6 @@
             [coachbot.storage :as storage]
             [taoensso.timbre :as log]))
 
-(defn start-coaching! [team-id channel user-id]
-  (let [ds (env/datasource)
-
-        [access-token bot-access-token]
-        (storage/get-access-tokens ds team-id)]
-    (storage/add-coaching-user!
-      ds (slack/get-user-info access-token user-id))
-    (slack/send-message! bot-access-token channel
-                         messages/coaching-hello)))
-
 (defn stop-coaching! [team-id channel user-id]
   (let [ds (env/datasource)
         [access-token bot-access-token]
@@ -86,6 +76,19 @@
         (storage/next-question-for-sending! ds asked-qid user send-fn)
         (storage/question-for-sending ds asked-qid user send-fn)))))
 
+(defn start-coaching! [team-id channel user-id]
+  (let [ds (env/datasource)
+
+        [access-token bot-access-token]
+        (storage/get-access-tokens ds team-id)
+
+        {:keys [email] :as user-info}
+        (slack/get-user-info access-token user-id)]
+    (storage/add-coaching-user! ds user-info)
+    (slack/send-message! bot-access-token channel messages/coaching-hello)
+    (send-question-if-previous-answered!
+      (storage/get-coaching-user ds team-id email))))
+
 (defn send-questions!
   "Sends new questions to everyone on a given team that has signed up for
    coaching."
@@ -125,15 +128,9 @@
     (send-question! user channel)))
 
 (defn event-occurred! [team-id email]
-  (let [{:keys [active hours-since-question] :as user}
-        (storage/get-coaching-user (env/datasource) team-id email)
+  (log/debugf "Event occurred for %s/%s" team-id email))
 
-        should-send-question?
-        (or (nil? hours-since-question) (>= hours-since-question 16))]
-    (when (and active should-send-question?)
-      (send-question-if-previous-answered! user))))
-
-(defn- send-next-question-to-everyone-everywhere! []
+(defn send-next-question-to-everyone-everywhere! []
   (let [ds (env/datasource)
         users (storage/list-coaching-users-across-all-teams ds)]
     (map send-question-if-previous-answered! users)))
