@@ -76,7 +76,8 @@
         (storage/next-question-for-sending! ds asked-qid user send-fn)
         (storage/question-for-sending ds asked-qid user send-fn)))))
 
-(defn start-coaching! [team-id channel user-id]
+(defn start-coaching!
+  [team-id channel user-id & [coaching-time]]
   (let [ds (db/datasource)
 
         [access-token bot-access-token]
@@ -84,7 +85,9 @@
 
         {:keys [email] :as user-info}
         (slack/get-user-info access-token user-id)]
-    (storage/add-coaching-user! ds user-info)
+    (storage/add-coaching-user!
+      ds (if coaching-time
+           (assoc user-info :coaching-time coaching-time) user-info))
     (slack/send-message! bot-access-token channel messages/coaching-hello)
     (send-question-if-previous-answered!
       (storage/get-coaching-user ds team-id email))))
@@ -136,7 +139,7 @@
     (map send-question-if-previous-answered! users)))
 
 (qj/defjob DailyCoachingJob [ctx]
-  (send-next-question-to-everyone-everywhere!))
+           (send-next-question-to-everyone-everywhere!))
 
 (defn schedule-individual-coaching! [scheduler]
   (let [job (qj/build
@@ -146,5 +149,5 @@
                   (qt/with-identity (qt/key "triggers.daily-at-10-cst"))
                   (qt/start-now)
                   (qt/with-schedule (qc/schedule
-                                     (qc/cron-schedule "0 0 10 ? * *"))))]
+                                      (qc/cron-schedule "0 0 10 ? * *"))))]
     (qs/schedule scheduler job trigger)))

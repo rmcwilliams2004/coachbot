@@ -70,9 +70,9 @@
             :email user2-email})
 
 (defn extra-fields [user]
-  (assoc user :answered-qid nil :asked-qid nil
-              :asked-cqid nil :hours-since-question nil
-              :active true))
+  (assoc user :answered-qid nil :asked-qid nil :asked-cqid nil
+              :hours-since-question nil :active true
+              :coaching-time "0 0 10 ? * *"))
 
 (describe "Storing data for later use"
   (context "Slack teams"

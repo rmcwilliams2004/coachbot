@@ -22,7 +22,9 @@
             [coachbot.messages :as messages]
             [coachbot.slack :as slack]
             [coachbot.db :as db]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [coachbot.env :as env]
+            [clj-time.core :as t]))
 
 (def access-token "gobbledygook")
 (def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
@@ -82,9 +84,16 @@
                  :bot-access-token bot-access-token
                  :bot-user-id bot-user-id})
 
+(def YY 2016)
+(def MM 1)
+(def DD 1)
+(def hh 10)
+(def mm 10)
+
 (defn mock-event-boundary [messages ds it]
   (with-redefs
-    [db/datasource (fn [] ds)
+    [env/now (fn [] (t/date-time YY MM DD hh mm))
+     db/datasource (fn [] ds)
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))
      slack/get-user-info (fn [_ user-id] (users user-id))

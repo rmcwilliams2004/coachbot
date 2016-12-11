@@ -18,7 +18,8 @@
 ;
 
 (ns coachbot.db
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clj-time.core :as t]
+            [clojure.java.jdbc :as jdbc]
             [coachbot.env :as env])
   (:import (com.zaxxer.hikari HikariConfig HikariDataSource)
            (java.io ByteArrayInputStream)
@@ -76,8 +77,6 @@
 
 (def extract-binary-data (comp slurp choose-binary-stream))
 (def extract-character-data (comp slurp choose-character-stream))
-
-(defn now [] (Timestamp/from (Instant/now)))
 
 (def ^:private ds
   (delay (make-db-datasource env/db-type env/db-url env/db-user env/db-pass

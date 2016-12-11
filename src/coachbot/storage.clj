@@ -20,9 +20,11 @@
 (ns coachbot.storage
   (:require [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
+            [clj-time.jdbc]
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [coachbot.db :as db]
+            [coachbot.env :as env]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [taoensso.timbre :as log]))
@@ -99,7 +101,7 @@
 (defn get-coaching-user [ds team-id user-email]
   (convert-user team-id (get-coaching-user-raw ds team-id user-email)))
 
-(defn add-coaching-user! [ds {:keys [email team-id] :as user}]
+(defn add-coaching-user! [ds {:keys [email team-id coaching-time] :as user}]
   (jdbc/with-db-transaction
     [conn ds]
     (let [existing-record (get-coaching-user conn team-id email)
@@ -176,7 +178,7 @@
       (jdbc/insert! conn :questions_asked
                     {:slack_user_id user-id qa-col new-qid})
       (jdbc/update! conn :slack_coaching_users
-                    {asked-col new-qid :last_question_date (db/now)}
+                    {asked-col new-qid :last_question_date (env/now)}
                     ["id  = ?" user-id])
       (when-not custom-question?
         (jdbc/update! conn :slack_coaching_users

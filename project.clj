@@ -20,6 +20,7 @@
 (defproject coachbot "0.1.0-SNAPSHOT"
   :description "Simple, elegant, automatic motivation"
   :dependencies [[camel-snake-kebab "0.4.0"]
+                 [clj-cron-parse "0.1.4"]
                  [clj-http "3.4.1"]
                  [clj-time "0.12.2"]
                  [clojurewerkz/quartzite "2.0.0" :exclusions [clj-time]]
