@@ -72,7 +72,7 @@
                        :bot {:bot_access_token bot-access-token
                              :bot_user_id bot-user-id}})
 
-                    env/datasource (fn [] @ds)]
+                    db/datasource (fn [] @ds)]
         (should= 200 (:status @response))
         (should= "Application authorized!" @body)
         (should= [access-token bot-access-token]

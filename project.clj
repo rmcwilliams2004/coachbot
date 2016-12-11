@@ -21,6 +21,7 @@
   :description "Simple, elegant, automatic motivation"
   :dependencies [[camel-snake-kebab "0.4.0"]
                  [clj-http "3.4.1"]
+                 [clj-time "0.12.2"]
                  [clojurewerkz/quartzite "2.0.0" :exclusions [clj-time]]
                  [com.fzakaria/slf4j-timbre "0.3.2"]
                  [com.h2database/h2 "1.4.193"]

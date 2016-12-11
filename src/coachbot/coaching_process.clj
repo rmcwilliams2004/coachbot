@@ -22,14 +22,14 @@
             [clojurewerkz.quartzite.schedule.cron :as qc]
             [clojurewerkz.quartzite.scheduler :as qs]
             [clojurewerkz.quartzite.triggers :as qt]
-            [coachbot.env :as env]
+            [coachbot.db :as db]
             [coachbot.messages :as messages]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
             [taoensso.timbre :as log]))
 
 (defn stop-coaching! [team-id channel user-id]
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
         [access-token bot-access-token]
         (storage/get-access-tokens ds team-id)
 
@@ -38,7 +38,7 @@
     (slack/send-message! bot-access-token channel messages/coaching-goodbye)))
 
 (defn register-custom-question! [team-id user-id question]
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
         [access-token _]
         (storage/get-access-tokens ds team-id)
 
@@ -46,10 +46,10 @@
     (storage/add-custom-question! ds user question)))
 
 (defn- with-sending-constructs [user-id team-id channel f]
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
 
         [_ bot-access-token]
-        (storage/get-access-tokens (env/datasource) team-id)
+        (storage/get-access-tokens (db/datasource) team-id)
 
         send-fn (partial slack/send-message! bot-access-token
                          (or channel user-id))]
@@ -77,7 +77,7 @@
         (storage/question-for-sending ds asked-qid user send-fn)))))
 
 (defn start-coaching! [team-id channel user-id]
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
 
         [access-token bot-access-token]
         (storage/get-access-tokens ds team-id)
@@ -94,12 +94,12 @@
    coaching."
   [team-id]
   (doall (map (partial send-question-if-previous-answered!)
-              (storage/list-coaching-users (env/datasource) team-id))))
+              (storage/list-coaching-users (db/datasource) team-id))))
 
 (defn submit-text! [team-id user-email text]
   ;; If there is an outstanding for the user, submit that
   ;; Otherwise store it someplace for a live person to review
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
         [_ bot-access-token] (storage/get-access-tokens ds team-id)
 
         {:keys [id asked-qid asked-cqid]}
@@ -122,7 +122,7 @@
         (get-coaching-user)))))
 
 (defn next-question! [team_id channel user-id]
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
         [access-token _] (storage/get-access-tokens ds team_id)
         user (ensure-user ds access-token team_id user-id)]
     (send-question! user channel)))
@@ -131,7 +131,7 @@
   (log/debugf "Event occurred for %s/%s" team-id email))
 
 (defn send-next-question-to-everyone-everywhere! []
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
         users (storage/list-coaching-users-across-all-teams ds)]
     (map send-question-if-previous-answered! users)))
 

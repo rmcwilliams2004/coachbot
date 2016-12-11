@@ -21,6 +21,7 @@
   (:require [clojure.string :as str]
             [coachbot.coaching-process :as coaching]
             [coachbot.command-parser :as parser]
+            [coachbot.db :as db]
             [coachbot.env :as env]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
@@ -46,7 +47,7 @@
       (swap! event-aliases assoc alias command))))
 
 (defn- auth-success [& {:keys [access-token bot-access-token] :as auth-data}]
-  (storage/store-slack-auth! (env/datasource) auth-data)
+  (storage/store-slack-auth! (db/datasource) auth-data)
   (let [members (slack/list-members access-token)]
     (doseq [{:keys [id name first-name]} members]
       ; don't overrun the slack servers
@@ -69,14 +70,14 @@
 
 (defn- hello-world [team-id channel user-id]
   (let [[access-token bot-access-token]
-        (storage/get-access-tokens (env/datasource) team-id)
+        (storage/get-access-tokens (db/datasource) team-id)
         {:keys [first-name name]} (slack/get-user-info access-token user-id)]
     (slack/send-message! bot-access-token channel
                          (str "Hello, " (or first-name name)))))
 
 (defn- help [team-id channel _]
   (let [[_ bot-access-token]
-        (storage/get-access-tokens (env/datasource) team-id)
+        (storage/get-access-tokens (db/datasource) team-id)
         body (str/join "\n"
                        (map #(let [[command {:keys [help]}] %]
                                (format " • %s -- %s" command help)) @events))]
@@ -123,11 +124,11 @@
                         event_type :type} :event
                        :as event}]
   (let [[access-token bot-access-token]
-        (storage/get-access-tokens (env/datasource) team_id)
+        (storage/get-access-tokens (db/datasource) team_id)
 
         {:keys [email]} (slack/get-user-info access-token user-id)]
     (ss/try+
-      (if-not (storage/is-bot-user? (env/datasource) team_id user-id)
+      (if-not (storage/is-bot-user? (db/datasource) team_id user-id)
         (try
           (when (slack/is-im-to-me? bot-access-token channel)
             (respond-to-event team_id channel user-id text))

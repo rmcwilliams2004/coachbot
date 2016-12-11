@@ -21,7 +21,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [coachbot.coaching-process :as coaching]
-            [coachbot.env :as env]
+            [coachbot.db :as db]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]
@@ -29,7 +29,7 @@
 
 (defn list-answers
   ([max-days-back]
-   (let [ds (env/datasource)
+   (let [ds (db/datasource)
          latest-answers-query
          (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d %h')")
                         :date]
@@ -63,7 +63,7 @@
   ([] (list-answers 5)))
 
 (defn register-custom-question! [team-id user-id question]
-  (let [ds (env/datasource)
+  (let [ds (db/datasource)
         user-info-query
         (-> (h/select [:scu.remote_user_id :uid] [:st.team_id :tid])
             (h/from [:slack_coaching_users :scu])
@@ -83,7 +83,7 @@
 
 (defn delete-custom-question! [question-id]
   (jdbc/with-db-transaction
-    [conn (env/datasource)]
+    [conn (db/datasource)]
     (first (jdbc/delete! conn :custom_questions ["id = ?" question-id]))))
 
 (comment
@@ -119,7 +119,7 @@
   ;; Show a bunch of data about a single slack coaching user
   (pprint/print-table
     (jdbc/query
-      (env/datasource)
+      (db/datasource)
       [(str "select *, "
             "timestampdiff(HOUR, last_question_date, current_timestamp()) AS
             hours_since, "

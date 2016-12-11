@@ -18,7 +18,7 @@
 ;
 
 (ns coachbot.env
-  (:require [coachbot.db :as db]))
+  (:require [clj-time.core :as t]))
 
 (defn- env-or [env-key f]
   (let [val (System/getenv env-key)]
@@ -31,15 +31,12 @@
                                        env-key)))))
   ([env-key default-value] (env-or env-key #(identity default-value))))
 
-(def ^:private ds (delay (db/make-db-datasource
-                           (env "DB_TYPE" "h2")
-                           (env "DB_URL" "jdbc:h2:./cbdb")
-                           (env "DB_USER" "coachbot")
-                           (env "DB_PASS" "coachbot")
-                           (Integer/parseInt (env "DB_CONN_TIMEOUT" "10000"))
-                           (Integer/parseInt (env "DB_MAX_CONN" "10")))))
-
-(defn datasource [] @ds)
+(def db-type (env "DB_TYPE" "h2"))
+(def db-url (env "DB_URL" "jdbc:h2:./cbdb"))
+(def db-user (env "DB_USER" "coachbot"))
+(def db-pass (env "DB_PASS" "coachbot"))
+(def db-timeout (Integer/parseInt (env "DB_CONN_TIMEOUT" "10000")))
+(def db-max-conn (Integer/parseInt (env "DB_MAX_CONN" "10")))
 
 (def slack-client-id (delay (env "SLACK_CLIENT_ID" nil)))
 
@@ -56,3 +53,5 @@
 
 (defn event-queue-enabled? []
   @event-queue-size)
+
+(defn now [] (t/now))

@@ -21,7 +21,7 @@
   (:require [coachbot.events :as events]
             [coachbot.messages :as messages]
             [coachbot.slack :as slack]
-            [coachbot.env :as env]
+            [coachbot.db :as db]
             [taoensso.timbre :as log]))
 
 (def access-token "gobbledygook")
@@ -84,7 +84,7 @@
 
 (defn mock-event-boundary [messages ds it]
   (with-redefs
-    [env/datasource (fn [] ds)
+    [db/datasource (fn [] ds)
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))
      slack/get-user-info (fn [_ user-id] (users user-id))
