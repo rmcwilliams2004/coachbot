@@ -158,7 +158,7 @@
     (it "should not ask questions"
       (should= []
                (do
-                 (handle-event user3-id "start coaching at 1PM")
+                 (handle-event user3-id "start coaching at 1 PM")
                  (coaching/send-question-if-conditions-are-right!
                    (storage/get-coaching-user @ds team-id user3-email))
                  (storage/list-questions-asked @ds team-id user3-email))))))

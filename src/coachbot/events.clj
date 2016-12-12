@@ -92,11 +92,11 @@
       bot-access-token channel
       (str "Here are the commands I respond to:\n" body))))
 
-(def ^:private start-time-ptn #"(?i)(\d{1,2})(am|pm)")
+(def ^:private start-time-ptn #"(?i)(\d{1,2})( )?(am|pm)")
 
 (defn translate-start-time [start-time]
   (if start-time
-    (let [[_ hour time-of-day] (re-find start-time-ptn start-time)
+    (let [[_ hour _ time-of-day] (re-find start-time-ptn start-time)
           time-of-day (.toLowerCase time-of-day)
           hour (Integer/parseInt hour)
           hour (if (and (not (= 12 hour)) (= "pm" time-of-day))
