@@ -50,7 +50,7 @@
 
   (context "basic"
     (before-all
-      (start-coaching! team-id user1-id user1-id)
+      (start-coaching! team-id user1-id)
       (send-next-question-to-everyone-everywhere!)
       (submit-text! team-id user1-email "banswer1")
       (register-custom-question! team-id user1-id you-like-fun?)
@@ -64,8 +64,7 @@
       (submit-text! team-id user1-email "banswer2"))
 
     (it "should ask a custom question before the next one in the rotation"
-      (should= [u1-coaching-hello
-                (u1c first-question)
+      (should= [(u1c first-question)
                 u1-thanks-for-answer
                 (u1c you-like-fun?)
                 u1-thanks-for-answer

@@ -72,8 +72,9 @@
 (def u1-thanks-for-answer (u1c messages/thanks-for-answer))
 (def u2-thanks-for-answer (u2c messages/thanks-for-answer))
 
-(def u1-coaching-hello (u1c messages/coaching-hello))
-(def u2-coaching-hello (u2c messages/coaching-hello))
+(def coaching-hello (format messages/coaching-hello "10am"))
+(def u1-coaching-hello (u1c coaching-hello))
+(def u2-coaching-hello (u2c coaching-hello))
 
 (def u1-coaching-goodbye (u1c messages/coaching-goodbye))
 (def u2-coaching-goodbye (u2c messages/coaching-goodbye))

@@ -29,7 +29,8 @@
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [slingshot.slingshot :as ss]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [coachbot.messages :as messages])
   (:import (java.util.concurrent LinkedBlockingQueue Executors)))
 
 (s/defschema EventMessage
@@ -100,15 +101,18 @@
           hour (Integer/parseInt hour)
           hour (if (and (not (= 12 hour)) (= "pm" time-of-day))
                  (+ 12 hour)
-                 (if (and (= "am" time-of-day)
-                          (= 12 hour)) 0 hour))]
+                 (if (and (= "am" time-of-day) (= 12 hour)) 0 hour))]
       (format "0 0 %d * * *" hour))
     "0 0 10 * * *"))
 
 (defn- start-coaching! [team-id channel user-id [start-time]]
   (log/debugf "start-coaching! %s %s %s %s" team-id channel user-id start-time)
-  (coaching/start-coaching! team-id channel user-id
-                            (translate-start-time start-time)))
+  (let [[_ bot-access-token]
+        (storage/get-access-tokens (db/datasource) team-id)]
+    (coaching/start-coaching! team-id user-id (translate-start-time start-time))
+    (slack/send-message! bot-access-token channel
+                         (format messages/coaching-hello
+                                 (or start-time "10am")))))
 
 (def hi-cmd "hi")
 (def help-cmd "help")

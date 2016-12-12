@@ -107,17 +107,16 @@
       (send-next-or-resend-prev-question! user channel))))
 
 (defn start-coaching!
-  [team-id channel user-id & [coaching-time]]
+  [team-id user-id & [coaching-time]]
   (let [ds (db/datasource)
 
-        [access-token bot-access-token]
+        [access-token]
         (storage/get-access-tokens ds team-id)
 
         user-info (slack/get-user-info access-token user-id)]
     (storage/add-coaching-user!
       ds (if coaching-time
-           (assoc user-info :coaching-time coaching-time) user-info))
-    (slack/send-message! bot-access-token channel messages/coaching-hello)))
+           (assoc user-info :coaching-time coaching-time) user-info))))
 
 (defn submit-text! [team-id user-email text]
   ;; If there is an outstanding for the user, submit that
