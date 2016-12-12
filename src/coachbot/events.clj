@@ -100,7 +100,7 @@
           [_ hour _ time-of-day] (re-find start-time-ptn start-time)
           time-of-day (.toLowerCase time-of-day)
           hour (Integer/parseInt hour)
-          hour (if (and (not (= 12 hour)) (= "pm" time-of-day))
+          hour (if (and (not= 12 hour) (= "pm" time-of-day))
                  (+ 12 hour)
                  (if (and (= "am" time-of-day) (= 12 hour)) 0 hour))]
       (format "0 0 %d * * *" hour))
