@@ -93,11 +93,15 @@
 
 (def ^:private start-time-ptn #"(?i)(\d{1,2})(am|pm)")
 
-(defn- translate-start-time [start-time]
+(defn translate-start-time [start-time]
   (if start-time
     (let [[_ hour time-of-day] (re-find start-time-ptn start-time)
+          time-of-day (.toLowerCase time-of-day)
           hour (Integer/parseInt hour)
-          hour (if (= "pm" (.toLowerCase time-of-day)) (+ 12 hour) hour)]
+          hour (if (and (not (= 12 hour)) (= "pm" time-of-day))
+                 (+ 12 hour)
+                 (if (and (= "am" time-of-day)
+                          (= 12 hour)) 0 hour))]
       (format "0 0 %d * * *" hour))
     "0 0 10 * * *"))
 
