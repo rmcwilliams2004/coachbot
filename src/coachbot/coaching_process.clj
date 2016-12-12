@@ -84,25 +84,27 @@
   "Sends a question to a specific individual only if the conditions are
    right. Checks if the previous question was asked before deciding to re-send
    that one or send a new one. Also checks if the current time is on or after
-   the time that the user requested a question to be asked, relative to the
-   beginning of the day, in their requested timezone, of either the last time
-   they were asked a question or the day their user record was created."
+   the time that the user requested a question to be asked, in their requested
+   timezone, of either the last time they were asked a question or the day
+   their user record was created relative to the beginning of the day."
   [{:keys [id last-question-date created-date coaching-time timezone]
     :as user}
    & [channel]]
-  (let [start-time (t/with-time-at-start-of-day
-                     (or last-question-date created-date))
+  (let [start-time (or last-question-date
+                       (t/with-time-at-start-of-day created-date))
         next-date (cp/next-date start-time coaching-time timezone)
         now (env/now)
         should-send-question? (or (t/equal? now next-date)
                                   (t/after? now next-date))
         formatter (tf/formatters :date-time)]
-    (if should-send-question?
-      (send-next-or-resend-prev-question! user channel)
-      (log/debugf (str "Not sending to %s. %s is not same-or-after %s. "
-                       "(ct='%s' tz='%s')") id
-                  (tf/unparse formatter now)
-                  (tf/unparse formatter next-date) coaching-time timezone))))
+    (log/debugf
+      "User %s: ct='%s', tz='%s', st='%s', nd='%s', now='%s', send? %s"
+      id coaching-time timezone start-time
+      (tf/unparse formatter next-date)
+      (tf/unparse formatter now) should-send-question?)
+
+    (when should-send-question?
+      (send-next-or-resend-prev-question! user channel))))
 
 (defn start-coaching!
   [team-id channel user-id & [coaching-time]]

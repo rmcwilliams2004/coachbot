@@ -91,6 +91,7 @@
                 (handle-event user1-id some-fun-answer)
                 (handle-event user2-id another-fun-answer)
                 (handle-event user2-id events/stop-coaching-cmd)
+                (storage/reset-all-coaching-users! @ds)
                 (coaching/send-next-question-to-everyone-everywhere!)
 
                 ;; Don't respond to things in a channel
@@ -103,6 +104,7 @@
                 (coaching/send-next-question-to-everyone-everywhere!)
 
                 ;; re-send same if not answered
+                (storage/reset-all-coaching-users! @ds)
                 (coaching/send-next-question-to-everyone-everywhere!)
                 (handle-event user1-id some-fun-answer)
                 (handle-event user1-id events/stop-coaching-cmd)
