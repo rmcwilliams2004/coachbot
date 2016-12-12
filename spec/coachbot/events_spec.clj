@@ -188,4 +188,9 @@
     (should= "0 0 20 * * *" (events/translate-start-time "8pm"))
     (should= "0 0 21 * * *" (events/translate-start-time "9pm"))
     (should= "0 0 22 * * *" (events/translate-start-time "10pm"))
-    (should= "0 0 23 * * *" (events/translate-start-time "11pm"))))
+    (should= "0 0 23 * * *" (events/translate-start-time "11pm")))
+
+  (it "should handle various formats"
+    (should= "0 0 17 * * *" (events/translate-start-time "5PM"))
+    (should= "0 0 17 * * *" (events/translate-start-time "5 PM"))
+    (should= "0 0 17 * * *" (events/translate-start-time "5 P.M."))))

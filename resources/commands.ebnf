@@ -3,7 +3,7 @@
 <help> = "help"
 <hi> = "hi"
 <start-coaching> = "start coaching",
-{ ws, <"at">, ws, #"(?i)(\d{1,2})( )?(am|pm)" }
+{ ws, <"at">, ws, #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)" }
 <stop-coaching> = "stop coaching"
 <next-question> = ("next question" | "another question")
 <tell-coach> = "tell coach", ws, text
