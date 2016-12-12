@@ -22,4 +22,4 @@
 (def thanks-for-answer "Thanks for your answer! See you again soon.")
 (def coaching-goodbye "No problem! We'll stop sending messages.")
 (def coaching-hello
-  "Welcome aboard! We'll send coaching questions at %s every day")
+  "Welcome aboard! We'll send coaching questions at %s every day.")
