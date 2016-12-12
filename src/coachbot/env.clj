@@ -18,7 +18,7 @@
 ;
 
 (ns coachbot.env
-  (:require [clj-time.core :as t]))
+  (:require [clj-time.local :as tl]))
 
 (defn- env-or [env-key f]
   (let [val (System/getenv env-key)]
@@ -48,10 +48,13 @@
 
 (def log-level (delay (keyword (env "LOG_LEVEL" "info"))))
 
-(def event-queue-size (delay (let [s (env "EVENT_QUEUE_SIZE" nil)]
-                               (when s (Integer/parseInt s)))))
+(def log-other-libs
+  (delay (Boolean/parseBoolean (env "LOG_OTHER_LIBS" "false"))))
+
+(def event-queue-size
+  (delay (let [s (env "EVENT_QUEUE_SIZE" nil)] (when s (Integer/parseInt s)))))
 
 (defn event-queue-enabled? []
   @event-queue-size)
 
-(defn now [] (t/now))
+(defn now [] (tl/local-now))

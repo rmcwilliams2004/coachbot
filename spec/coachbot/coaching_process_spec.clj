@@ -24,8 +24,7 @@
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]
-            [clj-time.core :as t]))
+            [taoensso.timbre :as log]))
 
 ;todo Kill this evil hack.
 (log/set-level! :error)
@@ -52,6 +51,7 @@
   (context "basic"
     (before-all
       (start-coaching! team-id user1-id user1-id)
+      (send-next-question-to-everyone-everywhere!)
       (submit-text! team-id user1-email "banswer1")
       (register-custom-question! team-id user1-id you-like-fun?)
       (next-question! team-id user1-id user1-id)
@@ -81,8 +81,4 @@
                 {:question you-like-fun?, :answer "qanswer2"}
                 {:question how-much?, :answer "qanswer3"}
                 {:question second-question, :answer "banswer2"}]
-               (storage/list-answers @ds team-id user1-email))))
-
-  (context "timing"
-    (it "should only ask questions of folks if it is after their scheduled time"
-      )))
+               (storage/list-answers @ds team-id user1-email)))))

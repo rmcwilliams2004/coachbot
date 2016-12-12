@@ -39,8 +39,9 @@
 
 (def ^:private event-aliases (atom {}))
 
-(defn defevent [{:keys [command help aliases]} ef]
-  (swap! events assoc command {:help help :ef ef})
+(defn defevent [{:keys [command help aliases config-options]} ef]
+  (swap! events assoc command
+         {:help help :config-options config-options :ef ef})
 
   (let [aliases (or aliases [])]
     (doseq [alias (conj aliases command)]
@@ -68,23 +69,42 @@
   (log/warnf "Unable to parse command: %s" text)
   (log/debugf "Parse Result: %s" result))
 
-(defn- hello-world [team-id channel user-id]
+(defn- hello-world [team-id channel user-id _]
   (let [[access-token bot-access-token]
         (storage/get-access-tokens (db/datasource) team-id)
         {:keys [first-name name]} (slack/get-user-info access-token user-id)]
     (slack/send-message! bot-access-token channel
                          (str "Hello, " (or first-name name)))))
 
-(defn- help [team-id channel _]
+(defn- help-for-event [event]
+  (let [[command {:keys [help config-options]}] event
+        config-options (or config-options {"" help})]
+    (map #(let [[option help] %]
+            (format " • %s%s -- %s" command option help)) config-options)))
+
+(defn- help [team-id channel _ _]
   (let [[_ bot-access-token]
         (storage/get-access-tokens (db/datasource) team-id)
-        body (str/join "\n"
-                       (map #(let [[command {:keys [help]}] %]
-                               (format " • %s -- %s" command help)) @events))]
+        body (str/join "\n" (flatten (map help-for-event @events)))]
 
     (slack/send-message!
       bot-access-token channel
       (str "Here are the commands I respond to:\n" body))))
+
+(def ^:private start-time-ptn #"(?i)(\d{1,2})(am|pm)")
+
+(defn- translate-start-time [start-time]
+  (if start-time
+    (let [[_ hour time-of-day] (re-find start-time-ptn start-time)
+          hour (Integer/parseInt hour)
+          hour (if (= "pm" (.toLowerCase time-of-day)) (+ 12 hour) hour)]
+      (format "0 0 %d * * *" hour))
+    "0 0 10 * * *"))
+
+(defn- start-coaching! [team-id channel user-id [start-time]]
+  (log/debugf "start-coaching! %s %s %s %s" team-id channel user-id start-time)
+  (coaching/start-coaching! team-id channel user-id
+                            (translate-start-time start-time)))
 
 (def hi-cmd "hi")
 (def help-cmd "help")
@@ -100,7 +120,14 @@
            :help "display this help message"} help)
 
 (defevent {:command start-coaching-cmd
-           :help "send daily motivational questions"} coaching/start-coaching!)
+           :config-options
+           {""
+            (str "send daily motivational questions at 10am every day in your "
+                 "timezone")
+
+            " at {hour}{am|pm}"
+            (str "send daily motivational questions at a specific time "
+                 "(e.g. 'start coaching at 9am')")}} start-coaching!)
 
 (defevent {:command stop-coaching-cmd
            :help "stop sending questions"} coaching/stop-coaching!)
@@ -112,8 +139,9 @@
 (defn- respond-to-event [team-id channel user-id text]
   (let [[command & args] (parser/parse-command text)
         {:keys [ef]} (@events (@event-aliases (str/lower-case command)))]
+    (log/debugf "Responding to %s / %s" command args)
     (if ef
-      (ef team-id channel user-id)
+      (ef team-id channel user-id args)
       (do (log/errorf "Unexpected command: %s" command)
           "Unhandled command"))))
 

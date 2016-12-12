@@ -18,13 +18,14 @@
 ;
 
 (ns coachbot.mocking
-  (:require [coachbot.events :as events]
+  (:require [clj-time.core :as t]
+            [clj-time.local :as tl]
+            [coachbot.env :as env]
+            [coachbot.events :as events]
             [coachbot.messages :as messages]
             [coachbot.slack :as slack]
             [coachbot.db :as db]
-            [taoensso.timbre :as log]
-            [coachbot.env :as env]
-            [clj-time.core :as t]))
+            [taoensso.timbre :as log]))
 
 (def access-token "gobbledygook")
 (def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
@@ -39,6 +40,7 @@
 
 (def user1-email "blah@there.com")
 (def user2-email "meh@here.com")
+(def user3-email "suser@simple.com")
 
 (def user1-first-name "Bill")
 (def user2-first-name "Cathy")
@@ -55,7 +57,7 @@
             :name "Cathy Meh"})
 
 (def user3 {:team-id team-id :id user3-id
-            :email "suser@simple.com" :timezone "America/Chicago"
+            :email user3-email :timezone "America/Chicago"
             :first-name nil :last-name nil
             :real-name "Simple User" :name "suser"})
 
@@ -92,7 +94,7 @@
 
 (defn mock-event-boundary [messages ds it]
   (with-redefs
-    [env/now (fn [] (t/date-time YY MM DD hh mm))
+    [env/now (fn [] (tl/to-local-date-time (t/date-time YY MM DD hh mm)))
      db/datasource (fn [] ds)
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))
@@ -103,3 +105,10 @@
        (log/error t)
        (swap! messages conj (.getMessage t)))]
     (it)))
+
+;; This may or may not be used, depending on whether a developer needs to see
+;; debug messages during their TDD cycle
+(defn mock-event-boundary-with-debug [messages ds it]
+  (log/with-merged-config
+    {:level :debug :ns-whitelist ["coachbot.*"]}
+    (mock-event-boundary messages ds it)))

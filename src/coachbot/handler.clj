@@ -62,8 +62,12 @@
 (defn -main
   "Main function. Invoked to run the application using httpkit."
   []
-  (log/set-level! @env/log-level)
-  (let [port @env/port
+  (let [log-config {:level @env/log-level}
+        log-config (if-not @env/log-other-libs
+                     (assoc log-config :ns-whitelist ["coachbot.*"])
+                     log-config)
+        _ (log/merge-config! log-config)
+        port @env/port
         scheduler (qs/start (qs/initialize))]
     (log/info "Starting scheduler")
     (coaching/schedule-individual-coaching! scheduler)

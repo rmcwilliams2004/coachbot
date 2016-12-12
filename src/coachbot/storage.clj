@@ -20,6 +20,7 @@
 (ns coachbot.storage
   (:require [camel-snake-kebab.core :as csk]
             [camel-snake-kebab.extras :as cske]
+            [clj-time.core :as t]
             [clj-time.jdbc]
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
@@ -74,11 +75,7 @@
         where-clause (if user-email
                        (conj where-clause [:= :email user-email])
                        (conj where-clause [:= :active 1]))]
-    (-> (h/select
-          :*,
-          [(sql/raw
-             "timestampdiff(HOUR, last_question_date, current_timestamp())")
-           :hours-since-question])
+    (-> (h/select :*)
         (h/from :slack_coaching_users)
         (h/where where-clause)
         sql/format)))
@@ -93,8 +90,7 @@
   (when user
     (as-> user x
           (cske/transform-keys csk/->kebab-case x)
-          (dissoc x :created-date :updated-date :last-question-date :id
-                  :team-id)
+          (dissoc x :id :team-id)
           (assoc x :team-id team-id)
           (set/rename-keys x {:remote-user-id :id}))))
 
@@ -109,6 +105,7 @@
           new-record (as-> user x
                            (cske/transform-keys csk/->snake_case x)
                            (assoc x :team_id team-id)
+                           (assoc x :created_date (env/now)) ;for unit tests
                            (set/rename-keys x {:id :remote_user_id}))]
       (if existing-record
         (let [fields {:active true}
@@ -252,22 +249,22 @@
                  {:question q :answer (db/extract-character-data qa)})))))
 
 (defn reset-all-coaching-users!
-  "Marks all coaching users as having last been asked a question a day ago.
-   Only works against H2 because of the DATEADD function."
+  "Marks all coaching users as having last been asked a question 16 hours ago."
   [ds]
   (jdbc/with-db-transaction
     [conn ds]
     (jdbc/execute!
       conn
-      [(str "update slack_coaching_users "
-            "set last_question_date = DATEADD('HOUR', -16, "
-            "CURRENT_TIMESTAMP())")])))
+      ["update slack_coaching_users set last_question_date = ?"
+       (t/minus (env/now) (t/hours 16))])))
 
 (defn list-coaching-users-across-all-teams [ds]
   (let [users
         (jdbc/query ds (->
                          (h/select :st.team_id :scu.remote_user_id
-                                   :scu.asked_qid :scu.answered_qid)
+                                   :scu.asked_qid :scu.answered_qid
+                                   :scu.last_question_date :scu.created_date
+                                   :scu.coaching_time :scu.timezone)
                          (h/from [:slack_teams :st])
                          (h/join [:slack_coaching_users :scu]
                                  [:= :scu.team_id :st.id])

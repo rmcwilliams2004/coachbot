@@ -68,7 +68,10 @@
         [(str user1-id ": Here are the commands I respond to:\n"
               " • hi -- checks if I'm listening\n"
               " • help -- display this help message\n"
-              " • start coaching -- send daily motivational questions\n"
+              " • start coaching -- send daily motivational questions at "
+              "10am every day in your timezone\n"
+              " • start coaching at {hour}{am|pm} -- send daily motivational "
+              "questions at a specific time (e.g. 'start coaching at 9am')\n"
               " • stop coaching -- stop sending questions\n"
               " • next question -- ask a new question")] @@messages)))
 
@@ -79,32 +82,35 @@
                   @ds [first-question second-question third-question
                        fourth-question])
 
+                ;; Nobody should get any questions
                 (coaching/send-next-question-to-everyone-everywhere!)
                 (handle-event user1-id events/next-question-cmd)
                 (handle-event user2-id events/start-coaching-cmd)
                 (coaching/send-next-question-to-everyone-everywhere!)
-
-                ;; should be ignored since it's in a channel, not an IM
                 (handle-event user1-id events/start-coaching-cmd)
                 (handle-event user1-id some-fun-answer)
                 (handle-event user2-id another-fun-answer)
                 (handle-event user2-id events/stop-coaching-cmd)
-                (coaching/send-questions! team-id)
+                (coaching/send-next-question-to-everyone-everywhere!)
+
+                ;; Don't respond to things in a channel
+                (handle-event user1-id "channel" some-confused-answer)
+
                 (handle-event user1-id some-confused-answer)
                 (handle-event user1-id events/stop-coaching-cmd)
                 (handle-event user1-id events/start-coaching-cmd)
                 (storage/reset-all-coaching-users! @ds)
-                (coaching/send-questions! team-id)
+                (coaching/send-next-question-to-everyone-everywhere!)
 
                 ;; re-send same if not answered
-                (coaching/send-questions! team-id)
+                (coaching/send-next-question-to-everyone-everywhere!)
                 (handle-event user1-id some-fun-answer)
                 (handle-event user1-id events/stop-coaching-cmd)
                 (handle-event user1-id events/next-question-cmd)
 
                 ;; send new one even if previous not answered
                 (handle-event user1-id events/another-question-cmd)
-                (coaching/send-questions! team-id))
+                (coaching/send-next-question-to-everyone-everywhere!))
 
     (it "starts and stops coaching for users properly"
       (should=
@@ -112,7 +118,6 @@
          u2-coaching-hello
          (u2c first-question)
          u1-coaching-hello
-         (u1c first-question)
          u1-thanks-for-answer
          u2-thanks-for-answer
          u2-coaching-goodbye
@@ -122,7 +127,6 @@
          u1-coaching-hello
          (u1c third-question)
          (u1c third-question)
-         (u1c third-question)
          u1-thanks-for-answer
          u1-coaching-goodbye
          (u1c fourth-question)
@@ -130,9 +134,7 @@
         @@messages)
 
       (should= [{:question first-question}
-                {:question first-question}
                 {:question second-question}
-                {:question third-question}
                 {:question third-question}
                 {:question third-question}
                 {:question fourth-question}
@@ -148,4 +150,13 @@
                (storage/list-questions-asked @ds team-id user2-email))
 
       (should= [{:question first-question, :answer another-fun-answer}]
-               (storage/list-answers @ds team-id user2-email)))))
+               (storage/list-answers @ds team-id user2-email))))
+
+  (context "not after the user's scheduled time"
+    (it "should not ask questions"
+      (should= []
+               (do
+                 (handle-event user3-id "start coaching at 1PM")
+                 (coaching/send-question-if-conditions-are-right!
+                   (storage/get-coaching-user @ds team-id user3-email))
+                 (storage/list-questions-asked @ds team-id user3-email))))))
