@@ -67,12 +67,12 @@
             :timezone "America/Los_Angeles",
             :first-name "Travis",
             :last-name "Marsh",
-            :email user2-email})
+            :email user2-email
+            :coaching-time "0 0 11 ? * *"})
 
 (defn extra-fields [user]
   (assoc user :answered-qid nil :asked-qid nil :asked-cqid nil
-              :hours-since-question nil :active true
-              :coaching-time "0 0 10 ? * *"))
+              :hours-since-question nil :active true))
 
 (describe "Storing data for later use"
   (context "Slack teams"
@@ -112,10 +112,12 @@
 
     (before-all (storage/store-slack-auth! @ds first-team)
                 (storage/add-coaching-user! @ds user1)
+                (storage/add-coaching-user!
+                  @ds (assoc user2 :coaching-time "wrong"))
                 (storage/add-coaching-user! @ds user2))
 
     (it "should have stored the slack auth stuff"
-      (should= (extra-fields user1)
+      (should= (-> user1 extra-fields (assoc :coaching-time "0 0 10 ? * *"))
                (storage/get-coaching-user @ds team-id user1-email))
       (should= (extra-fields user2)
                (storage/get-coaching-user @ds team-id user2-email)))))

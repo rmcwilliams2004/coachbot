@@ -111,10 +111,16 @@
                            (assoc x :team_id team-id)
                            (set/rename-keys x {:id :remote_user_id}))]
       (if existing-record
-        (do (jdbc/update! conn :slack_coaching_users
-                          {:active 1}
-                          ["email = ? AND team_id = ?" email team-id])
-            false)
+        (let [fields {:active true}
+              fields (if coaching-time
+                       (assoc fields :coaching_time coaching-time)
+                       fields)
+              update-stmt (-> (h/update :slack_coaching_users)
+                              (h/sset fields)
+                              (h/where [:and [:= :email email]
+                                        [:= :team_id team-id]])
+                              sql/format)]
+          (jdbc/execute! conn update-stmt))
         (do (jdbc/insert! conn :slack_coaching_users new-record) true)))))
 
 (defn remove-coaching-user! [ds {:keys [email team-id]}]
