@@ -18,8 +18,7 @@
 ;
 
 (ns coachbot.mocking
-  (:require [clj-time.core :as t]
-            [clj-time.local :as tl]
+  (:require [clj-time.format :as tf]
             [coachbot.env :as env]
             [coachbot.events :as events]
             [coachbot.messages :as messages]
@@ -86,15 +85,10 @@
                  :bot-access-token bot-access-token
                  :bot-user-id bot-user-id})
 
-(def YY 2016)
-(def MM 1)
-(def DD 1)
-(def hh 10)
-(def mm 10)
-
 (defn mock-event-boundary [messages ds it]
   (with-redefs
-    [env/now (fn [] (tl/to-local-date-time (t/date-time YY MM DD hh mm)))
+    [env/now (fn [] (tf/parse (tf/formatters :date-time-no-ms)
+                              "2016-01-01T10:10:00-06:00"))
      db/datasource (fn [] ds)
      slack/send-message! (fn [_ channel msg]
                            (swap! messages conj (str channel ": " msg)))

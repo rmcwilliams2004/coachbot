@@ -128,12 +128,6 @@
                     {:active 0}
                     ["email = ? AND team_id = ?" email team-id]))))
 
-(defn list-coaching-users [ds team-id]
-  (let [team-internal-id (get-team-id ds team-id)
-        query (coaching-users-query team-internal-id)
-        users (jdbc/query ds query)]
-    (map (partial convert-user team-id) users)))
-
 (defn replace-base-questions!
   "Used to replace the default base questions for testing. Give it a
    datasource and a list of strings."
