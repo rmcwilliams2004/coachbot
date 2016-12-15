@@ -60,6 +60,39 @@
              (linked/map :d date :t team_id :u uid :n name :ty ty :q q
                          :a qa))
           (jdbc/query ds latest-answers-query))))
+  ([max-days-back user-id]
+   (let [ds (db/datasource)
+         latest-answers-query
+         (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d %h')")
+                        :date]
+                       [:st.id :team_id] [:scu.id :uid]
+                       :scu.name
+                       :bq.question
+                       [:cq.question :cquestion]
+                       [:qa.answer :qa])
+             (h/from [:question_answers :qa])
+             (h/join [:slack_coaching_users :scu]
+                     [:= :scu.id :qa.slack_user_id]
+                     [:slack_teams :st]
+                     [:= :st.id :scu.team_id])
+             (h/left-join [:base_questions :bq]
+                          [:= :bq.id :qa.question_id]
+                          [:custom_questions :cq]
+                          [:= :cq.id :qa.cquestion_id])
+             (h/where
+               [(sql/raw
+                  (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+                          max-days-back))]
+               [:= scu.id user-id])
+             (h/order-by :st.id :scu.id :qa.created_date)
+             sql/format)]
+
+     (map #(let [{:keys [date team_id uid name question cquestion qa]} %
+                 q (or question cquestion)
+                 ty (if cquestion "c" "b")]
+             (linked/map :d date :t team_id :u uid :n name :ty ty :q q
+                         :a qa))
+          (jdbc/query ds latest-answers-query))))
   ([] (list-answers 5)))
 
 (defn register-custom-question! [team-id user-id question]
@@ -108,8 +141,9 @@
 
   ;; Use this to send a custom question immediately.
   (let [team-id 3
-        user-id 9
-        question "What has worked well for lowering your heart beat previosly"]
+        user-id 12
+        question "What does being nice to people look like for you? (custom
+        question from Travis"]
     (send-custom-question-now! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that
