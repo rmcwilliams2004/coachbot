@@ -101,6 +101,9 @@
    And DB_MAX_CONN=2
    And DB_CONN_TIMEOUT=600000"
 
+  ;; Switch to manual-coaching namespace in the REPL
+  (in-ns 'coachbot.manual-coaching)
+
   ;; Get rid of annoying logging
   (log/set-level! :warn)
 
@@ -116,8 +119,7 @@
   ;; Use this to send a custom question immediately.
   (let [team-id 3
         user-id 12
-        question (str "What does being nice to people look like for you?"
-                      " (custom question from Travis)")]
+        question "What would you like to do today?"]
     (send-custom-question-now! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that
