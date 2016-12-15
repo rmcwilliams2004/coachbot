@@ -29,7 +29,15 @@
 
 (defn list-answers
   ([max-days-back]
+   (list-answers max-days-back nil))
+  ([max-days-back user-id]
    (let [ds (db/datasource)
+
+         when-clause
+         (sql/raw
+           (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+                   max-days-back))
+
          latest-answers-query
          (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d %h')")
                         :date]
@@ -48,9 +56,8 @@
                           [:custom_questions :cq]
                           [:= :cq.id :qa.cquestion_id])
              (h/where
-               (sql/raw
-                 (format "timestampdiff(DAY, qa.created_date, now()) < %d"
-                         max-days-back)))
+               (if user-id [:and when-clause [:= :scu.id user-id]]
+                           when-clause))
              (h/order-by :st.id :scu.id :qa.created_date)
              sql/format)]
 
@@ -94,11 +101,14 @@
    And DB_MAX_CONN=2
    And DB_CONN_TIMEOUT=600000"
 
+  ;; Switch to manual-coaching namespace in the REPL
+  (in-ns 'coachbot.manual-coaching)
+
   ;; Get rid of annoying logging
   (log/set-level! :warn)
 
   ;; Use this to see the last X days of answers
-  (pprint/print-table (list-answers 3))
+  (pprint/print-table (list-answers 3 12))
 
   ;; Use this to register a custom question.
   (let [team-id 1
@@ -108,8 +118,8 @@
 
   ;; Use this to send a custom question immediately.
   (let [team-id 3
-        user-id 9
-        question "What has worked well for lowering your heart beat previosly"]
+        user-id 12
+        question "What would you like to do today?"]
     (send-custom-question-now! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that
