@@ -75,12 +75,14 @@
              (@single-event events/show-question-groups-cmd)))
 
   (it "adds a group to be coached on"
-    (should= [(u1c "I'll send you questions from " groupb)]
+    (should= [(u1c "I'll send you questions from " groupb "\n\n"
+                   "You are in: " groupb)]
              (@add-group groupb))
     (should= [(u1c "Congrats. You're already a member of " groupb)]
              (@add-group groupb))
     (should= [(u1c "broke does not exist.")] (@add-group "broke"))
-    (should= [(u1c "I'll send you questions from " groupa)]
+    (should= [(u1c "I'll send you questions from " groupa "\n\n"
+                   "You are in: " groupa ", " groupb)]
              (@add-group groupa)))
 
   (it "shows me the groups I'm being coached on"
@@ -92,14 +94,19 @@
              (@single-event events/show-question-groups-cmd)))
 
   (it "removes a group to be coached on"
-    (should= [(u1c "Ok. I'll stop sending you questions from " groupa)]
+    (should= [(u1c "Ok. I'll stop sending you questions from " groupa "\n\n"
+                   "You are in: " groupb)]
              (@remove-group groupa))
     (should= [(u1c "No worries; you're not in " groupa)]
-             (@remove-group groupa)))
+             (@remove-group groupa))
+    (should= [(u1c "Ok. I'll stop sending you questions from " groupb "\n\n"
+                   "You are in: no groups. You get all the questions!")]
+             (@remove-group groupb)))
 
   (it "only sends me questions from the groups I'm being coached on"
     (should= [(u1c question3) (u1c question3) (u1c question3) (u1c question3)]
              (do
+               (@add-group groupb)
                (@clear-messages)
                (@four-questions)
                @@messages))
@@ -112,10 +119,4 @@
     (should= [(u1c question2) (u1c question3) (u1c question4) (u1c question1)]
              (do
                (doseq [g [groupa groupb groupc]] (@remove-group g))
-               (@clear-messages) (@four-questions) @@messages)))
-
-  (it "can set me back to the default (all questions)"
-    )
-
-  (it "tells me that I'm getting the default if I remove the last group"
-    ))
+               (@clear-messages) (@four-questions) @@messages))))

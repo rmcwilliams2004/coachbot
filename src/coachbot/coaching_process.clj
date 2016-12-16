@@ -143,17 +143,20 @@
        (send-question!
          (ensure-user! ds access-token team_id user-id) channel)))))
 
+(defn- question-group-display [ds user-id]
+  (let [user-groups (storage/list-groups-for-user ds user-id)]
+    (str "You are in: "
+         (if-not (seq user-groups)
+           "no groups. You get all the questions!"
+           (str/join ", " (map :group_name user-groups))))))
+
 (defn show-question-groups [team-id channel user-id _]
   (with-sending-constructs user-id team-id channel [ds send-fn _]
-    (let [groups (storage/list-question-groups ds)
-          user-groups (storage/list-groups-for-user ds user-id)]
+    (let [groups (storage/list-question-groups ds)]
       (send-fn (str
                  "The following groups are available:\n\n"
                  (str/join "\n" groups) "\n\n"
-                 "You are in: "
-                 (if-not (seq user-groups)
-                   "no groups. You get all the questions!"
-                   (str/join ", " (map :group_name user-groups))))))))
+                 (question-group-display ds user-id))))))
 
 (defn add-to-question-group! [team-id channel user-id [group]]
   (with-sending-constructs user-id team-id channel [ds send-fn access-token]
@@ -162,7 +165,8 @@
       (if (storage/is-in-question-group? ds user-id group)
         (str "Congrats. You're already a member of " group)
         (if (seq (storage/add-to-question-group! ds user-id group))
-          (str "I'll send you questions from " group)
+          (str "I'll send you questions from " group "\n\n"
+               (question-group-display ds user-id))
           (str group " does not exist."))))))
 
 (defn remove-from-question-group! [team-id channel user-id [group]]
@@ -170,7 +174,8 @@
     (send-fn
       (if (storage/is-in-question-group? ds user-id group)
         (if (seq (storage/remove-from-question-group! ds user-id group))
-          (str "Ok. I'll stop sending you questions from " group)
+          (str "Ok. I'll stop sending you questions from " group "\n\n"
+               (question-group-display ds user-id))
           (do
             (log/errorf "Failed to remove %s from %s" user-id group)
             (str "Sorry, but we had a problem removing you. We'll look "
