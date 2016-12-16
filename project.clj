@@ -39,6 +39,7 @@
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/java.jdbc "0.6.1"]
                  [org.flywaydb/flyway-core "4.0.3"]
+                 [semantic-csv "0.1.0"]
                  [slingshot "0.12.2"]]
   :ring {:handler coachbot.handler/app}
   :uberjar-name "server.jar"

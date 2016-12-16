@@ -1,5 +1,6 @@
 <document> = help | hi | tell-coach | start-coaching |
-             stop-coaching | next-question
+             stop-coaching | next-question | show-groups |
+             add-group | remove-group
 <help> = "help"
 <hi> = "hi"
 <start-coaching> = "start coaching",
@@ -7,5 +8,8 @@
 <stop-coaching> = "stop coaching"
 <next-question> = ("next question" | "another question")
 <tell-coach> = "tell coach", ws, text
+<show-groups> = "show question groups"
+<add-group> = "add to question group", ws, text
+<remove-group> = "remove from question group", ws, text
 <ws> = <#'\s+'>
 <text> = #"[^\"]*"

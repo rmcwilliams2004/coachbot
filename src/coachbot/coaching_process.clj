@@ -21,6 +21,7 @@
   (:require [clj-cron-parse.core :as cp]
             [clj-time.core :as t]
             [clj-time.format :as tf]
+            [clojure.string :as str]
             [clojurewerkz.quartzite.jobs :as qj]
             [clojurewerkz.quartzite.schedule.cron :as qc]
             [clojurewerkz.quartzite.scheduler :as qs]
@@ -33,52 +34,44 @@
             [taoensso.timbre :as log]))
 
 (defn stop-coaching! [team-id channel user-id _]
-  (let [ds (db/datasource)
-        [access-token bot-access-token]
-        (storage/get-access-tokens ds team-id)
-
-        user (slack/get-user-info access-token user-id)]
-    (storage/remove-coaching-user! ds user)
-    (slack/send-message! bot-access-token channel messages/coaching-goodbye)))
+  (let [ds (db/datasource)]
+    (storage/with-access-tokens ds team-id [access-token bot-access-token]
+      (storage/remove-coaching-user!
+        ds (slack/get-user-info access-token user-id))
+      (slack/send-message! bot-access-token channel
+                           messages/coaching-goodbye))))
 
 (defn register-custom-question! [team-id user-id question]
-  (let [ds (db/datasource)
-        [access-token _]
-        (storage/get-access-tokens ds team-id)
+  (let [ds (db/datasource)]
+    (storage/with-access-tokens ds team-id [access-token _]
+      (storage/add-custom-question!
+        ds (slack/get-user-info access-token user-id) question))))
 
-        user (slack/get-user-info access-token user-id)]
-    (storage/add-custom-question! ds user question)))
-
-(defn- with-sending-constructs [user-id team-id channel f]
-  (let [ds (db/datasource)
-
-        [_ bot-access-token]
-        (storage/get-access-tokens (db/datasource) team-id)
-
-        send-fn (partial slack/send-message! bot-access-token
-                         (or channel user-id))]
-    (f ds send-fn)))
+(defmacro with-sending-constructs [user-id team-id channel bindings & body]
+  `(let [~(first bindings) (db/datasource)]
+     (storage/with-access-tokens ~(first bindings) ~team-id
+       [~(nth bindings 2) bot-access-token#]
+       (let [~(second bindings)
+             (partial slack/send-message! bot-access-token#
+                      (or ~channel ~user-id))]
+         ~@body))))
 
 (defn send-question!
   "Sends a new question to a specific individual."
   [{:keys [id asked-qid team-id] :as user} & [channel]]
 
-  (with-sending-constructs
-    id team-id channel
-    (fn [ds send-fn]
-      (storage/next-question-for-sending! ds asked-qid user send-fn))))
+  (with-sending-constructs id team-id channel [ds send-fn _]
+    (storage/next-question-for-sending! ds asked-qid user send-fn)))
 
 (defn- send-next-or-resend-prev-question!
   ([user] (send-next-or-resend-prev-question! user nil))
   ([{:keys [id asked-qid answered-qid
             team-id]
      :as user} channel]
-   (with-sending-constructs
-     id team-id channel
-     (fn [ds send-fn]
-       (if (= asked-qid answered-qid)
-         (storage/next-question-for-sending! ds asked-qid user send-fn)
-         (storage/question-for-sending ds asked-qid user send-fn))))))
+   (with-sending-constructs id team-id channel [ds send-fn _]
+     (if (= asked-qid answered-qid)
+       (storage/next-question-for-sending! ds asked-qid user send-fn)
+       (storage/question-for-sending ds asked-qid user send-fn)))))
 
 (defn send-question-if-conditions-are-right!
   "Sends a question to a specific individual only if the conditions are
@@ -108,32 +101,31 @@
 
 (defn start-coaching!
   [team-id user-id & [coaching-time]]
-  (let [ds (db/datasource)
-
-        [access-token]
-        (storage/get-access-tokens ds team-id)
-
-        user-info (slack/get-user-info access-token user-id)]
-    (storage/add-coaching-user!
-      ds (if coaching-time
-           (assoc user-info :coaching-time coaching-time) user-info))))
+  (let [ds (db/datasource)]
+    (storage/with-access-tokens ds team-id [access-token _]
+      (storage/add-coaching-user!
+        ds (if coaching-time
+             (assoc
+               (slack/get-user-info access-token user-id)
+               :coaching-time coaching-time)
+             (slack/get-user-info access-token user-id))))))
 
 (defn submit-text! [team-id user-email text]
   ;; If there is an outstanding for the user, submit that
   ;; Otherwise store it someplace for a live person to review
   (let [ds (db/datasource)
-        [_ bot-access-token] (storage/get-access-tokens ds team-id)
-
         {:keys [id asked-qid asked-cqid]}
         (storage/get-coaching-user ds team-id user-email)]
-    (if asked-qid
-      (do
-        (storage/submit-answer! ds team-id user-email asked-qid asked-cqid text)
-        (slack/send-message! bot-access-token id messages/thanks-for-answer))
-      (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
-                 user-email text))))
+    (storage/with-access-tokens ds team-id [_ bot-access-token]
+      (if asked-qid
+        (do
+          (storage/submit-answer!
+            ds team-id user-email asked-qid asked-cqid text)
+          (slack/send-message! bot-access-token id messages/thanks-for-answer))
+        (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
+                   user-email text)))))
 
-(defn- ensure-user [ds access-token team-id user-id]
+(defn- ensure-user! [ds access-token team-id user-id]
   (let [{:keys [email] :as user} (slack/get-user-info access-token user-id)
         get-coaching-user #(storage/get-coaching-user ds team-id email)]
     (if-let [result (get-coaching-user)]
@@ -146,10 +138,44 @@
 (defn next-question!
   ([team_id channel user-id _] (next-question! team_id channel user-id))
   ([team_id channel user-id]
-   (let [ds (db/datasource)
-         [access-token _] (storage/get-access-tokens ds team_id)
-         user (ensure-user ds access-token team_id user-id)]
-     (send-question! user channel))))
+   (let [ds (db/datasource)]
+     (storage/with-access-tokens ds team_id [access-token _]
+       (send-question!
+         (ensure-user! ds access-token team_id user-id) channel)))))
+
+(defn show-question-groups [team-id channel user-id _]
+  (with-sending-constructs user-id team-id channel [ds send-fn _]
+    (let [groups (storage/list-question-groups ds)
+          user-groups (storage/list-groups-for-user ds user-id)]
+      (send-fn (str
+                 "The following groups are available:\n\n"
+                 (str/join "\n" groups) "\n\n"
+                 "You are in: "
+                 (if-not (seq user-groups)
+                   "no groups. You get all the questions!"
+                   (str/join ", " (map :group_name user-groups))))))))
+
+(defn add-to-question-group! [team-id channel user-id [group]]
+  (with-sending-constructs user-id team-id channel [ds send-fn access-token]
+    (ensure-user! ds access-token team-id user-id)
+    (send-fn
+      (if (storage/is-in-question-group? ds user-id group)
+        (str "Congrats. You're already a member of " group)
+        (if (seq (storage/add-to-question-group! ds user-id group))
+          (str "I'll send you questions from " group)
+          (str group " does not exist."))))))
+
+(defn remove-from-question-group! [team-id channel user-id [group]]
+  (with-sending-constructs user-id team-id channel [ds send-fn _]
+    (send-fn
+      (if (storage/is-in-question-group? ds user-id group)
+        (if (seq (storage/remove-from-question-group! ds user-id group))
+          (str "Ok. I'll stop sending you questions from " group)
+          (do
+            (log/errorf "Failed to remove %s from %s" user-id group)
+            (str "Sorry, but we had a problem removing you. We'll look "
+                 "into it.")))
+        (str "No worries; you're not in " group)))))
 
 (defn event-occurred! [team-id email]
   (log/debugf "Event occurred for %s/%s" team-id email))

@@ -38,3 +38,14 @@
           deleted? (.delete f)]
       (should exists?)
       (should deleted?))))
+
+#_(describe "My local mysql db"
+  ; create database coachbot default character set utf8;
+  (with-all ds (db/make-db-datasource "mysql" "jdbc:mysql://localhost/coachbot"
+                                      "root" ""))
+  (it "should load the schema"
+    (should= ["base_questions" "bq_question_groups" "custom_questions"
+              "question_answers" "question_groups" "questions_asked"
+              "schema_version" "scu_question_groups" "slack_coaching_users"
+              "slack_teams"]
+             (map :tables_in_coachbot (jdbc/query @ds ["show tables"])))))

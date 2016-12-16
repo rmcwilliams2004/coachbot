@@ -21,6 +21,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [coachbot.coaching-process :as coaching]
             [coachbot.db :as db]
+            [coachbot.event-spec-utils :refer :all]
             [coachbot.events :as events]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
@@ -42,13 +43,6 @@
 
 (def general "general")
 
-(defn handle-event
-  ([user-id channel text]
-   (events/handle-event {:token "none" :team_id team-id
-                         :event {:text text :user user-id :channel channel}}))
-  ([user-id text]
-   (handle-event user-id user-id text)))
-
 (describe "detailed event handling"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
   (before-all (storage/store-slack-auth! @ds slack-auth))
@@ -61,7 +55,7 @@
   ;; Note: the "hi" command is covered in the handler-spec
 
   (context "help"
-    (before (handle-event user1-id "help"))
+    (before (handle-event team-id user1-id "help"))
 
     (it "responds to help command properly"
       (should=
@@ -73,7 +67,16 @@
               " • start coaching at {hour}{am|pm} -- send daily motivational "
               "questions at a specific time (e.g. 'start coaching at 9am')\n"
               " • stop coaching -- stop sending questions\n"
-              " • next question -- ask a new question")] @@messages)))
+              " • next question -- ask a new question\n"
+              " • show question groups -- get a list of the question groups "
+              "available\n"
+              " • add to question group {group name} "
+              "-- send questions from the given question group instead of the "
+              "default (e.g. 'add to question group Time Management')\n"
+              " • remove from question group {group name} -- stop sending "
+              "questions from the given question group (e.g. 'remove from "
+              "question group Time Management')")]
+        @@messages)))
 
   (context "Start and stop coaching"
     (before-all (swap! @messages empty))
@@ -84,34 +87,34 @@
 
                 ;; Nobody should get any questions
                 (coaching/send-next-question-to-everyone-everywhere!)
-                (handle-event user1-id events/next-question-cmd)
-                (handle-event user2-id events/start-coaching-cmd)
+                (handle-event team-id user1-id events/next-question-cmd)
+                (handle-event team-id user2-id events/start-coaching-cmd)
                 (coaching/send-next-question-to-everyone-everywhere!)
-                (handle-event user1-id events/start-coaching-cmd)
-                (handle-event user1-id some-fun-answer)
-                (handle-event user2-id another-fun-answer)
-                (handle-event user2-id events/stop-coaching-cmd)
+                (handle-event team-id user1-id events/start-coaching-cmd)
+                (handle-event team-id user1-id some-fun-answer)
+                (handle-event team-id user2-id another-fun-answer)
+                (handle-event team-id user2-id events/stop-coaching-cmd)
                 (storage/reset-all-coaching-users! @ds)
                 (coaching/send-next-question-to-everyone-everywhere!)
 
                 ;; Don't respond to things in a channel
                 (handle-event user1-id "channel" some-confused-answer)
 
-                (handle-event user1-id some-confused-answer)
-                (handle-event user1-id events/stop-coaching-cmd)
-                (handle-event user1-id events/start-coaching-cmd)
+                (handle-event team-id user1-id some-confused-answer)
+                (handle-event team-id user1-id events/stop-coaching-cmd)
+                (handle-event team-id user1-id events/start-coaching-cmd)
                 (storage/reset-all-coaching-users! @ds)
                 (coaching/send-next-question-to-everyone-everywhere!)
 
                 ;; re-send same if not answered
                 (storage/reset-all-coaching-users! @ds)
                 (coaching/send-next-question-to-everyone-everywhere!)
-                (handle-event user1-id some-fun-answer)
-                (handle-event user1-id events/stop-coaching-cmd)
-                (handle-event user1-id events/next-question-cmd)
+                (handle-event team-id user1-id some-fun-answer)
+                (handle-event team-id user1-id events/stop-coaching-cmd)
+                (handle-event team-id user1-id events/next-question-cmd)
 
                 ;; send new one even if previous not answered
-                (handle-event user1-id events/another-question-cmd)
+                (handle-event team-id user1-id events/another-question-cmd)
                 (coaching/send-next-question-to-everyone-everywhere!))
 
     (it "starts and stops coaching for users properly"
@@ -158,7 +161,7 @@
     (it "should not ask questions"
       (should= []
                (do
-                 (handle-event user3-id "start coaching at 1 PM")
+                 (handle-event team-id user3-id "start coaching at 1 PM")
                  (coaching/send-question-if-conditions-are-right!
                    (storage/get-coaching-user @ds team-id user3-email))
                  (storage/list-questions-asked @ds team-id user3-email))))))

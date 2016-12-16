@@ -71,11 +71,11 @@
   (log/debugf "Parse Result: %s" result))
 
 (defn- hello-world [team-id channel user-id _]
-  (let [[access-token bot-access-token]
-        (storage/get-access-tokens (db/datasource) team-id)
-        {:keys [first-name name]} (slack/get-user-info access-token user-id)]
-    (slack/send-message! bot-access-token channel
-                         (str "Hello, " (or first-name name)))))
+  (storage/with-access-tokens (db/datasource) team-id
+    [access-token bot-access-token]
+    (let [{:keys [first-name name]} (slack/get-user-info access-token user-id)]
+      (slack/send-message! bot-access-token channel
+                           (str "Hello, " (or first-name name))))))
 
 (defn- help-for-event [event]
   (let [[command {:keys [help config-options]}] event
@@ -84,13 +84,11 @@
             (format " • %s%s -- %s" command option help)) config-options)))
 
 (defn- help [team-id channel _ _]
-  (let [[_ bot-access-token]
-        (storage/get-access-tokens (db/datasource) team-id)
-        body (str/join "\n" (flatten (map help-for-event @events)))]
-
+  (storage/with-access-tokens (db/datasource) team-id [_ bot-access-token]
     (slack/send-message!
       bot-access-token channel
-      (str "Here are the commands I respond to:\n" body))))
+      (str "Here are the commands I respond to:\n"
+           (str/join "\n" (flatten (map help-for-event @events)))))))
 
 (def ^:private start-time-ptn #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)")
 
@@ -108,8 +106,7 @@
 
 (defn- start-coaching! [team-id channel user-id [start-time]]
   (log/debugf "start-coaching! %s %s %s %s" team-id channel user-id start-time)
-  (let [[_ bot-access-token]
-        (storage/get-access-tokens (db/datasource) team-id)]
+  (storage/with-access-tokens (db/datasource) team-id [_ bot-access-token]
     (coaching/start-coaching! team-id user-id (translate-start-time start-time))
     (slack/send-message! bot-access-token channel
                          (format messages/coaching-hello
@@ -121,6 +118,9 @@
 (def stop-coaching-cmd "stop coaching")
 (def next-question-cmd "next question")
 (def another-question-cmd "another question")
+(def show-question-groups-cmd "show question groups")
+(def add-to-group-cmd "add to question group")
+(def remove-from-group-cmd "remove from question group")
 
 (defevent {:command hi-cmd
            :help "checks if I'm listening"} hello-world)
@@ -144,6 +144,25 @@
 (defevent {:command next-question-cmd
            :help "ask a new question"
            :aliases [another-question-cmd]} coaching/next-question!)
+
+(defevent {:command show-question-groups-cmd
+           :help "get a list of the question groups available"}
+  coaching/show-question-groups)
+
+(defevent {:command add-to-group-cmd
+           :config-options
+           {" {group name}"
+            (str "send questions from the given question group instead of "
+                 "the default "
+                 "(e.g. 'add to question group Time Management')")}}
+  coaching/add-to-question-group!)
+
+(defevent {:command remove-from-group-cmd
+           :config-options
+           {" {group name}"
+            (str "stop sending questions from the given question group "
+                 "(e.g. 'remove from question group Time Management')")}}
+  coaching/remove-from-question-group!)
 
 (defn- respond-to-event [team-id channel user-id text]
   (let [[command & args] (parser/parse-command text)

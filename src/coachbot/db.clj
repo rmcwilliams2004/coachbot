@@ -18,8 +18,8 @@
 ;
 
 (ns coachbot.db
-  (:require [clj-time.core :as t]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
+            [coachbot.coaching-data-sync :as cds]
             [coachbot.env :as env])
   (:import (com.zaxxer.hikari HikariConfig HikariDataSource)
            (java.io ByteArrayInputStream)
@@ -30,12 +30,12 @@
 (def migration-base "db/migration")
 (defn migration-of [db-type] (format "%s/%s" migration-base db-type))
 
-(defn- migrate [db-type data-source]
+(defn- migrate [{:keys [datasource] :as ds} db-type]
   (doto (Flyway.)
     (.setLocations
       (into-array String [(migration-of "common") (migration-of db-type)]))
-    (.setDataSource data-source)
-    (.migrate)) data-source)
+    (.setDataSource datasource)
+    (.migrate)))
 
 (defn make-db-datasource
   "Create a new database connection pool."
@@ -43,16 +43,18 @@
    (make-db-datasource db-type db-url db-username db-password 15000 2))
 
   ([db-type db-url db-username db-password conn-timeout max-conn]
-   {:datasource
-    (migrate db-type
-             (HikariDataSource. (doto (HikariConfig.)
-                                  (.setConnectionTimeout conn-timeout)
-                                  (.setJdbcUrl db-url)
-                                  (.setUsername db-username)
-                                  (.setPassword db-password)
-                                  (.setAutoCommit false)
-                                  (.setMaximumPoolSize max-conn)
-                                  (.setMinimumIdle (max 1 (/ max-conn 2))))))}))
+   (doto
+     {:datasource
+      (HikariDataSource. (doto (HikariConfig.)
+                           (.setConnectionTimeout conn-timeout)
+                           (.setJdbcUrl db-url)
+                           (.setUsername db-username)
+                           (.setPassword db-password)
+                           (.setAutoCommit false)
+                           (.setMaximumPoolSize max-conn)
+                           (.setMinimumIdle (max 1 (/ max-conn 2)))))}
+     (migrate db-type)
+     cds/update-categories-for-questions)))
 
 (def array-of-bytes-type (Class/forName "[B"))
 

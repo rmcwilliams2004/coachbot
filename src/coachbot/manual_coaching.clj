@@ -108,7 +108,9 @@
   (log/set-level! :warn)
 
   ;; Use this to see the last X days of answers
-  (pprint/print-table (list-answers 3 12))
+
+  ;; Add a user ID as a third paramater to limit to a specific user
+  (pprint/print-table (list-answers 3))
 
   ;; Use this to register a custom question.
   (let [team-id 1

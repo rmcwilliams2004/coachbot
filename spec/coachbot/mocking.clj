@@ -65,7 +65,7 @@
             user2-id user2
             user3-id user3})
 
-(defn uc [user-id content] (str user-id ": " content))
+(defn uc [user-id & content] (apply str (into [user-id ": "] content)))
 (def u1c (partial uc user1-id))
 (def u2c (partial uc user2-id))
 
