@@ -22,11 +22,12 @@
             [clojure.pprint :as pprint]
             [coachbot.coaching-process :as coaching]
             [coachbot.db :as db]
+            [coachbot.hsql-utils :as hu]
+            [coachbot.slack :as slack]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]
-            [taoensso.timbre :as log]
-            [coachbot.hsql-utils :as hu]))
+            [taoensso.timbre :as log]))
 
 (defn list-answers
   ([max-days-back]
@@ -92,6 +93,16 @@
     [conn (db/datasource)]
     (first (jdbc/delete! conn :custom_questions ["id = ?" question-id]))))
 
+(defn send-message-to-active-coaching-users! [message]
+  (doseq [{:keys [remote_user_id bot_access_token]}
+          (-> (h/select :scu.remote_user_id :st.bot_access_token)
+              (h/from [:slack_coaching_users :scu])
+              (h/join [:slack_teams :st]
+                      [:= :st.id :scu.team-id])
+              (h/where [:= :active true])
+              (hu/query (db/datasource)))]
+    (slack/send-message! bot_access_token remote_user_id message)))
+
 (comment
   "This is the work area for coaches, for now. You'll need the following
    env variables set for your REPL pulled from 'heroku config':
@@ -110,6 +121,11 @@
 
   ;; Add a user ID as a third paramater to limit to a specific user
   (pprint/print-table (list-answers 3))
+
+  ;; List all the teams
+  (pprint/print-table (-> (h/select :*)
+                          (h/from :slack_teams)
+                          (hu/query (db/datasource))))
 
   ;; Use this to register a custom question.
   (let [team-id 1
