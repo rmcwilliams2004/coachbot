@@ -19,9 +19,9 @@
 
 (ns coachbot.coaching-data-sync
   (:require [clojure-csv.core :as csv]
+            [coachbot.hsql-utils :as hu]
             [clojure.java.io :as io]
             [clojure.java.jdbc :as jdbc]
-            [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [semantic-csv.core :as sc]
             [taoensso.timbre :as log]))
@@ -50,25 +50,20 @@
        (map #(let [{:keys [id group_name]} %] {group_name id}))
        (apply merge)))
 
-(defn- execute-safely! [conn stmt]
-  (try (jdbc/execute! conn stmt)
-       (catch Throwable t
-         (log/errorf t "Unable to execute: %s" stmt))))
-
 (defn- update-question-categories [conn ids categories]
   (do
-    (execute-safely! conn (-> (h/delete-from :bq_question_groups)
-                              (h/where [:in :question_id ids])
-                              sql/format))
-    (execute-safely!
-      conn (-> (h/insert-into :bq_question_groups)
-               (h/columns :question_id :question_group_id)
-               (h/values (->> ids
-                              (map #(interleave (repeat (count categories) %)
-                                                categories))
-                              flatten
-                              (partition-all 2)))
-               sql/format))))
+    (-> (h/delete-from :bq_question_groups)
+        (h/where [:in :question_id ids])
+        (hu/execute-safely! conn))
+
+    (-> (h/insert-into :bq_question_groups)
+        (h/columns :question_id :question_group_id)
+        (h/values (->> ids
+                       (map #(interleave (repeat (count categories) %)
+                                         categories))
+                       flatten
+                       (partition-all 2)))
+        (hu/execute-safely! conn))))
 
 (defn update-categories-for-questions
   "Ensures that every question in the database is correctly associated with

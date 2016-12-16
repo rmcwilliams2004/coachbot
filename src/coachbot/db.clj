@@ -20,7 +20,9 @@
 (ns coachbot.db
   (:require [clojure.java.jdbc :as jdbc]
             [coachbot.coaching-data-sync :as cds]
-            [coachbot.env :as env])
+            [coachbot.env :as env]
+            [honeysql.core :as sql]
+            [taoensso.timbre :as log])
   (:import (com.zaxxer.hikari HikariConfig HikariDataSource)
            (java.io ByteArrayInputStream)
            (java.sql Timestamp)

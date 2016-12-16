@@ -26,17 +26,18 @@
             [clojure.set :as set]
             [coachbot.db :as db]
             [coachbot.env :as env]
+            [coachbot.hsql-utils :as hu]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [taoensso.timbre :as log]))
 
 (defn get-access-tokens [ds team-id]
-  (let [query (-> (h/select [:access_token "access_token"]
-                            [:bot_access_token "bot_access_token"])
-                  (h/from :slack_teams)
-                  (h/where [:= :team_id team-id])
-                  sql/format)
-        [{:keys [access_token bot_access_token]}] (jdbc/query ds query)]
+  (let [[{:keys [access_token bot_access_token]}]
+        (-> (h/select [:access_token "access_token"]
+                      [:bot_access_token "bot_access_token"])
+            (h/from :slack_teams)
+            (h/where [:= :team_id team-id])
+            (hu/query ds))]
     [access_token bot_access_token]))
 
 (defmacro with-access-tokens [ds team-id binding & body]
@@ -45,11 +46,10 @@
      ~@body))
 
 (defn get-bot-user-id [ds team-id]
-  (let [query (-> (h/select [:bot_user_id "bot_user_id"])
-                  (h/from :slack_teams)
-                  (h/where [:= :team_id team-id])
-                  sql/format)
-        [{:keys [bot_user_id]}] (jdbc/query ds query)]
+  (let [[{:keys [bot_user_id]}] (-> (h/select [:bot_user_id "bot_user_id"])
+                                    (h/from :slack_teams)
+                                    (h/where [:= :team_id team-id])
+                                    (hu/query ds))]
     (log/debugf "Bot user ID: %s" bot_user_id)
     bot_user_id))
 
@@ -67,15 +67,16 @@
         (jdbc/insert! conn :slack_teams new-record)))))
 
 (defn- get-team-id [ds team-id]
-  (let [team-id-query (-> (h/select :id)
-                          (h/from :slack_teams)
-                          (h/where [:= :team_id team-id])
-                          sql/format)
-        [{team-id :id}] (jdbc/query ds team-id-query)]
-    team-id))
+  (-> (h/select :id)
+      (h/from :slack_teams)
+      (h/where [:= :team_id team-id])
+      (hu/query ds)
+      first
+      :id))
 
-(defn- coaching-users-query [team-internal-id & [user-email]]
-  (let [where-clause [:and
+(defn- get-coaching-user-raw [ds team-id user-email]
+  (let [team-internal-id (get-team-id ds team-id)
+        where-clause [:and
                       [:= :team_id team-internal-id]]
         where-clause (if user-email
                        (conj where-clause [:= :email user-email])
@@ -83,13 +84,8 @@
     (-> (h/select :*)
         (h/from :slack_coaching_users)
         (h/where where-clause)
-        sql/format)))
-
-(defn- get-coaching-user-raw [ds team-id user-email]
-  (let [team-internal-id (get-team-id ds team-id)
-        query (coaching-users-query team-internal-id user-email)
-        [result] (jdbc/query ds query)]
-    result))
+        (hu/query ds)
+        first)))
 
 (defn- convert-user [team-id user]
   (when user
@@ -120,9 +116,8 @@
               update-stmt (-> (h/update :slack_coaching_users)
                               (h/sset fields)
                               (h/where [:and [:= :email email]
-                                        [:= :team_id team-id]])
-                              sql/format)]
-          (jdbc/execute! conn update-stmt))
+                                        [:= :team_id team-id]]))]
+          (hu/execute-safely! update-stmt conn))
         (do (jdbc/insert! conn :slack_coaching_users new-record) true)))))
 
 (defn remove-coaching-user! [ds {:keys [email team-id]}]
@@ -153,15 +148,15 @@
       (when (seq all-groups)
         (jdbc/execute! conn ["delete from question_groups"])
         (jdbc/insert-multi! ds :question_groups all-groups)
-        (let [question-groups (jdbc/query conn (-> (h/select :*)
-                                                   (h/from :question_groups)
-                                                   sql/format))
+        (let [question-groups (-> (h/select :*)
+                                  (h/from :question_groups)
+                                  (hu/query conn))
               question-groups (apply merge
                                      (map #(let [{:keys [id group_name]} %]
                                              {group_name id}) question-groups))
-              question-ids (jdbc/query conn (-> (h/select :*)
-                                                (h/from :base_questions)
-                                                sql/format))
+              question-ids (-> (h/select :*)
+                               (h/from :base_questions)
+                               (hu/query conn))
               question-ids (apply merge (map #(let [{:keys [id question]} %]
                                                 {question id}) question-ids))]
           (doseq [{:keys [question groups]} questions
@@ -181,15 +176,16 @@
     ds (map #(hash-map :question %) questions)))
 
 (defn- get-user-id [conn slack-user-id]
-  (let [user-id-query (-> (h/select :id)
-                          (h/from :slack_coaching_users)
-                          (h/where [:= :remote_user_id slack-user-id])
-                          sql/format)]
-    (-> (jdbc/query conn user-id-query) first :id)))
+  (-> (h/select :id)
+      (h/from :slack_coaching_users)
+      (h/where [:= :remote_user_id slack-user-id])
+      (hu/query conn)
+      first
+      :id))
 
 (defn- by-group-name [group] [:= :qg.group_name group])
 
-(defn- select-from-groups [select-stmt ds slack-user-id & [group]]
+(defn- select-from-groups [select-stmt slack-user-id & [group]]
   (let [limit-by-user [:= :scu.remote_user_id slack-user-id]]
     (-> select-stmt
         (h/from [:scu_question_groups :scuqg])
@@ -203,9 +199,9 @@
             limit-by-user)))))
 
 (defn list-groups-for-user [ds slack-user-id]
-  (jdbc/query ds (-> (h/select :qg.id :qg.group_name)
-                     (select-from-groups ds slack-user-id)
-                     sql/format)))
+  (-> (h/select :qg.id :qg.group_name)
+      (select-from-groups slack-user-id)
+      (hu/query ds)))
 
 (defn- base-question-query [operand qid groups]
   (let [qid-clause (when qid [operand :bq.id qid])
@@ -230,12 +226,14 @@
     [conn ds]
     (let [user-id (get-user-id conn slack-user-id)
           groups (list-groups-for-user conn slack-user-id)
-          query (-> {:union-all
-                     [(custom-question-query user-id)
-                      (base-question-query := qid (map :id groups))]}
-                    (h/limit 1)
-                    sql/format)
-          {new-qid :id :keys [question qtype]} (first (jdbc/query conn query))
+
+          [{new-qid :id :keys [question qtype]}]
+          (-> {:union-all
+               [(custom-question-query user-id)
+                (base-question-query := qid (map :id groups))]}
+              (h/limit 1)
+              (hu/query conn))
+
           custom-question? (= "custom" qtype)
           custom-cols [:cquestion_id :asked_cqid]
           base-cols [:question_id :asked_qid]
@@ -258,11 +256,10 @@
                                             :question question}))))
 
 (defn- find-next-base-question [ds qid group-ids]
-  (->> (base-question-query :> qid group-ids)
-       sql/format
-       (jdbc/query ds)
-       first
-       :id))
+  (-> (base-question-query :> qid group-ids)
+      (hu/query ds)
+      first
+      :id))
 
 (defn next-question-for-sending! [ds qid {slack-user-id :id :as user} send-fn]
   (let [user-groups (map :id (list-groups-for-user ds slack-user-id))
@@ -283,32 +280,29 @@
                       ["id = ?" id])))))
 
 (defn list-questions-asked [ds team-id user-email]
-  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)
-        query (-> (h/select :bq.question)
-                  (h/from [:questions_asked :qa])
-                  (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
-                  (h/where [:= :slack_user_id id])
-                  (h/order-by :qa.created_date)
-                  sql/format)]
-    (jdbc/query ds query)))
+  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)]
+    (-> (h/select :bq.question)
+        (h/from [:questions_asked :qa])
+        (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
+        (h/where [:= :slack_user_id id])
+        (h/order-by :qa.created_date)
+        (hu/query ds))))
 
 (defn list-answers [ds team-id user-email]
   (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)
-        query (-> (h/select :bq.question
-                            [:cq.question :cquestion]
-                            [:qa.answer :qa])
-                  (h/from [:question_answers :qa])
-                  (h/left-join [:base_questions :bq]
-                               [:= :bq.id :qa.question_id]
-                               [:custom_questions :cq]
-                               [:= :cq.id :qa.cquestion_id])
-                  (h/where [:= :qa.slack_user_id id])
-                  sql/format)]
-    (->> query
-         (jdbc/query ds)
-         (map #(let [{:keys [question cquestion qa]} %
-                     q (or question cquestion)]
-                 {:question q :answer (db/extract-character-data qa)})))))
+        answers (-> (h/select :bq.question
+                              [:cq.question :cquestion]
+                              [:qa.answer :qa])
+                    (h/from [:question_answers :qa])
+                    (h/left-join [:base_questions :bq]
+                                 [:= :bq.id :qa.question_id]
+                                 [:custom_questions :cq]
+                                 [:= :cq.id :qa.cquestion_id])
+                    (h/where [:= :qa.slack_user_id id])
+                    (hu/query ds))]
+    (map #(let [{:keys [question cquestion qa]} %
+                q (or question cquestion)]
+            {:question q :answer (db/extract-character-data qa)}) answers)))
 
 (defn reset-all-coaching-users!
   "Marks all coaching users as having last been asked a question 16 hours ago."
@@ -322,16 +316,15 @@
 
 (defn list-coaching-users-across-all-teams [ds]
   (let [users
-        (jdbc/query ds (->
-                         (h/select :st.team_id :scu.remote_user_id
-                                   :scu.asked_qid :scu.answered_qid
-                                   :scu.last_question_date :scu.created_date
-                                   :scu.coaching_time :scu.timezone)
-                         (h/from [:slack_teams :st])
-                         (h/join [:slack_coaching_users :scu]
-                                 [:= :scu.team_id :st.id])
-                         (h/where [:= :scu.active true])
-                         sql/format))]
+        (-> (h/select :st.team_id :scu.remote_user_id
+                      :scu.asked_qid :scu.answered_qid
+                      :scu.last_question_date :scu.created_date
+                      :scu.coaching_time :scu.timezone)
+            (h/from [:slack_teams :st])
+            (h/join [:slack_coaching_users :scu]
+                    [:= :scu.team_id :st.id])
+            (h/where [:= :scu.active true])
+            (hu/query ds))]
     (map #(let [{:keys [team_id] :as user} %]
             (convert-user team_id user)) users)))
 
@@ -341,24 +334,22 @@
       (h/order-by :qg.group_name)))
 
 (defn list-question-groups [ds]
-  (let [groups (jdbc/query ds (sql/format (from-question-groups)))]
+  (let [groups (hu/query (from-question-groups) ds)]
     (map :group_name groups)))
 
 (defn- from-question-groups-by-name [group]
   (h/where (from-question-groups) (by-group-name group)))
 
 (defn is-in-question-group? [ds slack-user-id group]
-  (as-> (h/select :scuqg.scu_id) x
-        (select-from-groups x ds slack-user-id group)
-        (sql/format x)
-        (jdbc/query ds x)
-        (first x)))
+  (-> (h/select :scuqg.scu_id)
+      (select-from-groups slack-user-id group)
+      (hu/query ds)
+      first))
 
 (defmacro with-question-group-context [conn slack-user-id group bindings & body]
-  `(let [{~(first bindings) :id} (as-> (from-question-groups-by-name ~group) x#
-                                       (sql/format x#)
-                                       (jdbc/query ~conn x#)
-                                       (first x#))
+  `(let [{~(first bindings) :id} (-> (from-question-groups-by-name ~group)
+                                     (hu/query ~conn)
+                                     first)
          ~(second bindings) (get-user-id ~conn ~slack-user-id)]
      (when ~(first bindings)
        (do ~@body))))
@@ -367,17 +358,17 @@
   (jdbc/with-db-transaction
     [conn ds]
     (with-question-group-context conn slack-user-id group [group-id user-id]
-      (jdbc/execute! conn (-> (h/insert-into :scu_question_groups)
-                              (h/values [{:scu_id user-id
-                                          :question_group_id group-id}])
-                              sql/format)))))
+      (-> (h/insert-into :scu_question_groups)
+          (h/values [{:scu_id user-id
+                      :question_group_id group-id}])
+          (hu/execute-safely! conn)))))
 
 (defn remove-from-question-group! [ds slack-user-id group]
   (jdbc/with-db-transaction
     [conn ds]
     (with-question-group-context conn slack-user-id group [group-id user-id]
-      (jdbc/execute! conn (-> (h/delete-from :scu_question_groups)
-                              (h/where [:and
-                                        [:= :scu_id user-id]
-                                        [:= :question_group_id group-id]])
-                              sql/format)))))
+      (-> (h/delete-from :scu_question_groups)
+          (h/where [:and
+                    [:= :scu_id user-id]
+                    [:= :question_group_id group-id]])
+          (hu/execute-safely! conn)))))

@@ -25,7 +25,8 @@
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [coachbot.hsql-utils :as hu]))
 
 (defn list-answers
   ([max-days-back]
@@ -58,15 +59,14 @@
              (h/where
                (if user-id [:and when-clause [:= :scu.id user-id]]
                            when-clause))
-             (h/order-by :st.id :scu.id :qa.created_date)
-             sql/format)]
+             (h/order-by :st.id :scu.id :qa.created_date))]
 
      (map #(let [{:keys [date team_id uid name question cquestion qa]} %
                  q (or question cquestion)
                  ty (if cquestion "c" "b")]
              (linked/map :d date :t team_id :u uid :n name :ty ty :q q
                          :a qa))
-          (jdbc/query ds latest-answers-query))))
+          (hu/query latest-answers-query ds))))
   ([] (list-answers 5)))
 
 (defn register-custom-question! [team-id user-id question]
@@ -76,10 +76,9 @@
             (h/from [:slack_coaching_users :scu])
             (h/join [:slack_teams :st]
                     [:= :scu.team_id :st.id])
-            (h/where [:and [:= :st.id team-id] [:= :scu.id user-id]])
-            sql/format)
+            (h/where [:and [:= :st.id team-id] [:= :scu.id user-id]]))
 
-        [{:keys [uid tid]}] (jdbc/query ds user-info-query)
+        [{:keys [uid tid]}] (hu/query user-info-query ds)
         [{:keys [generated_key]}]
         (coaching/register-custom-question! tid uid question)]
     {:uid uid :tid tid :question-id generated_key}))
