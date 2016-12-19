@@ -33,18 +33,18 @@
 (def question3 "third q")
 (def question4 "fourth q")
 
-(def groupb "Groupb")
-(def groupc "Groupc")
-(def groupz "Groupz")
+(def groupa "Group A")
+(def groupb "group b")
+(def groupc "group c")
 
 (describe "Question Groups"
   (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
   (before-all (storage/store-slack-auth! @ds slack-auth)
               (storage/replace-base-questions-with-groups!
                 @ds
-                [{:question question1 :groups [groupc]}
-                 {:question question2 :groups [groupz]}
-                 {:question question3 :groups [groupb groupz]}
+                [{:question question1 :groups [groupa]}
+                 {:question question2 :groups [groupc]}
+                 {:question question3 :groups [groupa groupb]}
                  {:question question4}]))
   (after-all (jdbc/execute! @ds ["drop all objects"]))
 
@@ -68,9 +68,9 @@
 
   (it "gives me a list of available groups"
     (should= [(u1c "The following groups are available:\n\n"
+                   groupa "\n"
                    groupb "\n"
-                   groupc "\n"
-                   groupz "\n\n"
+                   groupc "\n\n"
                    "You are in: no groups. You get all the questions!")]
              (@single-event events/show-question-groups-cmd)))
 
@@ -81,24 +81,24 @@
     (should= [(u1c "Congrats. You're already a member of " groupb)]
              (@add-group groupb))
     (should= [(u1c "broke does not exist.")] (@add-group "broke"))
-    (should= [(u1c "I'll send you questions from " groupz "\n\n"
-                   "You are in: " groupb ", " groupz)]
-             (@add-group groupz)))
+    (should= [(u1c "I'll send you questions from " groupa "\n\n"
+                   "You are in: " groupa ", " groupb)]
+             (@add-group groupa)))
 
   (it "shows me the groups I'm being coached on"
     (should= [(u1c "The following groups are available:\n\n"
+                   groupa "\n"
                    groupb "\n"
-                   groupc "\n"
-                   groupz "\n\n"
-                   (format "You are in: %s, %s" groupb groupz))]
+                   groupc "\n\n"
+                   (format "You are in: %s, %s" groupa groupb))]
              (@single-event events/show-question-groups-cmd)))
 
   (it "removes a group to be coached on"
-    (should= [(u1c "Ok. I'll stop sending you questions from " groupz "\n\n"
+    (should= [(u1c "Ok. I'll stop sending you questions from " groupa "\n\n"
                    "You are in: " groupb)]
-             (@remove-group groupz))
-    (should= [(u1c "No worries; you're not in " groupz)]
-             (@remove-group groupz))
+             (@remove-group groupa))
+    (should= [(u1c "No worries; you're not in " groupa)]
+             (@remove-group groupa))
     (should= [(u1c "Ok. I'll stop sending you questions from " groupb "\n\n"
                    "You are in: no groups. You get all the questions!")]
              (@remove-group groupb)))
@@ -110,13 +110,13 @@
                (@clear-messages)
                (@four-questions)
                @@messages))
-    (should= [(u1c question1) (u1c question3) (u1c question1) (u1c question3)]
+    (should= [(u1c question2) (u1c question3) (u1c question2) (u1c question3)]
              (do (@add-group groupc) (@clear-messages) (@four-questions)
                  @@messages))
     (should= [(u1c question1) (u1c question2) (u1c question3) (u1c question1)]
-             (do (@add-group groupz) (@clear-messages) (@four-questions)
+             (do (@add-group groupa) (@clear-messages) (@four-questions)
                  @@messages))
     (should= [(u1c question2) (u1c question3) (u1c question4) (u1c question1)]
              (do
-               (doseq [g [groupz groupb groupc]] (@remove-group g))
+               (doseq [g [groupa groupb groupc]] (@remove-group g))
                (@clear-messages) (@four-questions) @@messages))))
