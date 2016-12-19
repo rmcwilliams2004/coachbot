@@ -201,6 +201,7 @@
 (defn list-groups-for-user [ds slack-user-id]
   (-> (h/select :qg.id :qg.group_name)
       (select-from-groups slack-user-id)
+      (h/order-by :qg.group_name)
       (hu/query ds)))
 
 (defn- base-question-query [operand qid groups]
