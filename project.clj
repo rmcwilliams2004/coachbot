@@ -27,7 +27,7 @@
                  [com.fzakaria/slf4j-timbre "0.3.2"]
                  [com.h2database/h2 "1.4.193"]
                  [com.zaxxer/HikariCP "2.5.1"]
-                 [com.taoensso/timbre "4.7.4"]
+                 [com.taoensso/timbre "4.8.0"]
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
                  [instaparse "1.4.3"]

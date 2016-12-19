@@ -18,6 +18,7 @@ lein kibit
 check_return_code "lein kibit failed"
 
 lein bikeshed
+check_return_code "lein bikeshed failed"
 
 echo "build successful"
 exit 0

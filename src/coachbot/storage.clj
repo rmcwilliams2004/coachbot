@@ -40,8 +40,8 @@
             (hu/query ds))]
     [access_token bot_access_token]))
 
-(defmacro with-access-tokens [ds team-id binding & body]
-  `(let [[~(first binding) ~(second binding)]
+(defmacro with-access-tokens [ds team-id bindings & body]
+  `(let [[~(first bindings) ~(second bindings)]
          (get-access-tokens ~ds ~team-id)]
      ~@body))
 
