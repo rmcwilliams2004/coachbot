@@ -34,6 +34,7 @@
 (def third-question "third question")
 
 (def you-like-fun? "you like fun?")
+(def not-liked "you won't like this question")
 (def how-much? "how much?")
 
 (describe "Custom questions"
@@ -53,7 +54,9 @@
       (start-coaching! team-id user1-id)
       (send-next-question-to-everyone-everywhere!)
       (submit-text! team-id user1-email "banswer1")
+      (register-custom-question! team-id user1-id not-liked)
       (register-custom-question! team-id user1-id you-like-fun?)
+      (next-question! team-id user1-id user1-id)
       (next-question! team-id user1-id user1-id)
       (submit-text! team-id user1-email "qanswer1")
       (submit-text! team-id user1-email "qanswer2")
@@ -66,6 +69,7 @@
     (it "should ask a custom question before the next one in the rotation"
       (should= [(u1c first-question)
                 u1-thanks-for-answer
+                (u1c not-liked)
                 (u1c you-like-fun?)
                 u1-thanks-for-answer
                 u1-thanks-for-answer

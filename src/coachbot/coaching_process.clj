@@ -21,6 +21,7 @@
   (:require [clj-cron-parse.core :as cp]
             [clj-time.core :as t]
             [clj-time.format :as tf]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojurewerkz.quartzite.jobs :as qj]
             [clojurewerkz.quartzite.schedule.cron :as qc]
@@ -56,12 +57,18 @@
                       (or ~channel ~user-id))]
          ~@body))))
 
-(defn send-question!
+(defn send-new-question!
   "Sends a new question to a specific individual."
   [{:keys [id asked-qid team-id] :as user} & [channel]]
 
   (with-sending-constructs id team-id channel [ds send-fn _]
-    (storage/next-question-for-sending! ds asked-qid user send-fn)))
+    (let [{:keys [cquestion_id slack_user_id answered]}
+          (storage/get-last-question-asked ds user)]
+      (jdbc/with-db-transaction [conn ds]
+        (when (and cquestion_id (not answered))
+          (storage/update-custom-question! conn slack_user_id cquestion_id
+                                           :skipped))
+        (storage/next-question-for-sending! conn asked-qid user send-fn)))))
 
 (defn- send-next-or-resend-prev-question!
   ([user] (send-next-or-resend-prev-question! user nil))
@@ -140,7 +147,7 @@
   ([team_id channel user-id]
    (let [ds (db/datasource)]
      (storage/with-access-tokens ds team_id [access-token _]
-       (send-question!
+       (send-new-question!
          (ensure-user! ds access-token team_id user-id) channel)))))
 
 (defn- question-group-display [ds user-id]

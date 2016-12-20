@@ -175,10 +175,13 @@
   (replace-base-questions-with-groups!
     ds (map #(hash-map :question %) questions)))
 
+(defn- where-remote-user-id [stmt slack-user-id]
+  (h/where stmt [:= :scu.remote_user_id slack-user-id]))
+
 (defn- get-user-id [conn slack-user-id]
-  (-> (h/select :id)
-      (h/from :slack_coaching_users)
-      (h/where [:= :remote_user_id slack-user-id])
+  (-> (h/select :scu.id)
+      (h/from [:slack_coaching_users :scu])
+      (where-remote-user-id slack-user-id)
       (hu/query conn)
       first
       :id))
@@ -220,13 +223,31 @@
       (h/from :custom_questions)
       (h/where [:and
                 [:= :slack_user_id user-id]
-                [:= :answered 0]])))
+                [:= :answered 0]
+                [:= :skipped 0]])))
 
-(defn question-for-sending [ds qid {slack-user-id :id} send-fn]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (let [user-id (get-user-id conn slack-user-id)
-          groups (list-groups-for-user conn slack-user-id)
+(defn get-last-question-asked [conn {remote-user-id :id}]
+  (-> (h/select :qasked.slack_user_id :qasked.question_id :qasked.cquestion_id
+                :cq.answered)
+      (h/from [:slack_coaching_users :scu])
+      (where-remote-user-id remote-user-id)
+      (h/join [:questions_asked :qasked]
+              [:= :qasked.slack_user_id :scu.id])
+      (h/left-join [:custom_questions :cq]
+                   [:= :cq.id :qasked.cquestion_id])
+      (h/order-by [:qasked.id :desc])
+      (h/limit 1)
+      (hu/query conn)
+      first))
+
+(defn update-custom-question! [conn slack-user-id question-id field]
+  (jdbc/update! conn :custom_questions {field 1}
+                ["id = ? AND slack_user_id = ?" question-id slack-user-id]))
+
+(defn question-for-sending [ds qid {remote-user-id :id} send-fn]
+  (jdbc/with-db-transaction [conn ds]
+    (let [user-id (get-user-id conn remote-user-id)
+          groups (list-groups-for-user conn remote-user-id)
 
           [{new-qid :id :keys [question qtype]}]
           (-> {:union-all
@@ -249,10 +270,9 @@
         (jdbc/update! conn :slack_coaching_users
                       {:asked_cqid nil} ["id  = ?" user-id])))))
 
-(defn add-custom-question! [ds {slack-user-id :id} question]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (let [user-id (get-user-id conn slack-user-id)]
+(defn add-custom-question! [ds {remote-user-id :id} question]
+  (jdbc/with-db-transaction [conn ds]
+    (let [user-id (get-user-id conn remote-user-id)]
       (jdbc/insert! conn :custom_questions {:slack_user_id user-id
                                             :question question}))))
 
@@ -262,21 +282,20 @@
       first
       :id))
 
-(defn next-question-for-sending! [ds qid {slack-user-id :id :as user} send-fn]
-  (let [user-groups (map :id (list-groups-for-user ds slack-user-id))
+(defn next-question-for-sending! [ds qid {remote-user-id :id :as user} send-fn]
+  (let [user-groups (map :id (list-groups-for-user ds remote-user-id))
         qid (if-not qid qid (find-next-base-question ds qid user-groups))]
     (question-for-sending ds qid user send-fn)))
 
 (defn submit-answer! [ds team-id user-email qid cqid text]
-  (jdbc/with-db-transaction
-    [conn ds]
+  (jdbc/with-db-transaction [conn ds]
     (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)
           answered-col (if cqid :cquestion_id :question_id)
           which-qid (or cqid qid)]
       (jdbc/insert! conn :question_answers
                     {:slack_user_id id answered-col which-qid :answer text})
       (if cqid
-        (jdbc/update! conn :custom_questions {:answered 1} ["id = ?" cqid])
+        (update-custom-question! conn id cqid :answered)
         (jdbc/update! conn :slack_coaching_users {:answered_qid qid}
                       ["id = ?" id])))))
 
@@ -308,10 +327,8 @@
 (defn reset-all-coaching-users!
   "Marks all coaching users as having last been asked a question 16 hours ago."
   [ds]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (jdbc/execute!
-      conn
+  (jdbc/with-db-transaction [conn ds]
+    (jdbc/execute! conn
       ["update slack_coaching_users set last_question_date = ?"
        (t/minus (env/now) (t/hours 16))])))
 
@@ -341,33 +358,32 @@
 (defn- from-question-groups-by-name [group]
   (h/where (from-question-groups) (by-group-name group)))
 
-(defn is-in-question-group? [ds slack-user-id group]
+(defn is-in-question-group? [ds remote-user-id group]
   (-> (h/select :scuqg.scu_id)
-      (select-from-groups slack-user-id group)
+      (select-from-groups remote-user-id group)
       (hu/query ds)
       first))
 
-(defmacro with-question-group-context [conn slack-user-id group bindings & body]
+(defmacro with-question-group-context
+  [conn remote-user-id group bindings & body]
   `(let [{~(first bindings) :id} (-> (from-question-groups-by-name ~group)
                                      (hu/query ~conn)
                                      first)
-         ~(second bindings) (get-user-id ~conn ~slack-user-id)]
+         ~(second bindings) (get-user-id ~conn ~remote-user-id)]
      (when ~(first bindings)
        (do ~@body))))
 
-(defn add-to-question-group! [ds slack-user-id group]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (with-question-group-context conn slack-user-id group [group-id user-id]
+(defn add-to-question-group! [ds remote-user-id group]
+  (jdbc/with-db-transaction [conn ds]
+    (with-question-group-context conn remote-user-id group [group-id user-id]
       (-> (h/insert-into :scu_question_groups)
           (h/values [{:scu_id user-id
                       :question_group_id group-id}])
           (hu/execute-safely! conn)))))
 
-(defn remove-from-question-group! [ds slack-user-id group]
-  (jdbc/with-db-transaction
-    [conn ds]
-    (with-question-group-context conn slack-user-id group [group-id user-id]
+(defn remove-from-question-group! [ds remote-user-id group]
+  (jdbc/with-db-transaction [conn ds]
+    (with-question-group-context conn remote-user-id group [group-id user-id]
       (-> (h/delete-from :scu_question_groups)
           (h/where [:and
                     [:= :scu_id user-id]
