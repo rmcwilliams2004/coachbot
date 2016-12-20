@@ -203,9 +203,10 @@
       (.submit e (cast Callable
                        #(while true
                           (try
-                            (let [evt (.take q)]
-                              (log/debugf "Received event: %s" evt)
-                              (process-event evt))
+                            (let [{:keys [thread-id evt]} (.take q)]
+                              (env/with-thread-id thread-id
+                                (log/debugf "Received event: %s" evt)
+                                (process-event evt)))
                             (catch Throwable t
                               (log/error t "Unable to process event"))))))
       q)))
@@ -216,13 +217,17 @@
   (when-not (= token @env/slack-verification-token)
     (ss/throw+ {:type ::access-denied}))
 
-  (if (env/event-queue-enabled?)
-    (if (.offer @event-queue event)
-      (do
-        (log/debugf "Queue depth %d" (.size @event-queue))
-        "submitted")
-      (ss/throw+ {:type ::queue-full}))
-    (process-event event)))
+  (env/with-new-thread-id [thread-id]
+    (let [result
+          (if (env/event-queue-enabled?)
+            (if (.offer @event-queue {:thread-id thread-id :evt event})
+              (do
+                (log/debugf "Queue depth %d" (.size @event-queue))
+                "submitted")
+              (ss/throw+ {:type ::queue-full}))
+            (process-event event))]
+      (log/debugf "event result: %s" result)
+      result)))
 
 (defroutes event-routes
   (GET "/oauth" []
@@ -236,13 +241,11 @@
     :body [message EventMessage]
     :summary "Receive an event from Slack"
     (log/infof "Message received: %s" message)
-    (ss/try+ (let [result
-                   (ok (if-let [challenge-response
-                                (slack/challenge-response message)]
+    (ss/try+
+      (ok (if-let [challenge-response
+                   (slack/challenge-response message)]
 
-                         challenge-response
-                         {:result (handle-event message)}))]
-               (log/debugf "event result: %s" result)
-               result)
-             (catch [:type ::access-denied] _ (unauthorized))
+            challenge-response
+            {:result (handle-event message)}))
+      (catch [:type ::access-denied] _ (unauthorized))
              (catch [:type ::queue-full] _ (service-unavailable)))))

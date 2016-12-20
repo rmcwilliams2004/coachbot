@@ -18,7 +18,10 @@
 ;
 
 (ns coachbot.env
-  (:require [clj-time.local :as tl]))
+  (:require [clj-time.local :as tl]
+            [coachbot.slugid :as slug]
+            [taoensso.timbre :as log]
+            [clojure.pprint :as pprint]))
 
 (defn- env-or [env-key f]
   (let [val (System/getenv env-key)]
@@ -58,3 +61,19 @@
   @event-queue-size)
 
 (defn now [] (tl/local-now))
+
+(defn add-thread-id [thread-id {:keys [?msg-fmt]
+                                [first-varg] :vargs
+                                :as data}]
+  (let [add-thread-id (partial str "[tid=" thread-id "] ")]
+    (if ?msg-fmt
+      (assoc data :?msg-fmt (add-thread-id ?msg-fmt))
+      (assoc data :vargs [(add-thread-id first-varg)]))))
+
+(defmacro with-thread-id [thread-id & body]
+  `(log/with-merged-config {:middleware [(partial add-thread-id ~thread-id)]}
+     ~@body))
+
+(defmacro with-new-thread-id [bindings & body]
+  `(let [~(first bindings) (slug/random-slug)]
+     (with-thread-id ~(first bindings) ~@body)))
