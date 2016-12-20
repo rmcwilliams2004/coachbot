@@ -77,10 +77,8 @@
 (defn- get-coaching-user-raw [ds team-id user-email]
   (let [team-internal-id (get-team-id ds team-id)
         where-clause [:and
-                      [:= :team_id team-internal-id]]
-        where-clause (if user-email
-                       (conj where-clause [:= :email user-email])
-                       (conj where-clause [:= :active 1]))]
+                      [:= :team_id team-internal-id]
+                      [:= :email user-email]]]
     (-> (h/select :*)
         (h/from :slack_coaching_users)
         (h/where where-clause)

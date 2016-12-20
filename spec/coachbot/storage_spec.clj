@@ -124,4 +124,7 @@
       (should= (-> user1 extra-fields (assoc :coaching-time "0 0 10 * * *"))
                (get-coaching-user @ds team-id user1-email))
       (should= (extra-fields user2)
-               (get-coaching-user @ds team-id user2-email)))))
+               (get-coaching-user @ds team-id user2-email)))
+
+    (it "should come back with no users if nil email sent"
+      (should-not (get-coaching-user @ds team-id nil)))))
