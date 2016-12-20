@@ -147,7 +147,7 @@
 
 (defevent {:command show-question-groups-cmd
            :help "get a list of the question groups available"}
-  coaching/show-question-groups)
+          coaching/show-question-groups)
 
 (defevent {:command add-to-group-cmd
            :config-options
@@ -155,14 +155,14 @@
             (str "send questions from the given question group instead of "
                  "the default "
                  "(e.g. 'add to question group Time Management')")}}
-  coaching/add-to-question-group!)
+          coaching/add-to-question-group!)
 
 (defevent {:command remove-from-group-cmd
            :config-options
            {" {group name}"
             (str "stop sending questions from the given question group "
                  "(e.g. 'remove from question group Time Management')")}}
-  coaching/remove-from-question-group!)
+          coaching/remove-from-question-group!)
 
 (defn- respond-to-event [team-id channel user-id text]
   (let [[command & args] (parser/parse-command text)
@@ -177,7 +177,8 @@
                               type authed_users]
                        {user-id :user
                         :keys [text ts channel event_ts]
-                        event_type :type} :event
+                        event_type :type
+                        event_subtype :subtype} :event
                        :as event}]
   (let [[access-token bot-access-token]
         (storage/get-access-tokens (db/datasource) team_id)
