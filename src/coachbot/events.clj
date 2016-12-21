@@ -249,7 +249,7 @@
              (catch [:type ::queue-full] _ (service-unavailable))))
 
   (POST "/message" []
-    :body [message EventMessage]
+    :body [message s/Any]
     :summary "Receive a message from a button from Slack"
     (log/infof "Message received: %s" message)
     (ok)))
