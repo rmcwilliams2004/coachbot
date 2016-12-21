@@ -176,28 +176,63 @@
       (do (log/errorf "Unexpected command: %s" command)
           "Unhandled command"))))
 
-(defn- process-event [{:keys [team_id api_app_id
-                              type authed_users]
-                       {user-id :user
-                        :keys [text ts channel event_ts]
-                        event_type :type
-                        event_subtype :subtype} :event
-                       :as event}]
-  (let [[access-token bot-access-token]
-        (storage/get-access-tokens (db/datasource) team_id)
+(defn- reshape-event [{:keys [event callback_id] :as e}]
+  (cond
+    event
+    (let [{:keys [team_id api_app_id type authed_users]
+           {:keys [text ts channel event_ts]
+            user-id :user
+            event_type :type
+            event_subtype :subtype} :event} e]
+      {:type :event :team-id team_id :channel channel :user-id user-id
+       :text text :event-type event_type :event-subtype event_subtype})
+
+    callback_id
+    (let [{:keys [response_url]
+           {team-id :id} :team
+           {channel :id} :channel
+           {user-id :id} :user
+           [{action-name :name action-value :value}] :actions} e]
+      {:type :button :team-id team-id :channel channel :user-id user-id
+       :callback-id callback_id
+       :action-name action-name :action-value action-value
+       :response-url response_url})
+
+    :else (ss/throw+ {:type ::unhandled-event-shape :event e})))
+
+(defn- process-callback [email bot-access-token
+                         {:keys [team-id channel user-id
+                                 callback-id action-name action-value
+                                 response-url] :as callback}]
+  (log/infof "Don't know how to handle callbacks yet: %s" callback))
+
+(defn- process-event [email bot-access-token
+                      {:keys [team-id channel user-id text] :as event}]
+  (ss/try+
+    (if-not (storage/is-bot-user? (db/datasource) team-id user-id)
+      (try
+        (when (slack/is-im-to-me? bot-access-token channel)
+          (respond-to-event team-id channel user-id text))
+        (finally (coaching/event-occurred! team-id email)))
+      "Ignoring message from myself.")
+    (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
+      (handle-parse-failure text result)
+      (coaching/submit-text! team-id email text))
+    (catch Exception t (handle-unknown-failure t event))))
+
+(defn- process [event]
+  (let [{:keys [team-id user-id type] :as final-event}
+        (reshape-event event)
+
+        [access-token bot-access-token]
+        (storage/get-access-tokens (db/datasource) team-id)
 
         {:keys [email]} (slack/get-user-info access-token user-id)]
-    (ss/try+
-      (if-not (storage/is-bot-user? (db/datasource) team_id user-id)
-        (try
-          (when (slack/is-im-to-me? bot-access-token channel)
-            (respond-to-event team_id channel user-id text))
-          (finally (coaching/event-occurred! team_id email)))
-        "Ignoring message from myself.")
-      (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
-        (handle-parse-failure text result)
-        (coaching/submit-text! team_id email text))
-      (catch Exception t (handle-unknown-failure t event)))))
+    (case type
+      :event (process-event email bot-access-token final-event)
+      :callback (process-callback email bot-access-token final-event)
+      (ss/throw+ {:type ::unhandled-event-type :event-type type
+                  :event event}))))
 
 (defn make-queue-if-configured []
   (when (env/event-queue-enabled?)
@@ -209,7 +244,7 @@
                           (try
                             (let [evt (.take q)]
                               (log/debugf "Received event: %s" evt)
-                              (process-event evt))
+                              (process evt))
                             (catch Throwable t
                               (log/error t "Unable to process event"))))))
       q)))
@@ -226,7 +261,29 @@
         (log/debugf "Queue depth %d" (.size @event-queue))
         "submitted")
       (ss/throw+ {:type ::queue-full}))
-    (process-event event)))
+    (process event)))
+
+(defn- log-message [message]
+  (log/infof "Message received: %n%s" (with-out-str (pprint/pprint message))))
+
+(defn handle-raw-event [message]
+  (log-message message)
+  (ss/try+ (let [result
+                 (ok (if-let [challenge-response
+                              (slack/challenge-response message)]
+
+                       challenge-response
+                       {:result (handle-event message)}))]
+             (log/debugf "event result: %s" result)
+             result)
+           (catch [:type ::access-denied] _ (unauthorized))
+           (catch [:type ::queue-full] _ (service-unavailable))
+           (catch [:type ::unhandled-event-shape] {:keys [event]}
+             (log/errorf "Unhandled event shape: %s" event)
+             (not-implemented))
+           (catch [:type ::unhandled-event-type] {:keys [event-type event]}
+             (log/errorf "Unhandled event type: %s/%s" event-type event)
+             (not-implemented))))
 
 (defroutes event-routes
   (GET "/oauth" []
@@ -239,21 +296,9 @@
   (POST "/event" []
     :body [message EventMessage]
     :summary "Receive an event from Slack"
-    (log/infof "Message received: %s" message)
-    (ss/try+ (let [result
-                   (ok (if-let [challenge-response
-                                (slack/challenge-response message)]
-
-                         challenge-response
-                         {:result (handle-event message)}))]
-               (log/debugf "event result: %s" result)
-               result)
-             (catch [:type ::access-denied] _ (unauthorized))
-             (catch [:type ::queue-full] _ (service-unavailable))))
+    (handle-raw-event message))
 
   (POST "/message" []
     :form-params [payload :- s/Any]
     :summary "Receive a message from a button from Slack"
-    (let [message (-> payload json/parse-string walk/keywordize-keys)]
-      (log/infof "Message received: %s" (with-out-str (pprint/pprint message))))
-    (ok)))
+    (handle-raw-event (-> payload json/parse-string walk/keywordize-keys))))

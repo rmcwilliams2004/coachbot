@@ -22,7 +22,8 @@
 
 (defn handle-event
   ([team-id user-id channel text]
-   (events/handle-event {:token "none" :team_id team-id
-                         :event {:text text :user user-id :channel channel}}))
+   (events/handle-raw-event {:token "none" :team_id team-id
+                             :event {:text text :user user-id
+                                     :channel channel}}))
   ([team-id user-id text]
    (handle-event team-id user-id user-id text)))
