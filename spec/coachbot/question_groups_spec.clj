@@ -63,8 +63,7 @@
   (with-all four-questions
     #(dotimes [_ 4] (handle-event team-id user1-id events/next-question-cmd)))
 
-  (around-all [it]
-              (log/with-level :info (mock-event-boundary @messages @ds it)))
+  (around-all [it] (mock-event-boundary @messages @ds it))
 
   (it "gives me a list of available groups"
     (should= [(u1c "The following groups are available:\n\n"
