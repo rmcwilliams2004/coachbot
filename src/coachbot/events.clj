@@ -245,4 +245,10 @@
                (log/debugf "event result: %s" result)
                result)
              (catch [:type ::access-denied] _ (unauthorized))
-             (catch [:type ::queue-full] _ (service-unavailable)))))
+             (catch [:type ::queue-full] _ (service-unavailable))))
+
+  (POST "/message" []
+    :body [message EventMessage]
+    :summary "Receive a message from a button from Slack"
+    (log/infof "Message received: %s" message)
+    (ok)))
