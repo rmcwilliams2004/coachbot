@@ -249,7 +249,7 @@
              (catch [:type ::queue-full] _ (service-unavailable))))
 
   (POST "/message" {:keys [params]}
-    :body [message s/Any]
+    :form-params [payload :- EventMessage]
     :summary "Receive a message from a button from Slack"
-    (log/infof "Message received: body=%s params=%s" message params)
+    (log/infof "Message received: payload=%s params=%s" payload params)
     (ok)))
