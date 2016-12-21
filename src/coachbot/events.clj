@@ -273,9 +273,8 @@
                               (slack/challenge-response message)]
 
                        challenge-response
-                       {:result (handle-event message)}))]
-             (log/debugf "event result: %s" result)
-             result)
+                       (do (handle-event message) nil)))]
+             (log/debugf "event result: %s" result) result)
            (catch [:type ::access-denied] _ (unauthorized))
            (catch [:type ::queue-full] _ (service-unavailable))
            (catch [:type ::unhandled-event-shape] {:keys [event]}
