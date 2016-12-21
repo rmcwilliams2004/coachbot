@@ -32,7 +32,8 @@
             [schema.core :as s]
             [slingshot.slingshot :as ss]
             [taoensso.timbre :as log]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [clojure.walk :as walk])
   (:import (java.util.concurrent LinkedBlockingQueue Executors)))
 
 (s/defschema EventMessage
@@ -254,6 +255,8 @@
     :form-params [payload :- s/Any]
     :summary "Receive a message from a button from Slack"
     (log/infof "Message received: payload=%n%s" payload)
-    (let [message (json/parse-string payload)]
+    (let [message (-> payload
+                      json/parse-string
+                      walk/keywordize-keys)]
       (log/infof "Parsed: %s" (with-out-str (pprint/pprint message))))
     (ok)))
