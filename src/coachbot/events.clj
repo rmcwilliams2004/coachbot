@@ -230,7 +230,7 @@
         {:keys [email]} (slack/get-user-info access-token user-id)]
     (case type
       :event (process-event email bot-access-token final-event)
-      :callback (process-callback email bot-access-token final-event)
+      :button (process-callback email bot-access-token final-event)
       (ss/throw+ {:type ::unhandled-event-type :event-type type
                   :event event}))))
 
