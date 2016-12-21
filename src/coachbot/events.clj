@@ -248,8 +248,8 @@
              (catch [:type ::access-denied] _ (unauthorized))
              (catch [:type ::queue-full] _ (service-unavailable))))
 
-  (POST "/message" []
+  (POST "/message" {:keys [params]}
     :body [message s/Any]
     :summary "Receive a message from a button from Slack"
-    (log/infof "Message received: %s" message)
+    (log/infof "Message received: body=%s params=%s" message params)
     (ok)))
