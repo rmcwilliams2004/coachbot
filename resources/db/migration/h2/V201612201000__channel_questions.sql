@@ -28,7 +28,7 @@ CREATE TABLE channel_questions_asked (
   PRIMARY KEY (id)
 );
 
-CREATE TABLE channel_questions_answered (
+CREATE TABLE channel_question_answers (
   id           MEDIUMINT NOT NULL         AUTO_INCREMENT,
   scu_id       MEDIUMINT NOT NULL,
   qa_id        MEDIUMINT NOT NULL,
