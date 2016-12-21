@@ -254,9 +254,6 @@
   (POST "/message" []
     :form-params [payload :- s/Any]
     :summary "Receive a message from a button from Slack"
-    (log/infof "Message received: payload=%n%s" payload)
-    (let [message (-> payload
-                      json/parse-string
-                      walk/keywordize-keys)]
-      (log/infof "Parsed: %s" (with-out-str (pprint/pprint message))))
+    (let [message (-> payload json/parse-string walk/keywordize-keys)]
+      (log/infof "Message received: %s" (with-out-str (pprint/pprint message))))
     (ok)))
