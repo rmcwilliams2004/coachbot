@@ -36,7 +36,10 @@
   (client/get url {:query-params (params param-map)}))
 
 (defn- post-url [url & {:as param-map}]
-  (client/post url {:form-params (params param-map)}))
+  (let [param-map (-> param-map
+                      params
+                      (update-in [:attachments] cheshire/generate-string))]
+    (client/post url {:form-params param-map})))
 
 (defn- parse-body [result]
   (-> result
@@ -79,16 +82,30 @@
       (transform-user-info user)
       (log/errorf "Unable to get user info: %s" body))))
 
+(defn buttons-to-attachment [callback-id buttons]
+  (when buttons {:text "Please choose an option"
+                 :callback_id callback-id
+                 :actions (map #(let [{:keys [name value]} %]
+                                  {:name name
+                                   :text value
+                                   :type "button"
+                                   :value value}) buttons)}))
+
 (defn send-message!
   "Send a message to a channel."
-  [access-token channel message]
-  (log/infof "Sending '%s' to '%s'" message channel)
-  (let [result (post-url "https://slack.com/api/chat.postMessage"
-                         :token access-token
-                         :channel channel
-                         :text message
-                         :as_user true)]
-    (log/debugf "Result of message dispatch: %s" result)))
+  ([access-token channel message callback-id buttons]
+   (log/infof "Sending '%s' to '%s'" message channel)
+   (let [result (post-url "https://slack.com/api/chat.postMessage"
+                          :token access-token
+                          :channel channel
+                          :text message
+                          :attachments
+                          [(buttons-to-attachment callback-id buttons)]
+
+                          :as_user true)]
+     (log/debugf "Result of message dispatch: %s" result)))
+  ([access-token channel message]
+   (send-message! access-token channel message nil nil)))
 
 (defn get-slack-auth [code]
   (let [auth-result
