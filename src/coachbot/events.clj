@@ -18,8 +18,10 @@
 ;
 
 (ns coachbot.events
-  (:require [clojure.pprint :as pprint]
+  (:require [cheshire.core :as json]
+            [clojure.pprint :as pprint]
             [clojure.string :as str]
+            [clojure.walk :as walk]
             [coachbot.coaching-process :as coaching]
             [coachbot.command-parser :as parser]
             [coachbot.db :as db]
@@ -31,9 +33,7 @@
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [slingshot.slingshot :as ss]
-            [taoensso.timbre :as log]
-            [cheshire.core :as json]
-            [clojure.walk :as walk])
+            [taoensso.timbre :as log])
   (:import (java.util.concurrent LinkedBlockingQueue Executors)))
 
 (s/defschema EventMessage
