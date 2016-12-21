@@ -18,19 +18,20 @@
 ;
 
 (ns coachbot.events
-  (:require [clojure.string :as str]
+  (:require [clojure.pprint :as pprint]
+            [clojure.string :as str]
             [coachbot.coaching-process :as coaching]
             [coachbot.command-parser :as parser]
             [coachbot.db :as db]
             [coachbot.env :as env]
+            [coachbot.messages :as messages]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
             [compojure.api.sweet :refer :all]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [slingshot.slingshot :as ss]
-            [taoensso.timbre :as log]
-            [coachbot.messages :as messages])
+            [taoensso.timbre :as log])
   (:import (java.util.concurrent LinkedBlockingQueue Executors)))
 
 (s/defschema EventMessage
@@ -248,8 +249,9 @@
              (catch [:type ::access-denied] _ (unauthorized))
              (catch [:type ::queue-full] _ (service-unavailable))))
 
-  (POST "/message" {:keys [params]}
+  (POST "/message" []
     :form-params [payload :- s/Any]
     :summary "Receive a message from a button from Slack"
-    (log/infof "Message received: payload=%s params=%s" payload params)
+    (log/infof "Message received: payload=%n%s" (with-out-str
+                                                  (pprint/pprint payload)))
     (ok)))
