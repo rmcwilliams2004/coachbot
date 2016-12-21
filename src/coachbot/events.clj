@@ -31,7 +31,8 @@
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [slingshot.slingshot :as ss]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [cheshire.core :as json])
   (:import (java.util.concurrent LinkedBlockingQueue Executors)))
 
 (s/defschema EventMessage
@@ -252,6 +253,7 @@
   (POST "/message" []
     :form-params [payload :- s/Any]
     :summary "Receive a message from a button from Slack"
-    (log/infof "Message received: payload=%n%s" (with-out-str
-                                                  (pprint/pprint payload)))
+    (log/infof "Message received: payload=%n%s" payload)
+    (let [message (json/parse-string payload)]
+      (log/infof "Parsed: %s" (with-out-str (pprint/pprint message))))
     (ok)))
