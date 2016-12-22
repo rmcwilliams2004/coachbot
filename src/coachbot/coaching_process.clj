@@ -104,7 +104,10 @@
       (tf/unparse formatter now) should-send-question?)
 
     (when should-send-question?
-      (send-next-or-resend-prev-question! user channel))))
+      (send-next-or-resend-prev-question! user channel)
+
+      ; don't overrun the slack servers
+      (Thread/sleep 500))))
 
 (defn start-coaching!
   [team-id user-id & [coaching-time]]
