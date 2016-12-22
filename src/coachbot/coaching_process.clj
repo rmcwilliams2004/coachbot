@@ -199,7 +199,10 @@
     (doall (map send-question-if-conditions-are-right! users))))
 
 (qj/defjob DailyCoachingJob [ctx]
-  (send-next-question-to-everyone-everywhere!))
+  (try
+    (send-next-question-to-everyone-everywhere!)
+    (catch Throwable t
+      (log/errorf t "Unable to send next question to everyone everywhere"))))
 
 (defn schedule-individual-coaching! [scheduler]
   (let [job (qj/build
