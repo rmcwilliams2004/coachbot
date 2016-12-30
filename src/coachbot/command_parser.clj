@@ -24,7 +24,7 @@
   (:use [slingshot.slingshot :only [throw+ try+]]))
 
 (def ^:private parse-using-ebnf
-  (insta/parser (io/resource "commands.ebnf") :string-ci true))
+  (insta/parser (.toString (io/resource "commands.ebnf")) :string-ci true))
 
 (defn parse-command [command]
   (let [result (parse-using-ebnf (str/trim command))]
