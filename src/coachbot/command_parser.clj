@@ -23,11 +23,11 @@
             [clojure.string :as str])
   (:use [slingshot.slingshot :only [throw+ try+]]))
 
-(def ^:private parse-governance
+(def ^:private parse-using-ebnf
   (insta/parser (io/resource "commands.ebnf") :string-ci true))
 
 (defn parse-command [command]
-  (let [result (parse-governance (str/trim command))]
+  (let [result (parse-using-ebnf (str/trim command))]
     (if (insta/failure? result)
       (throw+ {:type ::parse-failure :result (pr-str result)})
       result)))
