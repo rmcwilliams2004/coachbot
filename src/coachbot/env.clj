@@ -48,18 +48,14 @@
 (defenv db-max-conn "DB_MAX_CONN" :tfn Integer/parseInt :default "10")
 
 (defenv slack-client-id "SLACK_CLIENT_ID" :default nil)
-
 (defenv slack-client-secret "SLACK_CLIENT_SECRET" :default nil)
-
 (defenv slack-verification-token "SLACK_VERIFICATION_TOKEN" :default "none")
 
 (defenv port "PORT" :tfn Integer/parseInt :default "3000")
 
 (defenv log-level "LOG_LEVEL" :tfn keyword :default "info")
-
 (defenv log-other-libs "LOG_OTHER_LIBS" :tfn Boolean/parseBoolean
         :default "false")
-
 
 (defenv event-queue-size "EVENT_QUEUE_SIZE" :tfn nilsafe-parse-int
         :default nil)
