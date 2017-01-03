@@ -33,7 +33,14 @@
 
 (defn nilsafe-parse-int [str] (when str (Integer/parseInt str)))
 
-(defmacro defenv [binding key & {:keys [default tfn] :as params}]
+(defmacro defenv
+  "Define a binding to an environment variable. Creates a delayed object
+   that, when dereferenced, will load an environment variable of the given
+   key. If ':default {value}' shows up in the params, will send back the
+   given value if the variable isn't defined. If ':tfn {function}' shows up
+   in the params, runs the given function against the result of the environment
+   variable load, which is by default a string."
+  [binding key & {:keys [default tfn] :as params}]
   (let [has-param? (partial contains? params)
         tfn (if (has-param? :tfn) tfn 'identity)
         env-args [key]
