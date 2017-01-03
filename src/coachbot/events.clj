@@ -228,7 +228,7 @@
                   :event event}))))
 
 (defn make-queue-if-configured []
-  (when (env/event-queue-enabled?)
+  (when @env/event-queue-enabled?
     (log/infof "Event queue size: %d" @env/event-queue-size)
     (let [q (LinkedBlockingQueue. (int @env/event-queue-size))
           e (Executors/newFixedThreadPool 1)]
@@ -248,7 +248,7 @@
   (when-not (= token @env/slack-verification-token)
     (ss/throw+ {:type ::access-denied}))
 
-  (if (env/event-queue-enabled?)
+  (if env/event-queue-enabled?
     (if (.offer @event-queue event)
       (do
         (log/debugf "Queue depth %d" (.size @event-queue))

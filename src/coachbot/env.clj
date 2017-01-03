@@ -66,9 +66,9 @@
 
 (defenv event-queue-size "EVENT_QUEUE_SIZE" :tfn nilsafe-parse-int
         :default nil)
+(def event-queue-enabled? (delay @event-queue-size))
 
 (defenv letsencrypt-challenge "LETSENCRYPT_CHALLENGE")
 (defenv letsencrypt-challenge-response "LETSENCRYPT_CHALLENGE_RESPONSE")
 
-(defn event-queue-enabled? [] @event-queue-size)
 (defn now [] (tl/local-now))
