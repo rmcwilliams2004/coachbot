@@ -30,7 +30,7 @@
                  [com.taoensso/timbre "4.8.0"]
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
-                 [instaparse "1.4.4"]
+                 [instaparse "1.4.5"]
                  [metosin/compojure-api "1.1.9"]
                  [mysql/mysql-connector-java "6.0.5"]
                  [org.clojars.scstarkey/honeysql "0.8.2"]

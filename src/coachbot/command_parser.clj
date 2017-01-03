@@ -19,8 +19,8 @@
 
 (ns coachbot.command-parser
   (:require [clojure.java.io :as io]
-            [instaparse.core :as insta]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [instaparse.core :as insta])
   (:use [slingshot.slingshot :only [throw+ try+]]))
 
 (def ^:private parse-using-ebnf
@@ -30,4 +30,4 @@
   (let [result (parse-using-ebnf (str/trim command))]
     (if (insta/failure? result)
       (throw+ {:type ::parse-failure :result (pr-str result)})
-      result)))
+      (first result))))

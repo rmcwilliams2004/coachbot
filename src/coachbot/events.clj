@@ -41,15 +41,10 @@
 
 (def ^:private events (atom {}))
 
-(def ^:private event-aliases (atom {}))
-
-(defn defevent [{:keys [command help aliases config-options]} ef]
+(defn defevent [{:keys [command command-text help config-options]} ef]
   (swap! events assoc command
-         {:help help :config-options config-options :ef ef})
-
-  (let [aliases (or aliases [])]
-    (doseq [alias (conj aliases command)]
-      (swap! event-aliases assoc alias command))))
+         {:help help :command-text command-text :config-options config-options
+          :ef ef}))
 
 (defn- auth-success [& {:keys [access-token bot-access-token] :as auth-data}]
   (storage/store-slack-auth! (db/datasource) auth-data)
@@ -81,10 +76,10 @@
                            (str "Hello, " (or first-name name))))))
 
 (defn- help-for-event [event]
-  (let [[command {:keys [help config-options]}] event
+  (let [[_ {:keys [command-text help config-options]}] event
         config-options (or config-options {"" help})]
     (map #(let [[option help] %]
-            (format " • %s%s -- %s" command option help)) config-options)))
+            (format " • %s%s -- %s" command-text option help)) config-options)))
 
 (defn- help [team-id channel _ _]
   (storage/with-access-tokens (db/datasource) team-id [_ bot-access-token]
@@ -125,13 +120,13 @@
 (def add-to-group-cmd "add to question group")
 (def remove-from-group-cmd "remove from question group")
 
-(defevent {:command hi-cmd
+(defevent {:command :hi :command-text hi-cmd
            :help "checks if I'm listening"} hello-world)
 
-(defevent {:command help-cmd
+(defevent {:command :help :command-text help-cmd
            :help "display this help message"} help)
 
-(defevent {:command start-coaching-cmd
+(defevent {:command :start-coaching :command-text start-coaching-cmd
            :config-options
            {""
             (str "send daily motivational questions at 10am every day in your "
@@ -141,18 +136,17 @@
             (str "send daily motivational questions at a specific time "
                  "(e.g. 'start coaching at 9am')")}} start-coaching!)
 
-(defevent {:command stop-coaching-cmd
+(defevent {:command :stop-coaching :command-text stop-coaching-cmd
            :help "stop sending questions"} coaching/stop-coaching!)
 
-(defevent {:command next-question-cmd
-           :help "ask a new question"
-           :aliases [another-question-cmd]} coaching/next-question!)
+(defevent {:command :next-question :command-text next-question-cmd
+           :help "ask a new question"} coaching/next-question!)
 
-(defevent {:command show-question-groups-cmd
+(defevent {:command :show-groups :command-text show-question-groups-cmd
            :help "get a list of the question groups available"}
           coaching/show-question-groups)
 
-(defevent {:command add-to-group-cmd
+(defevent {:command :add-group :command-text add-to-group-cmd
            :config-options
            {" {group name}"
             (str "send questions from the given question group instead of "
@@ -160,7 +154,7 @@
                  "(e.g. 'add to question group Time Management')")}}
           coaching/add-to-question-group!)
 
-(defevent {:command remove-from-group-cmd
+(defevent {:command :remove-group :command-text remove-from-group-cmd
            :config-options
            {" {group name}"
             (str "stop sending questions from the given question group "
@@ -169,12 +163,11 @@
 
 (defn- respond-to-event [team-id channel user-id text]
   (let [[command & args] (parser/parse-command text)
-        {:keys [ef]} (@events (@event-aliases (str/lower-case command)))]
+        {:keys [ef]} (command @events)]
     (log/debugf "Responding to %s / %s" command args)
-    (if ef
-      (ef team-id channel user-id args)
-      (do (log/errorf "Unexpected command: %s" command)
-          "Unhandled command"))))
+    (if ef (ef team-id channel user-id args)
+           (do (log/errorf "Unexpected command: %s" command)
+               "Unhandled command"))))
 
 (defn- reshape-event [{:keys [event callback_id] :as e}]
   (cond

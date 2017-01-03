@@ -1,15 +1,15 @@
 <document> = help | hi | tell-coach | start-coaching |
              stop-coaching | next-question | show-groups |
              add-group | remove-group
-<help> = "help"
-<hi> = "hi"
-<start-coaching> = "start coaching",
+help = <"help">
+hi = <"hi">
+start-coaching = <"start coaching">,
 { ws, <"at">, ws, #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)" }
-<stop-coaching> = "stop coaching"
-<next-question> = ("next question" | "another question")
-<tell-coach> = "tell coach", ws, text
-<show-groups> = "show question groups"
-<add-group> = "add to question group", ws, text
-<remove-group> = "remove from question group", ws, text
+stop-coaching = <"stop coaching">
+next-question = (<"next question"> | <"another question">)
+tell-coach = <"tell coach">, ws, text
+show-groups = <"show question groups">
+add-group = <"add to question group">, ws, text
+remove-group = <"remove from question group">, ws, text
 <ws> = <#'\s+'>
 <text> = #"[^\"]*"

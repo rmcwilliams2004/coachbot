@@ -31,7 +31,7 @@
                                        env-key)))))
   ([env-key default-value] (env-or env-key #(identity default-value))))
 
-(defn nilsafe-parse-int [str] (when str (Integer/parseInt str)))
+(defn nilsafe-parse-int [s] (when s (Integer/parseInt s)))
 
 (defmacro defenv
   "Define a binding to an environment variable. Creates a delayed object
@@ -40,12 +40,12 @@
    given value if the variable isn't defined. If ':tfn {function}' shows up
    in the params, runs the given function against the result of the environment
    variable load, which is by default a string."
-  [binding key & {:keys [default tfn] :as params}]
+  [b env-key & {:keys [default tfn] :as params}]
   (let [has-param? (partial contains? params)
         tfn (if (has-param? :tfn) tfn 'identity)
-        env-args [key]
+        env-args [env-key]
         env-args (if (has-param? :default) (conj env-args default) env-args)]
-    `(def ~binding (delay (~tfn (env ~@env-args))))))
+    `(def ~b (delay (~tfn (env ~@env-args))))))
 
 (defenv db-type "DB_TYPE" :default "h2")
 (defenv db-url "DB_URL" :default "jdbc:h2:./cbdb")
