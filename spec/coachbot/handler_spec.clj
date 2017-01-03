@@ -20,7 +20,6 @@
 (ns coachbot.handler-spec
   (:require [coachbot.coaching-process :as coaching]
             [coachbot.db :as db]
-            [coachbot.env :as env]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]

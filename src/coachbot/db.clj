@@ -83,7 +83,7 @@
 (def extract-character-data (comp slurp choose-character-stream))
 
 (def ^:private ds
-  (delay (make-db-datasource env/db-type env/db-url env/db-user env/db-pass
-                             env/db-timeout env/db-max-conn)))
+  (delay (make-db-datasource @env/db-type @env/db-url @env/db-user @env/db-pass
+                             @env/db-timeout @env/db-max-conn)))
 
 (defn datasource [] @ds)

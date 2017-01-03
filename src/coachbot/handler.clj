@@ -49,15 +49,13 @@
       :tags ["APIs"]
       events/event-routes)
 
-    (undocumented (r/resources "/"))
+    (GET "/.well-known/acme-challenge/:challenge" []
+      :path-params [challenge :- String]
+      (if (= @env/letsencrypt-challenge challenge)
+        (content-type (ok @env/letsencrypt-challenge-response) "text/plain")
+        (not-found)))
 
-    (undocumented
-      (cc/GET (str "/.well-known/acme-challenge/"
-                   "dZKR113j9JugTDth1wM-T9XhMbnY42GNLKIKfNXqsbU") []
-        (content-type
-          (ok (str "dZKR113j9JugTDth1wM-T9XhMbnY42GNLKIKfNXqsbU."
-                   "g6QAiw8SpNPpxhMk9osyvfJoM3skZlmzD3qxEna4sgg"))
-          "text/plain")))))
+    (undocumented (r/resources "/"))))
 
 (defn -main
   "Main function. Invoked to run the application using httpkit."

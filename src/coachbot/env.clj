@@ -31,30 +31,41 @@
                                        env-key)))))
   ([env-key default-value] (env-or env-key #(identity default-value))))
 
-(def db-type (env "DB_TYPE" "h2"))
-(def db-url (env "DB_URL" "jdbc:h2:./cbdb"))
-(def db-user (env "DB_USER" "coachbot"))
-(def db-pass (env "DB_PASS" "coachbot"))
-(def db-timeout (Integer/parseInt (env "DB_CONN_TIMEOUT" "10000")))
-(def db-max-conn (Integer/parseInt (env "DB_MAX_CONN" "10")))
+(defn nilsafe-parse-int [str] (when str (Integer/parseInt str)))
 
-(def slack-client-id (delay (env "SLACK_CLIENT_ID" nil)))
+(defmacro defenv [binding key & {:keys [default tfn] :as params}]
+  (let [has-param? (partial contains? params)
+        tfn (if (has-param? :tfn) tfn 'identity)
+        env-args [key]
+        env-args (if (has-param? :default) (conj env-args default) env-args)]
+    `(def ~binding (delay (~tfn (env ~@env-args))))))
 
-(def slack-client-secret (delay (env "SLACK_CLIENT_SECRET" nil)))
+(defenv db-type "DB_TYPE" :default "h2")
+(defenv db-url "DB_URL" :default "jdbc:h2:./cbdb")
+(defenv db-user "DB_USER" :default "coachbot")
+(defenv db-pass "DB_PASS" :default "coachbot")
+(defenv db-timeout "DB_CONN_TIMEOUT" :tfn Integer/parseInt :default "10000")
+(defenv db-max-conn "DB_MAX_CONN" :tfn Integer/parseInt :default "10")
 
-(def slack-verification-token (delay (env "SLACK_VERIFICATION_TOKEN" "none")))
+(defenv slack-client-id "SLACK_CLIENT_ID" :default nil)
 
-(def port (delay (Integer/parseInt (env "PORT" "3000"))))
+(defenv slack-client-secret "SLACK_CLIENT_SECRET" :default nil)
 
-(def log-level (delay (keyword (env "LOG_LEVEL" "info"))))
+(defenv slack-verification-token "SLACK_VERIFICATION_TOKEN" :default "none")
 
-(def log-other-libs
-  (delay (Boolean/parseBoolean (env "LOG_OTHER_LIBS" "false"))))
+(defenv port "PORT" :tfn Integer/parseInt :default "3000")
 
-(def event-queue-size
-  (delay (let [s (env "EVENT_QUEUE_SIZE" nil)] (when s (Integer/parseInt s)))))
+(defenv log-level "LOG_LEVEL" :tfn keyword :default "info")
 
-(defn event-queue-enabled? []
-  @event-queue-size)
+(defenv log-other-libs "LOG_OTHER_LIBS" :tfn Boolean/parseBoolean
+        :default "false")
 
+
+(defenv event-queue-size "EVENT_QUEUE_SIZE" :tfn nilsafe-parse-int
+        :default nil)
+
+(defenv letsencrypt-challenge "LETSENCRYPT_CHALLENGE")
+(defenv letsencrypt-challenge-response "LETSENCRYPT_CHALLENGE_RESPONSE")
+
+(defn event-queue-enabled? [] @event-queue-size)
 (defn now [] (tl/local-now))

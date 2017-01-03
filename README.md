@@ -26,7 +26,8 @@ java -jar target/server.jar
 Install the [Heroku Toolbelt](https://toolbelt.heroku.com/), then:
 
 ```
-lein do clean, ring uberjar && heroku local web
+lein do clean, ring uberjar 
+heroku local web
 ```
 
 ### Deploying to Heroku
