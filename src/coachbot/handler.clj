@@ -23,7 +23,6 @@
             [coachbot.env :as env]
             [coachbot.events :as events]
             [compojure.api.sweet :refer :all]
-            [compojure.core :as cc]
             [compojure.route :as r]
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
