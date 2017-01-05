@@ -248,7 +248,7 @@
   (when-not (= token @env/slack-verification-token)
     (ss/throw+ {:type ::access-denied}))
 
-  (if env/event-queue-enabled?
+  (if @env/event-queue-enabled?
     (if (.offer @event-queue event)
       (do
         (log/debugf "Queue depth %d" (.size @event-queue))

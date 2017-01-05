@@ -28,6 +28,9 @@
             [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
+;todo Kill this evil hack.
+(log/set-level! :error)
+
 (def question1 "first q")
 (def question2 "second q")
 (def question3 "third q")

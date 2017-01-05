@@ -19,7 +19,11 @@
 
 (ns coachbot.command-parser-spec
   (:require [coachbot.command-parser :refer :all]
-            [speclj.core :refer :all]))
+            [speclj.core :refer :all]
+            [taoensso.timbre :as log]))
+
+;todo Kill this evil hack.
+(log/set-level! :error)
 
 (describe "Command Parsing"
   (context "Simple commands"
