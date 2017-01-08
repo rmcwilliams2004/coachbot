@@ -108,7 +108,7 @@
                            (set/rename-keys x {:id :remote_user_id}))]
       (if existing-record
         (let [fields {:active true}
-              fields (if coaching-time
+              fields (if (contains? user :coaching-time)
                        (assoc fields :coaching_time coaching-time)
                        fields)
               update-stmt (-> (h/update :slack_coaching_users)

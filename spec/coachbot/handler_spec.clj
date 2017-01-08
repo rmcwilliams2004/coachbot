@@ -19,18 +19,12 @@
 
 (ns coachbot.handler-spec
   (:require [coachbot.coaching-process :as coaching]
-            [coachbot.db :as db]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [clojure.data.json :as json]
-            [clojure.java.jdbc :as jdbc]
             [ring.mock.request :as mock]
-            [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
-
-;todo Kill this evil hack.
-(log/set-level! :error)
+            [speclj.core :refer :all]))
 
 (defn- message [& {:keys [event] :as msg}]
   (let [base-event {:type "message", :user user0-id, :text "hi",
@@ -49,13 +43,10 @@
            (mock/body (json/write-str req))
            (mock/content-type "application/json"))))
 
-(describe "Events"
-  (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-
+(describe-mocked "Events" [ds latest-messages]
   (context "Oauth"
     (with response (app (-> (mock/request :get "/api/v1/oauth?code=test"))))
     (with body (:body @response))
-    (after-all (jdbc/execute! @ds ["drop all objects"]))
 
     (it "Can GET OAuth request"
       (with-redefs [coachbot.slack/list-members
@@ -69,9 +60,7 @@
                        :user_id user0-id
                        :access_token access-token
                        :bot {:bot_access_token bot-access-token
-                             :bot_user_id bot-user-id}})
-
-                    db/datasource (fn [] @ds)]
+                             :bot_user_id bot-user-id}})]
         (should= 200 (:status @response))
         (should= "Application authorized!" @body)
         (should= [access-token bot-access-token]
@@ -95,10 +84,6 @@
     ;; Note: the events-spec refers to this spec when explaining to devs why
     ;; there is no coverage for the "hi" command there.
     (context "Hello, World"
-      (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-      (before-all (storage/store-slack-auth! @ds slack-auth))
-      (after-all (jdbc/execute! @ds ["drop all objects"]))
-
       (with messages (atom []))
 
       (around [it]

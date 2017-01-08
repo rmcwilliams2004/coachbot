@@ -18,19 +18,13 @@
 ;
 
 (ns coachbot.events-spec
-  (:require [clojure.java.jdbc :as jdbc]
-            [coachbot.coaching-process :as coaching]
-            [coachbot.db :as db]
+  (:require [coachbot.coaching-process :as coaching]
             [coachbot.event-spec-utils :refer :all]
             [coachbot.events :as events]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
-            [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
-
-;todo Kill this evil hack.
-(log/set-level! :error)
+            [speclj.core :refer :all]))
 
 (def first-question "first question")
 (def second-question "second question")
@@ -43,15 +37,7 @@
 
 (def general "general")
 
-(describe "detailed event handling"
-  (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-  (before-all (storage/store-slack-auth! @ds slack-auth))
-  (after-all (jdbc/execute! @ds ["drop all objects"]))
-
-  (with-all messages (atom []))
-
-  (around-all [it] (mock-event-boundary @messages @ds it))
-
+(describe-mocked "detailed event handling" [ds latest-messages]
   ;; Note: the "hi" command is covered in the handler-spec
 
   (context "help"
@@ -76,14 +62,12 @@
               " • remove from question group {group name} -- stop sending "
               "questions from the given question group (e.g. 'remove from "
               "question group Time Management')")]
-        @@messages)))
+        (latest-messages))))
 
   (context "Start and stop coaching"
-    (before-all (swap! @messages empty))
-
     (before-all (storage/replace-base-questions!
                   @ds [first-question second-question third-question
-                       fourth-question])
+                      fourth-question])
 
                 ;; Nobody should get any questions
                 (coaching/send-next-question-to-everyone-everywhere!)
@@ -136,7 +120,7 @@
          u1-coaching-goodbye
          (u1c fourth-question)
          (u1c first-question)]
-        @@messages)
+        (latest-messages))
 
       (should= [{:question first-question}
                 {:question second-question}

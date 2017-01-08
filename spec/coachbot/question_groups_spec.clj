@@ -18,18 +18,12 @@
 ;
 
 (ns coachbot.question-groups-spec
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [coachbot.db :as db]
+  (:require [clojure.string :as str]
             [coachbot.event-spec-utils :refer :all]
             [coachbot.events :as events]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
-            [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
-
-;todo Kill this evil hack.
-(log/set-level! :error)
+            [speclj.core :refer :all]))
 
 (def question1 "first q")
 (def question2 "second q")
@@ -40,85 +34,72 @@
 (def groupc "Groupc")
 (def groupz "Groupz")
 
-(describe "Question Groups"
-  (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-  (before-all (storage/store-slack-auth! @ds slack-auth)
-              (storage/replace-base-questions-with-groups!
+(describe-mocked "Question Groups" [ds latest-messages]
+  (before-all (storage/replace-base-questions-with-groups!
                 @ds
                 [{:question question1 :groups [groupc]}
                  {:question question2 :groups [groupz]}
                  {:question question3 :groups [groupz groupb]}
                  {:question question4}]))
-  (after-all (jdbc/execute! @ds ["drop all objects"]))
 
-  (with-all messages (atom []))
+  (let [single-event
+        (fn [& strings]
+          (do (handle-event team-id user1-id (str/join " " strings))
+              (latest-messages)))
 
-  (with-all clear-messages #(swap! @messages empty))
+        add-group (partial single-event events/add-to-group-cmd)
+        remove-group (partial single-event events/remove-from-group-cmd)
 
-  (with-all single-event
-    (fn [& strings]
-      (do (swap! @messages empty)
-          (handle-event team-id user1-id (str/join " " strings)) @@messages)))
+        four-questions
+        #(do (dotimes [_ 4]
+               (handle-event team-id user1-id events/next-question-cmd))
+             (latest-messages))]
 
-  (with-all add-group #(@single-event events/add-to-group-cmd %))
-  (with-all remove-group #(@single-event events/remove-from-group-cmd %))
+    (it "gives me a list of available groups"
+      (should= [(u1c "The following groups are available:\n\n"
+                     groupb "\n"
+                     groupc "\n"
+                     groupz "\n\n"
+                     "You are in: no groups. You get all the questions!")]
+               (single-event events/show-question-groups-cmd)))
 
-  (with-all four-questions
-    #(dotimes [_ 4] (handle-event team-id user1-id events/next-question-cmd)))
+    (it "adds a group to be coached on"
+      (should= [(u1c "I'll send you questions from " groupb "\n\n"
+                     "You are in: " groupb)]
+               (add-group groupb))
+      (should= [(u1c "Congrats. You're already a member of " groupb)]
+               (add-group groupb))
+      (should= [(u1c "broke does not exist.")] (add-group "broke"))
+      (should= [(u1c "I'll send you questions from " groupz "\n\n"
+                     "You are in: " groupb ", " groupz)]
+               (add-group groupz)))
 
-  (around-all [it] (mock-event-boundary @messages @ds it))
+    (it "shows me the groups I'm being coached on"
+      (should= [(u1c "The following groups are available:\n\n"
+                     groupb "\n"
+                     groupc "\n"
+                     groupz "\n\n"
+                     (format "You are in: %s, %s" groupb groupz))]
+               (single-event events/show-question-groups-cmd)))
 
-  (it "gives me a list of available groups"
-    (should= [(u1c "The following groups are available:\n\n"
-                   groupb "\n"
-                   groupc "\n"
-                   groupz "\n\n"
-                   "You are in: no groups. You get all the questions!")]
-             (@single-event events/show-question-groups-cmd)))
+    (it "removes a group to be coached on"
+      (should= [(u1c "Ok. I'll stop sending you questions from " groupz "\n\n"
+                     "You are in: " groupb)]
+               (remove-group groupz))
+      (should= [(u1c "No worries; you're not in " groupz)]
+               (remove-group groupz))
+      (should= [(u1c "Ok. I'll stop sending you questions from " groupb "\n\n"
+                     "You are in: no groups. You get all the questions!")]
+               (remove-group groupb)))
 
-  (it "adds a group to be coached on"
-    (should= [(u1c "I'll send you questions from " groupb "\n\n"
-                   "You are in: " groupb)]
-             (@add-group groupb))
-    (should= [(u1c "Congrats. You're already a member of " groupb)]
-             (@add-group groupb))
-    (should= [(u1c "broke does not exist.")] (@add-group "broke"))
-    (should= [(u1c "I'll send you questions from " groupz "\n\n"
-                   "You are in: " groupb ", " groupz)]
-             (@add-group groupz)))
-
-  (it "shows me the groups I'm being coached on"
-    (should= [(u1c "The following groups are available:\n\n"
-                   groupb "\n"
-                   groupc "\n"
-                   groupz "\n\n"
-                   (format "You are in: %s, %s" groupb groupz))]
-             (@single-event events/show-question-groups-cmd)))
-
-  (it "removes a group to be coached on"
-    (should= [(u1c "Ok. I'll stop sending you questions from " groupz "\n\n"
-                   "You are in: " groupb)]
-             (@remove-group groupz))
-    (should= [(u1c "No worries; you're not in " groupz)]
-             (@remove-group groupz))
-    (should= [(u1c "Ok. I'll stop sending you questions from " groupb "\n\n"
-                   "You are in: no groups. You get all the questions!")]
-             (@remove-group groupb)))
-
-  (it "only sends me questions from the groups I'm being coached on"
-    (should= [(u1c question3) (u1c question3) (u1c question3) (u1c question3)]
-             (do
-               (@add-group groupb)
-               (@clear-messages)
-               (@four-questions)
-               @@messages))
-    (should= [(u1c question1) (u1c question3) (u1c question1) (u1c question3)]
-             (do (@add-group groupc) (@clear-messages) (@four-questions)
-                 @@messages))
-    (should= [(u1c question1) (u1c question2) (u1c question3) (u1c question1)]
-             (do (@add-group groupz) (@clear-messages) (@four-questions)
-                 @@messages))
-    (should= [(u1c question2) (u1c question3) (u1c question4) (u1c question1)]
-             (do
-               (doseq [g [groupz groupb groupc]] (@remove-group g))
-               (@clear-messages) (@four-questions) @@messages))))
+    (it "only sends me questions from the groups I'm being coached on"
+      (should= [(u1c question3) (u1c question3) (u1c question3) (u1c question3)]
+               (do (add-group groupb) (four-questions)))
+      (should= [(u1c question1) (u1c question3) (u1c question1) (u1c question3)]
+               (do (add-group groupc) (four-questions)))
+      (should= [(u1c question1) (u1c question2) (u1c question3) (u1c question1)]
+               (do (add-group groupz) (four-questions)))
+      (should= [(u1c question2) (u1c question3) (u1c question4) (u1c question1)]
+               (do
+                 (doseq [g [groupz groupb groupc]] (remove-group g))
+                 (four-questions))))))

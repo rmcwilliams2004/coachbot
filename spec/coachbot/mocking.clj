@@ -19,11 +19,14 @@
 
 (ns coachbot.mocking
   (:require [clj-time.format :as tf]
+            [clojure.java.jdbc :as jdbc]
             [coachbot.env :as env]
             [coachbot.events :as events]
             [coachbot.messages :as messages]
             [coachbot.slack :as slack]
+            [coachbot.storage :as storage]
             [coachbot.db :as db]
+            [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
 (def access-token "gobbledygook")
@@ -34,8 +37,8 @@
 (def channel-id "D2X6TCYJE")
 
 (def user0-id "abc123")
-(def user1-id "blah")
-(def user3-id "simple")
+(def user1-id "A1B235U01")
+(def user3-id "DE1443U03")
 
 (def user1-email "blah@there.com")
 (def user2-email "meh@here.com")
@@ -49,14 +52,14 @@
             :real-name "bblah" :first-name user1-first-name :last-name "Blah"
             :name "Bill Blah"})
 
-(def user2-id "meh")
+(def user2-id "A1BCDEU02")
 (def user2 {:team-id team-id :id user2-id
             :email user2-email :timezone "America/Chicago"
             :real-name "cmeh" :first-name user2-first-name :last-name "Meh"
             :name "Cathy Meh"})
 
 (def user3 {:team-id team-id :id user3-id
-            :email user3-email :timezone "America/Chicago"
+            :email user3-email :timezone "America/Los_Angeles"
             :first-name nil :last-name nil
             :real-name "Simple User" :name "suser"})
 
@@ -101,9 +104,34 @@
        (swap! messages conj (.getMessage t)))]
     (it)))
 
-;; This may or may not be used, depending on whether a developer needs to see
-;; debug messages during their TDD cycle
-(defn mock-event-boundary-with-debug [messages ds it]
-  (log/with-merged-config
-    {:level :debug :ns-whitelist ["coachbot.*"]}
-    (mock-event-boundary messages ds it)))
+(defmacro describe-with-level [level name & body]
+  `(describe "*"
+     (around-all [it#] (log/with-level ~level (it#)))
+     (context ~name ~@body)))
+
+(defmacro with-clean-db [bindings & body]
+  `(context "-"
+     (with-all
+       ~(first bindings)
+       (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
+
+     (before-all (storage/store-slack-auth! (deref ~(first bindings))
+                                            slack-auth))
+     (after-all (jdbc/execute! (deref ~(first bindings))
+                  ["drop all objects"]))
+     ~@body))
+
+(defmacro describe-mocked [name bindings & body]
+  `(let [messages# (atom [])
+         ~(second bindings) #(let [msgs# @messages#]
+                               (swap! messages# empty)
+                               msgs#)]
+     (describe-with-level :error ~name
+       (with-clean-db [~(first bindings)]
+         (before-all (storage/store-slack-auth! (deref ~(first bindings))
+                                                slack-auth))
+
+         (around-all [it#]
+           (mock-event-boundary messages# (deref ~(first bindings)) it#))
+
+         ~@body))))

@@ -19,33 +19,32 @@
 
 (ns coachbot.db-spec
   (:require [coachbot.db :as db]
+            [coachbot.mocking :refer :all]
             [clojure.java.jdbc :as jdbc]
             [speclj.core :refer :all]
             [taoensso.timbre :as log])
   (:import (java.io File)))
 
-; Change :error to :info to see the database schema
-(log/set-level! :error)
-
-(describe "Database schema"
-  (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-  (after-all (jdbc/execute! @ds ["drop all objects"]))
-  (it "should dump the full schema"
-    (jdbc/query @ds ["script simple nodata to 'schema.sql'"])
-    (let [f (File. "schema.sql")
-          _ (log/info (slurp f))
-          exists? (.exists f)
-          deleted? (.delete f)]
-      (should exists?)
-      (should deleted?))))
+;; Change :error to :info to see the full schema
+(describe-with-level :error "Database Schema"
+  (with-clean-db [ds]
+    (it "should get the full schema"
+      (jdbc/query @ds ["script simple nodata to 'schema.sql'"])
+      (let [f (File. "schema.sql")
+            _ (log/info (slurp f))
+            exists? (.exists f)
+            deleted? (.delete f)]
+        (should exists?)
+        (should deleted?)))))
 
 #_(describe "My local mysql db"
-  ; create database coachbot default character set utf8;
-  (with-all ds (db/make-db-datasource "mysql" "jdbc:mysql://localhost/coachbot"
-                                      "root" ""))
-  (it "should load the schema"
-    (should= ["base_questions" "bq_question_groups" "custom_questions"
-              "question_answers" "question_groups" "questions_asked"
-              "schema_version" "scu_question_groups" "slack_coaching_users"
-              "slack_teams"]
-             (map :tables_in_coachbot (jdbc/query @ds ["show tables"])))))
+    ; create database coachbot default character set utf8;
+    (with-all ds (db/make-db-datasource "mysql"
+                                        "jdbc:mysql://localhost/coachbot"
+                                        "root" ""))
+    (it "should load the schema"
+      (should= ["base_questions" "bq_question_groups" "custom_questions"
+                "question_answers" "question_groups" "questions_asked"
+                "schema_version" "scu_question_groups" "slack_coaching_users"
+                "slack_teams"]
+               (map :tables_in_coachbot (jdbc/query @ds ["show tables"])))))

@@ -21,23 +21,31 @@
   (:require [clojure.java.jdbc :as jdbc]
             [coachbot.coaching-data-sync :as cds]
             [coachbot.env :as env]
-            [honeysql.core :as sql]
             [taoensso.timbre :as log])
   (:import (com.zaxxer.hikari HikariConfig HikariDataSource)
            (java.io ByteArrayInputStream)
            (java.sql Timestamp)
            (java.time Instant)
+           (java.util.concurrent ThreadFactory Executors)
            (org.flywaydb.core Flyway)))
 
 (def migration-base "db/migration")
 (defn migration-of [db-type] (format "%s/%s" migration-base db-type))
 
-(defn- migrate [{:keys [datasource] :as ds} db-type]
+(defn- migrate [{:keys [datasource]} db-type]
   (doto (Flyway.)
     (.setLocations
       (into-array String [(migration-of "common") (migration-of db-type)]))
     (.setDataSource datasource)
     (.migrate)))
+
+(defn context-preserving-factory []
+  (let [config log/*config*]
+    (reify ThreadFactory
+      (newThread [_ runnable]
+        (Thread. (reify Runnable
+                   (run [_]
+                     (log/with-config config (.run runnable)))))))))
 
 (defn make-db-datasource
   "Create a new database connection pool."
@@ -48,6 +56,7 @@
    (doto
      {:datasource
       (HikariDataSource. (doto (HikariConfig.)
+                           (.setThreadFactory (context-preserving-factory))
                            (.setConnectionTimeout conn-timeout)
                            (.setJdbcUrl db-url)
                            (.setUsername db-username)

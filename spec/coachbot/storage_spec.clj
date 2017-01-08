@@ -18,57 +18,20 @@
 ;
 
 (ns coachbot.storage-spec
-  (:require [coachbot.storage :as storage]
-            [clojure.java.jdbc :as jdbc]
-            [coachbot.db :as db]
-            [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
-
-;todo Kill this evil hack.
-(log/set-level! :error)
-
-(def access-token "gobbledygook")
-(def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
-(def user-id "abc123")
-(def team-id "def456")
-(def team-name "The Best Team Ever")
-(def bot-user-id "bot999")
+  (:require [coachbot.mocking :refer :all]
+            [coachbot.storage :as storage]
+            [speclj.core :refer :all]))
 
 (def another-access-token "another_one")
 (def another-bot-access-token "stuff")
 (def another-team-id "some-dumb-team")
 
-(def user1-id "A1B235678")
-(def user2-id "A1BCDEFGH")
-
-(def user1-email "stephen@couragelabs.com")
-(def user2-email "travis.marsh@gmail.com")
-
 (def first-team {:access-token access-token
                  :bot-access-token bot-access-token
-                 :user-id user-id
+                 :user-id user1-id
                  :team-id team-id
                  :team-name team-name
                  :bot-user-id bot-user-id})
-
-(def user1 {:id user1-id,
-            :team-id team-id,
-            :name "scstarkey",
-            :real-name "Stephen Starkey",
-            :timezone "America/Chicago",
-            :first-name "Stephen",
-            :last-name "Starkey",
-            :email user1-email})
-
-(def user2 {:id user2-id,
-            :team-id team-id,
-            :name "travis",
-            :real-name "Travis Marsh",
-            :timezone "America/Los_Angeles",
-            :first-name "Travis",
-            :last-name "Marsh",
-            :email user2-email
-            :coaching-time "0 0 11 ? * *"})
 
 (defn extra-fields [user]
   (assoc user :answered-qid nil :asked-qid nil :asked-cqid nil
@@ -78,16 +41,12 @@
   (dissoc (storage/get-coaching-user ds team-id email)
           :created-date :updated-date))
 
-(describe "Storing data for later use"
+(describe-mocked "Storing data for later use" [ds _]
   (context "Slack teams"
-    (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-
-    (after-all (jdbc/execute! @ds ["drop all objects"]))
-
     (before-all (storage/store-slack-auth!
                   @ds {:access-token "oldat"
                        :bot-access-token "oldbat"
-                       :user-id user-id
+                       :user-id user1-id
                        :team-id team-id
                        :team-name team-name
                        :bot-user-id bot-user-id})
@@ -110,21 +69,17 @@
                (storage/get-access-tokens @ds another-team-id))))
 
   (context "Slack coaching users"
-    (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-
-    (after-all (jdbc/execute! @ds ["drop all objects"]))
-
     (before-all (storage/store-slack-auth! @ds first-team)
                 (storage/add-coaching-user! @ds user1)
                 (storage/add-coaching-user!
-                  @ds (assoc user2 :coaching-time "wrong"))
-                (storage/add-coaching-user! @ds user2))
+                  @ds (assoc user3 :coaching-time "wrong"))
+                (storage/add-coaching-user! @ds user3))
 
     (it "should have stored the slack auth stuff"
       (should= (-> user1 extra-fields (assoc :coaching-time "0 0 10 * * *"))
                (get-coaching-user @ds team-id user1-email))
-      (should= (extra-fields user2)
-               (get-coaching-user @ds team-id user2-email)))
+      (should= (-> user3 extra-fields (assoc :coaching-time "wrong"))
+               (get-coaching-user @ds team-id user3-email)))
 
     (it "should come back with no users if nil email sent"
       (should-not (get-coaching-user @ds team-id nil)))))

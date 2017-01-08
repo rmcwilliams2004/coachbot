@@ -22,10 +22,9 @@
             [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
-;todo Kill this evil hack.
-(log/set-level! :error)
-
 (describe "Command Parsing"
+  (around-all [it] (log/with-level :error (it)))
+
   (context "Simple commands"
     (it "should parse a simple command"
       (should= [:help] (parse-command "help"))

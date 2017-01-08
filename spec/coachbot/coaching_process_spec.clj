@@ -18,16 +18,10 @@
 ;
 
 (ns coachbot.coaching-process-spec
-  (:require [clojure.java.jdbc :as jdbc]
-            [coachbot.coaching-process :refer :all]
-            [coachbot.db :as db]
+  (:require [coachbot.coaching-process :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
-            [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
-
-;todo Kill this evil hack.
-(log/set-level! :error)
+            [speclj.core :refer :all]))
 
 (def first-question "first question")
 (def second-question "second question")
@@ -37,18 +31,10 @@
 (def not-liked "you won't like this question")
 (def how-much? "how much?")
 
-(describe "Custom questions"
-  (with-all ds (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
-  (before-all (storage/store-slack-auth! @ds slack-auth))
-  (after-all (jdbc/execute! @ds ["drop all objects"]))
-
-  (with-all messages (atom []))
-
-  (around-all [it] (mock-event-boundary @messages @ds it))
-
-  (before-all (storage/replace-base-questions!
-                @ds [first-question second-question third-question]))
-
+(describe-mocked "Custom questions" [ds latest-messages]
+  (before-all
+    (storage/replace-base-questions!
+      @ds [first-question second-question third-question]))
   (context "basic"
     (before-all
       (start-coaching! team-id user1-id)
@@ -77,7 +63,7 @@
                 u1-thanks-for-answer
                 (u1c second-question)
                 u1-thanks-for-answer]
-               @@messages)
+               (latest-messages))
 
       (should= [{:question first-question, :answer "banswer1"}
                 {:question you-like-fun?, :answer "qanswer1"}
