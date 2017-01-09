@@ -427,7 +427,7 @@
 (defn log-user-activity! [ds {:keys [team_id slack_user_id] :as activity}]
   (jdbc/with-db-transaction [conn ds]
     (let [record (-> activity
-                     (update :mtype str)
+                     (update :mtype name)
                      (update :team_id (partial get-team-id conn))
                      (update :slack_user_id (partial get-user-id conn))
                      (update :raw_msg pr-str)
