@@ -28,7 +28,10 @@
          (catch Throwable t
            (log/errorf t "Unable to execute: %s" stmt)))))
 
-(defn query [hq conn]
-  (->> hq
-       sql/format
-       (jdbc/query conn)))
+(defn query
+  ([hq conn]
+   (->> hq
+        sql/format
+        (jdbc/query conn)))
+  ([hq conn f]
+   (map f (query hq conn))))

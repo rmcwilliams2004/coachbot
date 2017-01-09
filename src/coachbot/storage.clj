@@ -24,6 +24,7 @@
             [clj-time.jdbc]
             [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
+            [clojure.string :as str]
             [coachbot.db :as db]
             [coachbot.env :as env]
             [coachbot.hsql-utils :as hu]
@@ -242,6 +243,27 @@
   (jdbc/update! conn :custom_questions {field 1}
                 ["id = ? AND slack_user_id = ?" question-id slack-user-id]))
 
+(defn- from-question-groups []
+  (-> (h/select :qg.id :qg.group_name)
+      (h/from [:question_groups :qg])
+      (h/order-by :qg.group_name)))
+
+(defn get-groups-for-qid [ds new-qid]
+  (-> (from-question-groups)
+      (h/join [:bq_question_groups :bqg]
+              [:= :bqg.question_group_id :qg.id])
+      (h/where [:= :bqg.question_id new-qid])
+      (hu/query ds :group_name)))
+
+(defn add-groups-if-necessary [ds new-qid question custom-question?]
+  (if custom-question?
+    question
+    (let [groups (get-groups-for-qid ds new-qid)]
+      (if (seq groups)
+        (format "[_%s_] %s" (str/join ", " (get-groups-for-qid ds new-qid))
+                question)
+        question))))
+
 (defn question-for-sending [ds qid {remote-user-id :id} send-fn]
   (jdbc/with-db-transaction [conn ds]
     (let [user-id (get-user-id conn remote-user-id)
@@ -257,7 +279,9 @@
           custom-question? (= "custom" qtype)
           custom-cols [:cquestion_id :asked_cqid]
           base-cols [:question_id :asked_qid]
-          [qa-col asked-col] (if custom-question? custom-cols base-cols)]
+          [qa-col asked-col] (if custom-question? custom-cols base-cols)
+          question (add-groups-if-necessary ds new-qid question
+                                            custom-question?)]
       (send-fn question)
       (jdbc/insert! conn :questions_asked
                     {:slack_user_id user-id qa-col new-qid})
@@ -343,11 +367,6 @@
             (hu/query ds))]
     (map #(let [{:keys [team_id] :as user} %]
             (convert-user team_id user)) users)))
-
-(defn- from-question-groups []
-  (-> (h/select :qg.id :qg.group_name)
-      (h/from [:question_groups :qg])
-      (h/order-by :qg.group_name)))
 
 (defn list-question-groups [ds]
   (let [groups (hu/query (from-question-groups) ds)]
