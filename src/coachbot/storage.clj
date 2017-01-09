@@ -242,7 +242,7 @@
       (hu/query conn)
       first))
 
-(defn update-custom-question! [conn slack-user-id question-id field]
+(defn mark-custom-question! [conn slack-user-id question-id field]
   (jdbc/update! conn :custom_questions {field 1}
                 ["id = ? AND slack_user_id = ?" question-id slack-user-id]))
 
@@ -334,7 +334,7 @@
       (jdbc/insert! conn :question_answers
                     {:slack_user_id id answered-col which-qid :answer text})
       (if cqid
-        (update-custom-question! conn id cqid :answered)
+        (mark-custom-question! conn id cqid :answered)
         (jdbc/update! conn :slack_coaching_users {:answered_qid qid}
                       ["id = ?" id])))))
 

@@ -66,8 +66,8 @@
           (storage/get-last-question-asked ds user)]
       (jdbc/with-db-transaction [conn ds]
         (when (and cquestion_id (not answered))
-          (storage/update-custom-question! conn slack_user_id cquestion_id
-                                           :skipped))
+          (storage/mark-custom-question! conn slack_user_id cquestion_id
+                                         :skipped))
         (storage/next-question-for-sending! conn asked-qid user send-fn)))))
 
 (defn- send-next-or-resend-prev-question!
@@ -133,8 +133,7 @@
           (storage/submit-answer!
             ds team-id user-email asked-qid asked-cqid text)
           (slack/send-message! bot-access-token id messages/thanks-for-answer))
-        (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
-                   user-email text)))))
+        (slack/send-message! bot-access-token id messages/unknown-command)))))
 
 (defn ensure-user! [ds access-token team-id user-id]
   (let [{:keys [email] :as user} (slack/get-user-info access-token user-id)

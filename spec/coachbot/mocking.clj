@@ -78,6 +78,7 @@
 (def u2c (partial uc user2-id))
 
 (def u1-thanks-for-answer (u1c messages/thanks-for-answer))
+(def u1-unknown (u1c messages/unknown-command))
 (def u2-thanks-for-answer (u2c messages/thanks-for-answer))
 
 (def coaching-hello (format messages/coaching-hello "10am"))

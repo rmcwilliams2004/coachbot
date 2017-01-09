@@ -20,6 +20,8 @@
 (ns coachbot.messages)
 
 (def thanks-for-answer "Thanks for your answer! See you again soon.")
+(def unknown-command (str "I'm not sure what you're asking me to do. "
+                          "Try 'help' for a list of commands."))
 (def coaching-goodbye "No problem! We'll stop sending messages.")
 (def coaching-hello
   "Welcome aboard! We'll send coaching questions at %s every day.")

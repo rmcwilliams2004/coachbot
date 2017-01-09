@@ -85,6 +85,7 @@
                 (handle-event team-id "channel" some-confused-answer)
 
                 (handle-event team-id user1-id some-confused-answer)
+                (handle-event team-id user1-id "Help me coachbot!")
                 (handle-event team-id user1-id events/stop-coaching-cmd)
                 (handle-event team-id user1-id events/start-coaching-cmd)
                 (storage/reset-all-coaching-users! @ds)
@@ -112,6 +113,7 @@
          u2-coaching-goodbye
          (u1c second-question)
          u1-thanks-for-answer
+         u1-unknown
          u1-coaching-goodbye
          u1-coaching-hello
          (u1c third-question)
