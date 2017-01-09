@@ -19,6 +19,7 @@
 
 (ns coachbot.events
   (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.walk :as walk]
@@ -161,13 +162,17 @@
                  "(e.g. 'remove from question group Time Management')")}}
           coaching/remove-from-question-group!)
 
-(defn- respond-to-event [team-id channel user-id text]
-  (let [[command & args] (parser/parse-command text)
-        {:keys [ef]} (command @events)]
-    (log/debugf "Responding to %s / %s" command args)
-    (if ef (ef team-id channel user-id args)
-           (do (log/errorf "Unexpected command: %s" command)
-               "Unhandled command"))))
+(defn- respond-to-event [team-id channel user-id email text]
+  (ss/try+
+    (let [[command & args] (parser/parse-command text)
+          {:keys [ef]} (command @events)]
+      (log/debugf "Responding to %s / %s" command args)
+      (if ef (ef team-id channel user-id args)
+             (do (log/errorf "Unexpected command: %s" command)
+                 "Unhandled command")))
+    (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
+      (handle-parse-failure text result)
+      (coaching/submit-text! team-id email text))))
 
 (defn- reshape-event [{:keys [event callback_id] :as e}]
   (cond
@@ -193,24 +198,47 @@
 
     :else (ss/throw+ {:type ::unhandled-event-shape :event e})))
 
-(defn- process-callback [email bot-access-token
+(defmacro with-ensured-user! [access-token team-id user-id bindings & body]
+  `(jdbc/with-db-transaction [~(first bindings) (db/datasource)]
+     (coaching/ensure-user! ~(first bindings) ~access-token ~team-id ~user-id)
+     ~@body))
+
+(defn- process-callback [email access-token bot-access-token
+                         raw-event
                          {:keys [team-id channel user-id
                                  callback-id action-name action-value
                                  response-url] :as callback}]
+  (with-ensured-user! access-token team-id user-id [conn]
+    (storage/log-user-activity! conn
+                                {:team_id team-id
+                                 :slack_user_id user-id
+                                 :raw_msg raw-event
+                                 :processed_msg callback
+                                 :mtype :callback
+                                 :channel_id channel
+                                 :cb_id callback-id
+                                 :cb_aname action-name
+                                 :cb_aval action-value}))
+
   (log/infof "Don't know how to handle callbacks yet: %s" callback))
 
-(defn- process-event [email bot-access-token
+(defn- process-event [email access-token bot-access-token
+                      raw-event
                       {:keys [team-id channel user-id text] :as event}]
   (ss/try+
     (if-not (storage/is-bot-user? (db/datasource) team-id user-id)
-      (try
-        (when (slack/is-im-to-me? bot-access-token channel)
-          (respond-to-event team-id channel user-id text))
-        (finally (coaching/event-occurred! team-id email)))
+      (when (slack/is-im-to-me? bot-access-token channel)
+        (with-ensured-user! access-token team-id user-id [conn]
+          (storage/log-user-activity! conn
+                                      {:team_id team-id
+                                       :slack_user_id user-id
+                                       :raw_msg raw-event
+                                       :processed_msg event
+                                       :mtype :event
+                                       :channel_id channel
+                                       :event_text text}))
+        (respond-to-event team-id channel user-id email text))
       "Ignoring message from myself.")
-    (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
-      (handle-parse-failure text result)
-      (coaching/submit-text! team-id email text))
     (catch Exception t (handle-unknown-failure t event))))
 
 (defn- process [event]
@@ -222,8 +250,11 @@
 
         {:keys [email]} (slack/get-user-info access-token user-id)]
     (case type
-      :event (process-event email bot-access-token final-event)
-      :button (process-callback email bot-access-token final-event)
+      :event
+      (process-event email access-token bot-access-token event final-event)
+
+      :button
+      (process-callback email access-token bot-access-token event final-event)
       (ss/throw+ {:type ::unhandled-event-type :event-type type
                   :event event}))))
 

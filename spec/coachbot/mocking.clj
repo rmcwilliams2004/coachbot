@@ -63,7 +63,10 @@
             :first-name nil :last-name nil
             :real-name "Simple User" :name "suser"})
 
-(def users {user0-id {:first-name "Bill"}
+(def users {user0-id {:team-id team-id :id user0-id
+                      :email "bill@bill.bil" :timezone "Antarctica/Palmer"
+                      :real-name "Bill Nye" :first-name "Bill"
+                      :name "bnye"}
             user1-id user1
             user2-id user2
             user3-id user3})

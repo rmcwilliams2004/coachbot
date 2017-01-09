@@ -37,14 +37,18 @@
         (should exists?)
         (should deleted?)))))
 
-#_(describe "My local mysql db"
-    ; create database coachbot default character set utf8;
-    (with-all ds (db/make-db-datasource "mysql"
-                                        "jdbc:mysql://localhost/coachbot"
-                                        "root" ""))
-    (it "should load the schema"
-      (should= ["base_questions" "bq_question_groups" "custom_questions"
-                "question_answers" "question_groups" "questions_asked"
-                "schema_version" "scu_question_groups" "slack_coaching_users"
-                "slack_teams"]
-               (map :tables_in_coachbot (jdbc/query @ds ["show tables"])))))
+#_(describe-with-level :error "My local mysql db"
+  ; create database coachbot default character set utf8;
+  (with-all ds (db/make-db-datasource "mysql"
+                                      "jdbc:mysql://localhost/coachbot"
+                                      "root" ""))
+  (it "should load the schema"
+    (should= #{"bq_question_groups" "channel_questions" "question_answers"
+               "question_groups" "scu_question_groups" "slack_teams"
+               "questions_asked" "custom_questions" "schema_version"
+               "base_questions" "channel_question_answers"
+               "channel_questions_asked" "slack_coaching_users" "user_activity"
+               "slack_coaching_channels"}
+             (into #{}
+                   (map :tables_in_coachbot
+                        (jdbc/query @ds ["show tables"]))))))

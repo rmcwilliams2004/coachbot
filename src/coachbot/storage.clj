@@ -30,6 +30,7 @@
             [coachbot.hsql-utils :as hu]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
+            [slingshot.slingshot :as ss]
             [taoensso.timbre :as log]))
 
 (defn get-access-tokens [ds team-id]
@@ -67,7 +68,7 @@
         (jdbc/update! conn :slack_teams new-record ["team_id = ?" team-id])
         (jdbc/insert! conn :slack_teams new-record)))))
 
-(defn- get-team-id [ds team-id]
+(defn get-team-id [ds team-id]
   (-> (h/select :id)
       (h/from :slack_teams)
       (h/where [:= :team_id team-id])
@@ -101,12 +102,14 @@
   (jdbc/with-db-transaction
     [conn ds]
     (let [existing-record (get-coaching-user conn team-id email)
-          team-id (get-team-id ds team-id)
+          db-team-id (get-team-id ds team-id)
           new-record (as-> user x
                            (cske/transform-keys csk/->snake_case x)
-                           (assoc x :team_id team-id)
+                           (assoc x :team_id db-team-id)
                            (assoc x :created_date (env/now)) ;for unit tests
                            (set/rename-keys x {:id :remote_user_id}))]
+      (when-not db-team-id (ss/throw+ {:type ::invalid-team :team-id team-id}))
+
       (if existing-record
         (let [fields {:active true}
               fields (if (contains? user :coaching-time)
@@ -115,7 +118,7 @@
               update-stmt (-> (h/update :slack_coaching_users)
                               (h/sset fields)
                               (h/where [:and [:= :email email]
-                                        [:= :team_id team-id]]))]
+                                        [:= :team_id db-team-id]]))]
           (hu/execute-safely! update-stmt conn))
         (do (jdbc/insert! conn :slack_coaching_users new-record) true)))))
 
@@ -420,3 +423,18 @@
                     [:= :scu_id user-id]
                     [:= :question_group_id group-id]])
           (hu/execute-safely! conn)))))
+
+(defn log-user-activity! [ds {:keys [team_id slack_user_id] :as activity}]
+  (jdbc/with-db-transaction [conn ds]
+    (let [record (-> activity
+                     (update :mtype str)
+                     (update :team_id (partial get-team-id conn))
+                     (update :slack_user_id (partial get-user-id conn))
+                     (update :raw_msg pr-str)
+                     (update :processed_msg pr-str))
+          {db_team_id :team_id
+           db_user_id :slack_user_id} record]
+      (if (and team_id slack_user_id)
+        (jdbc/insert! conn :user_activity record)
+        (log/errorf "Invalid team/user: t=%s/u=%s yielded %s/%s"
+                    team_id slack_user_id db_team_id db_user_id)))))

@@ -124,10 +124,11 @@
   ;; If there is an outstanding for the user, submit that
   ;; Otherwise store it someplace for a live person to review
   (let [ds (db/datasource)
-        {:keys [id asked-qid asked-cqid]}
+        {:keys [id asked-qid asked-cqid answered-qid]}
         (storage/get-coaching-user ds team-id user-email)]
     (storage/with-access-tokens ds team-id [_ bot-access-token]
-      (if asked-qid
+      (if (or asked-cqid
+              (and asked-qid (not= asked-qid answered-qid)))
         (do
           (storage/submit-answer!
             ds team-id user-email asked-qid asked-cqid text)
@@ -135,7 +136,7 @@
         (log/warnf "Text submitted but no question asked: %s/%s %s" team-id
                    user-email text)))))
 
-(defn- ensure-user! [ds access-token team-id user-id]
+(defn ensure-user! [ds access-token team-id user-id]
   (let [{:keys [email] :as user} (slack/get-user-info access-token user-id)
         get-coaching-user #(storage/get-coaching-user ds team-id email)]
     (if-let [result (get-coaching-user)]
@@ -191,9 +192,6 @@
             (str "Sorry, but we had a problem removing you. We'll look "
                  "into it.")))
         (str "No worries; you're not in " group)))))
-
-(defn event-occurred! [team-id email]
-  (log/debugf "Event occurred for %s/%s" team-id email))
 
 (defn send-next-question-to-everyone-everywhere! []
   (let [ds (db/datasource)

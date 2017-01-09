@@ -82,7 +82,7 @@
                 (coaching/send-next-question-to-everyone-everywhere!)
 
                 ;; Don't respond to things in a channel
-                (handle-event user1-id "channel" some-confused-answer)
+                (handle-event team-id "channel" some-confused-answer)
 
                 (handle-event team-id user1-id some-confused-answer)
                 (handle-event team-id user1-id events/stop-coaching-cmd)
