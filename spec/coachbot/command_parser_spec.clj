@@ -34,7 +34,45 @@
 
     (it "should get a single argument"
       (should= [:tell-coach "i have a question"]
-               (parse-command "tell coach i have a question"))))
+               (parse-command "tell coach i have a question")))
+
+    (context "question groups"
+      (it "should allow lots of variants"
+        (should= [:show-groups] (parse-command "group"))
+        (should= [:show-groups] (parse-command "groups"))
+        (should= [:show-groups] (parse-command "show group"))
+        (should= [:show-groups] (parse-command "show groups"))
+        (should= [:show-groups] (parse-command "question group"))
+        (should= [:show-groups] (parse-command "question groups"))
+        (should= [:show-groups] (parse-command "show question group"))
+        (should= [:show-groups] (parse-command "show question groups"))))
+
+    (context "add question groups"
+      (it "should allow lots of variants"
+        (should= [:add-group "bill"] (parse-command "add group bill"))
+        (should= [:add-group "bill"] (parse-command "add to group bill"))
+        (should= [:add-group "bill"] (parse-command "add groups bill"))
+        (should= [:add-group "bill"] (parse-command "add to groups bill"))
+        (should= [:add-group "bill"]
+                 (parse-command "add to question groups bill"))
+        (should= [:add-group "bill"] (parse-command "add question group bill"))
+        (should= [:add-group "bill"]
+                 (parse-command "add question groups bill"))))
+
+    (context "remove question groups"
+      (it "should allow lots of variants"
+        (should= [:remove-group "bill"] (parse-command "remove group bill"))
+        (should= [:remove-group "bill"]
+                 (parse-command "remove from group bill"))
+        (should= [:remove-group "bill"] (parse-command "remove groups bill"))
+        (should= [:remove-group "bill"]
+                 (parse-command "remove from groups bill"))
+        (should= [:remove-group "bill"]
+                 (parse-command "remove from question groups bill"))
+        (should= [:remove-group "bill"]
+                 (parse-command "remove question group bill"))
+        (should= [:remove-group "bill"]
+                 (parse-command "remove question groups bill")))))
 
   (context "Bad Commands"
     (it "should throw nice exceptions for bad commands"
