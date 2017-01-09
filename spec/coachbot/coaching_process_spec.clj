@@ -31,6 +31,11 @@
 (def not-liked "you won't like this question")
 (def how-much? "how much?")
 
+(def qmsg (comp u1c (partial q-with-md "Custom Question")))
+(def u1-not-liked (qmsg not-liked))
+(def u1-you-like-fun? (qmsg you-like-fun?))
+(def u1-how-much? (qmsg how-much?))
+
 (describe-mocked "Custom questions" [ds latest-messages]
   (before-all
     (storage/replace-base-questions!
@@ -55,11 +60,11 @@
     (it "should ask a custom question before the next one in the rotation"
       (should= [(u1c first-question)
                 u1-thanks-for-answer
-                (u1c not-liked)
-                (u1c you-like-fun?)
+                u1-not-liked
+                u1-you-like-fun?
                 u1-thanks-for-answer
                 u1-thanks-for-answer
-                (u1c how-much?)
+                u1-how-much?
                 u1-thanks-for-answer
                 (u1c second-question)
                 u1-thanks-for-answer]

@@ -69,6 +69,8 @@
             user3-id user3})
 
 (defn uc [user-id & content] (apply str (into [user-id ": "] content)))
+(defn q-with-md [metadata question]
+  (format "[_%s_] %s" metadata question))
 (def u1c (partial uc user1-id))
 (def u2c (partial uc user2-id))
 

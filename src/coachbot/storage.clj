@@ -255,14 +255,17 @@
       (h/where [:= :bqg.question_id new-qid])
       (hu/query ds :group_name)))
 
-(defn add-groups-if-necessary [ds new-qid question custom-question?]
-  (if custom-question?
-    question
-    (let [groups (get-groups-for-qid ds new-qid)]
-      (if (seq groups)
-        (format "[_%s_] %s" (str/join ", " (get-groups-for-qid ds new-qid))
-                question)
-        question))))
+(defn- add-question-metadata
+  ([metadata question]
+   (format "[_%s_] %s" metadata question))
+  ([ds new-qid question custom-question?]
+   (if custom-question?
+     (add-question-metadata "Custom Question" question)
+     (let [groups (get-groups-for-qid ds new-qid)]
+       (if (seq groups)
+         (add-question-metadata (str/join ", " (get-groups-for-qid ds new-qid))
+                                question)
+         question)))))
 
 (defn question-for-sending [ds qid {remote-user-id :id} send-fn]
   (jdbc/with-db-transaction [conn ds]
@@ -280,8 +283,8 @@
           custom-cols [:cquestion_id :asked_cqid]
           base-cols [:question_id :asked_qid]
           [qa-col asked-col] (if custom-question? custom-cols base-cols)
-          question (add-groups-if-necessary ds new-qid question
-                                            custom-question?)]
+          question (add-question-metadata ds new-qid question
+                                          custom-question?)]
       (send-fn question)
       (jdbc/insert! conn :questions_asked
                     {:slack_user_id user-id qa-col new-qid})
