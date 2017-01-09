@@ -135,8 +135,8 @@
 
   ;; Use this to send a custom question immediately.
   (let [team-id 3
-        user-id 12
-        question "What would you like to do today?"]
+        user-id 8
+        question "Isn't Steve a jerk?"]
     (send-custom-question-now! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that

@@ -256,14 +256,25 @@
       (hu/query ds :group_name)))
 
 (defn- add-question-metadata
-  ([metadata question]
-   (format "[_%s_] %s" metadata question))
-  ([ds new-qid question custom-question?]
+  ([items question]
+   (format "[%s] %s"
+           (->> items
+                (map #(let [{:keys [emphasize? msg]} %]
+                        (if emphasize? (format "_%s_" msg) msg)))
+                (str/join ", ")) question))
+  ([ds slack-user-id new-qid question custom-question?]
    (if custom-question?
-     (add-question-metadata "Custom Question" question)
-     (let [groups (get-groups-for-qid ds new-qid)]
+     (add-question-metadata [{:emphasize? true
+                              :msg "Custom Question"}] question)
+     (let [groups (get-groups-for-qid ds new-qid)
+           groups-for-user (->> slack-user-id
+                                (list-groups-for-user ds)
+                                (map :group_name)
+                                (into #{}))]
        (if (seq groups)
-         (add-question-metadata (str/join ", " (get-groups-for-qid ds new-qid))
+         (add-question-metadata (map #(hash-map :msg %
+                                                :emphasize? (groups-for-user %))
+                                     (get-groups-for-qid ds new-qid))
                                 question)
          question)))))
 
@@ -283,7 +294,7 @@
           custom-cols [:cquestion_id :asked_cqid]
           base-cols [:question_id :asked_qid]
           [qa-col asked-col] (if custom-question? custom-cols base-cols)
-          question (add-question-metadata ds new-qid question
+          question (add-question-metadata ds remote-user-id new-qid question
                                           custom-question?)]
       (send-fn question)
       (jdbc/insert! conn :questions_asked

@@ -35,7 +35,9 @@
 (def groupz "Groupz")
 
 (defn u1gc [g q]
-  (u1c (format "[_%s_] %s" (str/join ", " g) q)))
+  (u1c (format "[%s] %s" (str/join ", " g) q)))
+
+(defn emph [group] (str "_" group "_"))
 
 (describe-mocked "Question Groups" [ds latest-messages]
   (before-all (storage/replace-base-questions-with-groups!
@@ -96,14 +98,18 @@
                (remove-group groupb)))
 
     (it "only sends me questions from the groups I'm being coached on"
-      (let [q1 (u1gc [groupc] question1)
-            q2 (u1gc [groupz] question2)
-            q3 (u1gc [groupb groupz] question3)
+      (let [q1 (u1gc [(emph groupc)] question1)
+            q2 (u1gc [(emph groupz)] question2)
+            q3 (u1gc [(emph groupb) groupz] question3)
+            q1-ne (u1gc [groupc] question1)
+            q2-ne (u1gc [groupz] question2)
+            q3-ne (u1gc [groupb groupz] question3)
+            q3-ae (u1gc [(emph groupb) (emph groupz)] question3)
             q4 (u1c question4)]
         (should= [q3 q3 q3 q3] (do (add-group groupb) (four-questions)))
         (should= [q1 q3 q1 q3] (do (add-group groupc) (four-questions)))
-        (should= [q1 q2 q3 q1] (do (add-group groupz) (four-questions)))
-        (should= [q2 q3 q4 q1]
+        (should= [q1 q2 q3-ae q1] (do (add-group groupz) (four-questions)))
+        (should= [q2-ne q3-ne q4 q1-ne]
                  (do
                    (doseq [g [groupz groupb groupc]] (remove-group g))
                    (four-questions)))))))
