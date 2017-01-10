@@ -72,16 +72,19 @@
 
 (defn count-engaged [days]
   "Counts the number of users that have answered a question in X Days"
-  (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d %h')")
-                 :date]
-                :%count.scu.id)
-      (h/modifiers :distinct)
-      (h/from [:slack_coaching_users :scu])
-      (h/join [:question_answers :qa]
-              [:= :scu.id :qa.slack_user_id])
-      (h/where  (format "timestampdiff(DAY, qa.created_date, now()) < %d"
-                          days))
-      (hu/query (db/datasource))))
+  (let [inner-query (-> (h/select :scu.id :%count.*)
+                        (h/from [:slack_coaching_users :scu])
+                        (h/join [:question_answers :qa]
+                                [:= :scu.id :qa.slack_user_id])
+                        (h/group :scu.id)
+                        (h/where (sql/raw
+                                   (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+                                           days))))]
+    (-> (h/select [:%count.* "num_users"])
+        (h/from [inner-query "users"])
+        (hu/query (db/datasource))
+        first
+        :num_users)))
 
 (defn register-custom-question! [team-id user-id question]
   (let [ds (db/datasource)
@@ -117,17 +120,18 @@
     (slack/send-message! bot_access_token remote_user_id message)))
 
 (defn send-question-w-buttons! [team-id user-id channel question callback-id]
-  (coaching/with-sending-constructs user-id team-id channel [ds sfn _]
-                                    (sfn question callback-id
-                                         (map #(hash-map :name "option" :value %) (range 1 6))))
+  (coaching/with-sending-constructs user-id team-id channel [ds send-fn _]
+    (send-fn question callback-id
+             (map #(hash-map :name "option" :value %) (range 1 6))))
   )
 ;; I'm curious what I'm doing wrong that's preventing this from working
 
 (defn count-group-users []
-  (-> (h/select :%count.scu_id)
-      ;(h/modifiers :distinct)
+  (-> (h/select (sql/raw "count(distinct scu_id) AS group_users"))
       (h/from :scu_question_groups)
-      (hu/query (db/datasource))))
+      (hu/query (db/datasource))
+      first
+      :group_users))
 ;; The distinct modifier isn't working
 
 (comment
@@ -147,7 +151,7 @@
   ;; Use this to see the last X days of answers
 
   ;; Add a user ID as a third paramater to limit to a (format "timestampdiff(DAY, qa.created_date, now()) < %d"
-  max-days-back) user
+
   (pprint/print-table (list-answers 7))
   (pprint/print-table (list-answers 30 18))
 
@@ -157,20 +161,26 @@
                           (hu/query (db/datasource))))
 
   ;; List all active users
-  (pprint/print-table (-> (h/select :scu.id :scu.name :scu.first_name
-                                    :scu.team-id :scu.active)
+  (pprint/print-table (-> (h/select [:st.id :tid] :st.team_id
+                                    [:scu.id :uid] :scu.remote_user_id
+                                    :scu.name :scu.first_name
+                                    :scu.active)
                           (h/from [:slack_coaching_users :scu])
                           (h/where [:= :active true])
+                          (h/join [:slack_teams :st]
+                                  [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
 
   ;; Count Number of engaged users
-  (pprint/print-table (count-engaged 7))
+  (count-engaged 7)
 
-;; Count # of users using categories
- (pprint/print-table (/ 10 (count-group-users)))
+  ;; Count # of users using categories
+  (pprint/print-table (/ 10 (count-group-users)))
 
-;; Ask a question with buttons
-(send-question-w-buttons! 3 8 nil "Test" 1)
+  (count-group-users)
+
+  ;; Ask a question with buttons
+  (send-question-w-buttons! "T04SG55UA" "U04T4P88M" nil "Test" 1)
 
   ;;Common Messages to send
   (def usage-checkin
