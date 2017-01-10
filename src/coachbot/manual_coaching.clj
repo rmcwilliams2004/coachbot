@@ -154,7 +154,6 @@
   (log/set-level! :warn)
 
   ;; Use this to see the last X days of answers
-  ;; Add a user ID as a third paramater to limit to a (format "timestampdiff(DAY, qa.created_date, now()) < %d"
   (pprint/print-table (list-answers 7))
   (pprint/print-table (list-answers 30 18))
 
