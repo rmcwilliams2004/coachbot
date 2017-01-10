@@ -79,8 +79,8 @@
       (h/from [:slack_coaching_users :scu])
       (h/join [:question_answers :qa]
               [:= :scu.id :qa.slack_user_id])
-      (h/where (format "timestampdiff(DAY, qa.created_date, now()) < %d"
-                      days))
+      (h/where  (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+                          days))
       (hu/query (db/datasource))))
 
 (defn register-custom-question! [team-id user-id question]
@@ -115,6 +115,9 @@
               (h/where [:= :active true])
               (hu/query (db/datasource)))]
     (slack/send-message! bot_access_token remote_user_id message)))
+
+(defn send-question-w-buttons! [team-id user-id question]
+  )
 
 (comment
   "This is the work area for coaches, for now. You'll need the following
@@ -151,6 +154,9 @@
 
   ;; Count Number of engaged users
   (pprint/print-table (count-engaged 7))
+
+;; Ask a question with buttons
+(send-question-w-buttons! team-id user-id question)
 
   ;;Common Messages to send
   (def usage-checkin
