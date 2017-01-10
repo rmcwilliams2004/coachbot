@@ -116,8 +116,19 @@
               (hu/query (db/datasource)))]
     (slack/send-message! bot_access_token remote_user_id message)))
 
-(defn send-question-w-buttons! [team-id user-id question]
+(defn send-question-w-buttons! [team-id user-id channel question callback-id]
+  (coaching/with-sending-constructs user-id team-id channel [ds sfn _]
+                                    (sfn question callback-id
+                                         (map #(hash-map :name "option" :value %) (range 1 6))))
   )
+;; I'm curious what I'm doing wrong that's preventing this from working
+
+(defn count-group-users []
+  (-> (h/select :%count.scu_id)
+      ;(h/modifiers :distinct)
+      (h/from :scu_question_groups)
+      (hu/query (db/datasource))))
+;; The distinct modifier isn't working
 
 (comment
   "This is the work area for coaches, for now. You'll need the following
@@ -155,8 +166,11 @@
   ;; Count Number of engaged users
   (pprint/print-table (count-engaged 7))
 
+;; Count # of users using categories
+ (pprint/print-table (/ 10 (count-group-users)))
+
 ;; Ask a question with buttons
-(send-question-w-buttons! team-id user-id question)
+(send-question-w-buttons! 3 8 nil "Test" 1)
 
   ;;Common Messages to send
   (def usage-checkin
