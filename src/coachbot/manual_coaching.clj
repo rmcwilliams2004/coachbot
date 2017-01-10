@@ -84,8 +84,7 @@
        first
        :num_users
        ))
-  ([] (count-engaged 7))
-  )
+  ([] (count-engaged 7)))
 
 (defn register-custom-question! [team-id user-id question]
   (let [ds (db/datasource)
@@ -123,8 +122,7 @@
 (defn send-question-w-buttons! [team-id user-id channel question callback-id]
   (coaching/with-sending-constructs user-id team-id channel [ds send-fn _]
     (send-fn question callback-id
-             (map #(hash-map :name "option" :value %) (range 1 6))))
-  )
+             (map #(hash-map :name "option" :value %) (range 1 6)))))
 
 (defn count-active []
   (-> (h/select (sql/raw "count(distinct scu.id) AS users"))
