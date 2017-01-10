@@ -48,13 +48,14 @@
       (storage/add-custom-question!
         ds (slack/get-user-info access-token user-id) question))))
 
-(defmacro with-sending-constructs [user-id team-id channel bindings & body]
+(defmacro with-sending-constructs
+  [slack-user-id slack-team-id channel bindings & body]
   `(let [~(first bindings) (db/datasource)]
-     (storage/with-access-tokens ~(first bindings) ~team-id
+     (storage/with-access-tokens ~(first bindings) ~slack-team-id
        [~(nth bindings 2) bot-access-token#]
        (let [~(second bindings)
              (partial slack/send-message! bot-access-token#
-                      (or ~channel ~user-id))]
+                      (or ~channel ~slack-user-id))]
          ~@body))))
 
 (defn send-new-question!
