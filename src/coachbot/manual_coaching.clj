@@ -70,6 +70,19 @@
           (hu/query latest-answers-query ds))))
   ([] (list-answers 5)))
 
+(defn count-engaged [days]
+  "Counts the number of users that have answered a question in X Days"
+  (-> (h/select [(sql/raw "date_format(qa.created_date, '%Y-%m-%d %h')")
+                 :date]
+                :%count.scu.id)
+      (h/modifiers :distinct)
+      (h/from [:slack_coaching_users :scu])
+      (h/join [:question_answers :qa]
+              [:= :scu.id :qa.slack_user_id])
+      (h/where (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+                      days))
+      (hu/query (db/datasource))))
+
 (defn register-custom-question! [team-id user-id question]
   (let [ds (db/datasource)
         user-info-query
@@ -119,13 +132,38 @@
 
   ;; Use this to see the last X days of answers
 
-  ;; Add a user ID as a third paramater to limit to a specific user
-  (pprint/print-table (list-answers 3))
+  ;; Add a user ID as a third paramater to limit to a (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+  max-days-back) user
+  (pprint/print-table (list-answers 7))
+  (pprint/print-table (list-answers 30 18))
 
   ;; List all the teams
   (pprint/print-table (-> (h/select :*)
                           (h/from :slack_teams)
                           (hu/query (db/datasource))))
+
+  ;; List all active users
+  (pprint/print-table (-> (h/select :scu.id :scu.name :scu.first_name
+                                    :scu.team-id :scu.active)
+                          (h/from [:slack_coaching_users :scu])
+                          (h/where [:= :active true])
+                          (hu/query (db/datasource))))
+
+  ;; Count Number of engaged users
+  (pprint/print-table (count-engaged 7))
+
+  ;;Common Messages to send
+  (def usage-checkin
+    (str
+      "Just wanted to check in.  I noticed that you haven't had "
+      "a chance to use CoachBot much recently.  I was just curious if "
+      "you have just been busy in the new year or if something else is "
+      "annoying you about coachbot"))
+
+  (def oops
+    (str
+      "Oops.  I wasn't reading the dates quite right.  I'm still curious "
+      "what you think of CoachBot so far though"))
 
   ;; Use this to register a custom question.
   (let [team-id 1
@@ -135,8 +173,8 @@
 
   ;; Use this to send a custom question immediately.
   (let [team-id 3
-        user-id 8
-        question "Isn't Steve a jerk?"]
+        user-id 18
+        question oops]
     (send-custom-question-now! team-id user-id question))
 
   ;; In case you made a mistake, you can delete a question using the ID that
