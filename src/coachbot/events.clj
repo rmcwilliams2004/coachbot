@@ -69,12 +69,15 @@
   (log/warnf "Unable to parse command: %s" text)
   (log/debugf "Parse Result: %s" result))
 
+(def greetings ["Hello, " "Howdy, " "Hola, " "Yo, " "How's it going "])
+
 (defn- hello-world [team-id channel user-id _]
   (storage/with-access-tokens (db/datasource) team-id
     [access-token bot-access-token]
     (let [{:keys [first-name name]} (slack/get-user-info access-token user-id)]
       (slack/send-message! bot-access-token channel
-                           (str "Hello, " (or first-name name))))))
+                           (str (nth greetings (rand-int (count greetings)))
+                                (or first-name name))))))
 
 (defn- friendly-reply [team-id channel _ _]
   (storage/with-access-tokens (db/datasource) team-id
@@ -119,7 +122,6 @@
                          (format messages/coaching-hello
                                  (or start-time "10am")))))
 
-(def hi-cmd "hi")
 (def help-cmd "help")
 (def start-coaching-cmd "start coaching")
 (def stop-coaching-cmd "stop coaching")
@@ -129,8 +131,7 @@
 (def add-to-group-cmd "add to question group")
 (def remove-from-group-cmd "remove from question group")
 
-(defevent {:command :hi :command-text hi-cmd
-           :help "checks if I'm listening"} hello-world)
+(defevent {:command :hi} hello-world)
 
 (defevent {:command :help :command-text help-cmd
            :help "display this help message"} help)

@@ -2,7 +2,7 @@
              stop-coaching | next-question | show-groups |
              add-group | remove-group | friendly
 help = <"help">
-hi = <"hi">
+hi = <"hi"> | <"hello"> | <"hola"> | <"howdy"> | <"yo"> | <"whatsup">
 start-coaching = <"start coaching">,
 { ws, <"at">, ws, #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)" }
 stop-coaching = <"stop coaching">
@@ -11,6 +11,6 @@ tell-coach = <"tell coach">, ws, text
 show-groups = <#"(show )?(question )?group(s)?">
 add-group = <#"add (to )?(question )?group(s)?">, ws, text
 remove-group = <#"remove (from )?(question )?group(s)?">, ws, text
-friendly = <#"thanks( coachbot)?">
+friendly = <#"thank(s)?( you)?( coachbot)?"> | <"cheers">
 <ws> = <#'\s+'>
 <text> = #"[^\"]*"

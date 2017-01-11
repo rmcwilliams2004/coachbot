@@ -117,4 +117,7 @@
   (context "Friendly Commands"
     (it "Should say :) to lots of friendly commands"
       (should= [:friendly] (parse-command "thanks"))
-      (should= [:friendly] (parse-command "thanks coachbot")))))
+      (should= [:friendly] (parse-command "thanks coachbot"))
+      (should= [:friendly] (parse-command "thank you coachbot"))
+      (should= [:friendly] (parse-command "thank you"))
+      (should= [:friendly] (parse-command "Cheers")))))
