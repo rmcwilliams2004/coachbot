@@ -112,4 +112,9 @@
       (it "start coaching at 13pm"
         (should-throw (parse-command "start coaching at 13pm")))
       (it "start coaching at 91am"
-        (should-throw (parse-command "start coaching at 91am"))))))
+        (should-throw (parse-command "start coaching at 91am")))))
+
+  (context "Friendly Commands"
+    (it "Should say :) to lots of friendly commands"
+      (should= [:friendly] (parse-command "thanks"))
+      (should= [:friendly] (parse-command "thanks coachbot")))))

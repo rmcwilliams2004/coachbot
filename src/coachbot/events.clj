@@ -76,6 +76,11 @@
       (slack/send-message! bot-access-token channel
                            (str "Hello, " (or first-name name))))))
 
+(defn- friendly-reply [team-id channel _ _]
+  (storage/with-access-tokens (db/datasource) team-id
+    [access-token bot-access-token]
+    (slack/send-message! bot-access-token channel ":)")))
+
 (defn- help-for-event [event]
   (let [[_ {:keys [command-text help config-options]}] event
         config-options (or config-options {"" help})]
@@ -84,10 +89,13 @@
 
 (defn- help [team-id channel _ _]
   (storage/with-access-tokens (db/datasource) team-id [_ bot-access-token]
-    (slack/send-message!
-      bot-access-token channel
-      (str "Here are the commands I respond to:\n"
-           (str/join "\n" (flatten (map help-for-event @events)))))))
+    (->> @events
+         (filter (comp (complement nil?) :command-text val))
+         (map help-for-event)
+         (flatten)
+         (str/join "\n" )
+         (str "Here are the commands I respond to:\n")
+         (slack/send-message! bot-access-token channel))))
 
 (def ^:private start-time-ptn #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)")
 
@@ -161,6 +169,8 @@
             (str "stop sending questions from the given question group "
                  "(e.g. 'remove from question group Time Management')")}}
           coaching/remove-from-question-group!)
+
+(defevent {:command :friendly} friendly-reply)
 
 (defn- respond-to-event [team-id channel user-id email text]
   (ss/try+
