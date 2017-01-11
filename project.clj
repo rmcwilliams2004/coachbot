@@ -31,7 +31,7 @@
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
                  [instaparse "1.4.5"]
-                 [metosin/compojure-api "1.1.9"]
+                 [metosin/compojure-api "1.1.10"]
                  [mysql/mysql-connector-java "6.0.5"]
                  [org.clojars.scstarkey/honeysql "0.8.2"]
                  [org.clojure/clojure "1.8.0"]
