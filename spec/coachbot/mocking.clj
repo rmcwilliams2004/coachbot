@@ -47,6 +47,8 @@
 (def user1-first-name "Bill")
 (def user2-first-name "Cathy")
 
+(def user3-name "suser")
+
 (def user1 {:team-id team-id :id user1-id
             :email user1-email :timezone "America/Chicago"
             :real-name "bblah" :first-name user1-first-name :last-name "Blah"
@@ -61,7 +63,7 @@
 (def user3 {:team-id team-id :id user3-id
             :email user3-email :timezone "America/Los_Angeles"
             :first-name nil :last-name nil
-            :real-name "Simple User" :name "suser"})
+            :real-name "Simple User" :name user3-name})
 
 (def users {user0-id {:team-id team-id :id user0-id
                       :email "bill@bill.bil" :timezone "Antarctica/Palmer"
