@@ -40,9 +40,10 @@
 (defn list-channels [team-id]
   (storage/list-coaching-channels (db/datasource) team-id))
 
-(defn send-channel-question [team-id channel msg]
-  (cp/with-sending-constructs {:team-id team-id :channel channel} [ds send-fn _]
+(defn send-channel-question [slack-team-id channel msg]
+  (cp/with-sending-constructs
+    {:team-id slack-team-id :channel channel} [ds send-fn _]
     (let [question-id (storage/add-channel-question!
-                        (db/datasource) team-id channel msg)]
+                        (db/datasource) slack-team-id channel msg)]
       (send-fn msg (format "cquestion-%s" question-id)
                (map #(hash-map :name "option" :value %) (range 1 6))))))

@@ -427,8 +427,8 @@
 
 (def ^:private slack-coaching-channels [:slack_coaching_channels :scc])
 
-(defn- where-is-channel [hq slack-team-id channel]
-  (h/where hq [:and [:= :scc.team_id slack-team-id]
+(defn- where-is-channel [hq team-id channel]
+  (h/where hq [:and [:= :scc.team_id team-id]
                [:= :scc.channel_id channel]]))
 
 (defn- load-channel [conn slack-team-id channel field]
