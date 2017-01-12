@@ -217,7 +217,7 @@
 
   (log/infof "Don't know how to handle callbacks yet: %s" callback))
 
-(defn- respond-to-event [team-id channel user-id email text]
+(defn- respond-to-user-event! [team-id channel user-id email text]
   (ss/try+
     (let [[command & args] (parser/parse-command text)
           {:keys [ef]} (command @events)]
@@ -229,17 +229,19 @@
       (handle-parse-failure text result)
       (cp/submit-text! team-id email text))))
 
-(defn- respond-to-event-subtype [team-id channel user-id event-subtype]
-  (if-let [handler (event-subtype-handlers event-subtype)]
-    (handler team-id channel user-id)
-    (log/warnf "I don't know how to handle: %s" event-subtype)))
+(defn- respond-to-bot-event! [team-id channel user-id event-subtype]
+  (if event-subtype
+    (if-let [handler (event-subtype-handlers event-subtype)]
+      (handler team-id channel user-id)
+      (log/warnf "I don't know how to handle: %s" event-subtype))
+    "Message from bot ignored. No subtype found."))
 
 (defn- process-event [email access-token bot-access-token
                       raw-event
                       {:keys [team-id channel user-id text
                               event-subtype] :as event}]
   (ss/try+
-    (if-not (storage/is-bot-user? (db/datasource) team-id user-id)
+    (if-not (cp/is-bot-user? (db/datasource) team-id user-id)
       (when (slack/is-im-to-me? bot-access-token channel)
         (with-ensured-user! access-token team-id user-id [conn]
           (storage/log-user-activity! conn
@@ -250,9 +252,8 @@
                                        :mtype :event
                                        :channel_id channel
                                        :event_text text}))
-        (respond-to-event team-id channel user-id email text))
-      (respond-to-event-subtype team-id channel user-id event-subtype))
-
+        (respond-to-user-event! team-id channel user-id email text))
+      (respond-to-bot-event! team-id channel user-id event-subtype))
     (catch Exception t (handle-unknown-failure t event))))
 
 (defn- process [event]

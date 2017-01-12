@@ -48,12 +48,13 @@
       walk/keywordize-keys))
 
 (defn- transform-user-info [user-record]
-  (let [{:keys [id team_id name real_name tz]
+  (let [{:keys [id team_id name real_name tz is_bot deleted]
          {:keys [first_name last_name email]}
          :profile} user-record]
     {:id id :team-id team_id :name name :real-name real_name
      :timezone tz :first-name first_name
-     :last-name last_name :email email}))
+     :last-name last_name :email email
+     :bot? is_bot :deleted? deleted}))
 
 (defn list-members
   "List the members of the team for the given access token."

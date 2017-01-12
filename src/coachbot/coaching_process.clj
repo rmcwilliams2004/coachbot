@@ -219,3 +219,7 @@
                   (qt/with-schedule
                     (qc/schedule (qc/cron-schedule "0 * * ? * *"))))]
     (qs/schedule scheduler job trigger)))
+
+(defn is-bot-user? [ds team-id slack-user-id]
+  (or (= "USLACKBOT" slack-user-id)
+      (storage/is-bot-user? ds team-id slack-user-id)))
