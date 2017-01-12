@@ -23,7 +23,8 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [clojure.walk :as walk]
-            [coachbot.coaching-process :as coaching]
+            [coachbot.coaching-process :as cp]
+            [coachbot.channel-coaching-process :as ccp]
             [coachbot.command-parser :as parser]
             [coachbot.db :as db]
             [coachbot.env :as env]
@@ -106,7 +107,7 @@
 (defn- start-coaching! [team-id channel user-id [start-time]]
   (log/debugf "start-coaching! %s %s %s %s" team-id channel user-id start-time)
   (storage/with-access-tokens (db/datasource) team-id [_ bot-access-token]
-    (coaching/start-coaching! team-id user-id (translate-start-time start-time))
+    (cp/start-coaching! team-id user-id (translate-start-time start-time))
     (slack/send-message! bot-access-token channel
                          (format messages/coaching-hello
                                  (or start-time "10am")))))
@@ -138,14 +139,14 @@
                  "(e.g. 'start coaching at 9am')")}} start-coaching!)
 
 (defevent {:command :stop-coaching :command-text stop-coaching-cmd
-           :help "stop sending questions"} coaching/stop-coaching!)
+           :help "stop sending questions"} cp/stop-coaching!)
 
 (defevent {:command :next-question :command-text next-question-cmd
-           :help "ask a new question"} coaching/next-question!)
+           :help "ask a new question"} cp/next-question!)
 
 (defevent {:command :show-groups :command-text show-question-groups-cmd
            :help "get a list of the question groups available"}
-          coaching/show-question-groups)
+          cp/show-question-groups)
 
 (defevent {:command :add-group :command-text add-to-group-cmd
            :config-options
@@ -153,26 +154,20 @@
             (str "send questions from the given question group instead of "
                  "the default "
                  "(e.g. 'add to question group Time Management')")}}
-          coaching/add-to-question-group!)
+          cp/add-to-question-group!)
 
 (defevent {:command :remove-group :command-text remove-from-group-cmd
            :config-options
            {" {group name}"
             (str "stop sending questions from the given question group "
                  "(e.g. 'remove from question group Time Management')")}}
-          coaching/remove-from-question-group!)
+          cp/remove-from-question-group!)
 
-(defn- respond-to-event [team-id channel user-id email text]
-  (ss/try+
-    (let [[command & args] (parser/parse-command text)
-          {:keys [ef]} (command @events)]
-      (log/debugf "Responding to %s / %s" command args)
-      (if ef (ef team-id channel user-id args)
-             (do (log/errorf "Unexpected command: %s" command)
-                 "Unhandled command")))
-    (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
-      (handle-parse-failure text result)
-      (coaching/submit-text! team-id email text))))
+(def ^:private event-subtype-handlers
+  {"group_join" ccp/coach-channel
+   "group_leave" ccp/stop-coaching-channel
+   "channel_join" ccp/coach-channel
+   "channel_leave" ccp/stop-coaching-channel})
 
 (defn- reshape-event [{:keys [event callback_id] :as e}]
   (cond
@@ -180,10 +175,10 @@
     (let [{:keys [team_id api_app_id type authed_users]
            {:keys [text ts channel event_ts]
             user-id :user
-            event_type :type
-            event_subtype :subtype} :event} e]
+            event-type :type
+            event-subtype :subtype} :event} e]
       {:type :event :team-id team_id :channel channel :user-id user-id
-       :text text :event-type event_type :event-subtype event_subtype})
+       :text text :event-type event-type :event-subtype event-subtype})
 
     callback_id
     (let [{:keys [response_url]
@@ -200,7 +195,7 @@
 
 (defmacro with-ensured-user! [access-token team-id user-id bindings & body]
   `(jdbc/with-db-transaction [~(first bindings) (db/datasource)]
-     (coaching/ensure-user! ~(first bindings) ~access-token ~team-id ~user-id)
+     (cp/ensure-user! ~(first bindings) ~access-token ~team-id ~user-id)
      ~@body))
 
 (defn- process-callback [email access-token bot-access-token
@@ -222,9 +217,27 @@
 
   (log/infof "Don't know how to handle callbacks yet: %s" callback))
 
+(defn- respond-to-event [team-id channel user-id email text]
+  (ss/try+
+    (let [[command & args] (parser/parse-command text)
+          {:keys [ef]} (command @events)]
+      (log/debugf "Responding to %s / %s" command args)
+      (if ef (ef team-id channel user-id args)
+             (do (log/errorf "Unexpected command: %s" command)
+                 "Unhandled command")))
+    (catch [:type :coachbot.command-parser/parse-failure] {:keys [result]}
+      (handle-parse-failure text result)
+      (cp/submit-text! team-id email text))))
+
+(defn- respond-to-event-subtype [team-id channel user-id event-subtype]
+  (if-let [handler (event-subtype-handlers event-subtype)]
+    (handler team-id channel user-id)
+    (log/warnf "I don't know how to handle: %s" event-subtype)))
+
 (defn- process-event [email access-token bot-access-token
                       raw-event
-                      {:keys [team-id channel user-id text] :as event}]
+                      {:keys [team-id channel user-id text
+                              event-subtype] :as event}]
   (ss/try+
     (if-not (storage/is-bot-user? (db/datasource) team-id user-id)
       (when (slack/is-im-to-me? bot-access-token channel)
@@ -238,7 +251,8 @@
                                        :channel_id channel
                                        :event_text text}))
         (respond-to-event team-id channel user-id email text))
-      "Ignoring message from myself.")
+      (respond-to-event-subtype team-id channel user-id event-subtype))
+
     (catch Exception t (handle-unknown-failure t event))))
 
 (defn- process [event]
@@ -275,8 +289,11 @@
 
 (def ^:private event-queue (delay (make-queue-if-configured)))
 
+(defn is-event-authorized? [token]
+  (= token @env/slack-verification-token))
+
 (defn handle-event [{:keys [token] :as event}]
-  (when-not (= token @env/slack-verification-token)
+  (when-not (is-event-authorized? token)
     (ss/throw+ {:type ::access-denied}))
 
   (if @env/event-queue-enabled?

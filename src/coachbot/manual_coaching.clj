@@ -120,7 +120,8 @@
     (slack/send-message! bot_access_token remote_user_id message)))
 
 (defn send-question-w-buttons! [team-id user-id channel question callback-id]
-  (coaching/with-sending-constructs user-id team-id channel [ds send-fn _]
+  (coaching/with-sending-constructs
+    {:user-id user-id :team-id team-id :channel channel} [ds send-fn _]
     (send-fn question callback-id
              (map #(hash-map :name "option" :value %) (range 1 6)))))
 

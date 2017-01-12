@@ -33,7 +33,7 @@
 (def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
 (def team-id "def456")
 (def team-name "The Best Team Ever")
-(def bot-user-id "bot999")
+(def bot-user-id "U395UPLDC")
 (def channel-id "D2X6TCYJE")
 
 (def user0-id "abc123")
@@ -88,6 +88,8 @@
 (def u1-coaching-goodbye (u1c messages/coaching-goodbye))
 (def u2-coaching-goodbye (u2c messages/coaching-goodbye))
 
+(def good-token "good")
+
 (def slack-auth {:team-id team-id
                  :team-name team-name
                  :access-token access-token
@@ -100,10 +102,17 @@
     [env/now (fn [] (tf/parse (tf/formatters :date-time-no-ms)
                               "2016-01-01T10:10:00-06:00"))
      db/datasource (fn [] ds)
-     slack/send-message! (fn [_ channel msg]
-                           (swap! messages conj (str channel ": " msg)))
+     slack/send-message! (fn [_ channel msg & [callback-id buttons]]
+                           (swap! messages conj
+                                  (let [out-msg (str channel ": " msg)]
+                                    (if callback-id
+                                      {:msg out-msg
+                                       :cid callback-id
+                                       :btns buttons}
+                                      out-msg))))
      slack/get-user-info (fn [_ user-id] (users user-id))
      slack/is-im-to-me? (fn [_ channel] (contains? users channel))
+     events/is-event-authorized? (fn [token] (= token good-token))
      events/handle-unknown-failure
      (fn [t _]
        (log/error t)

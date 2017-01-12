@@ -1,0 +1,14 @@
+{:token "replaced_in_test_case",
+ :team_id "replaced_in_test_case",
+ :api_app_id "A2AAAAAAA",
+ :event
+ {:user "U395UPLDC",
+  :inviter "U04AAAAAA",
+  :text "<@U04AAAAAA|coachbot3> has joined the channel",
+  :type "message",
+  :subtype "channel_join",
+  :ts "1482438181.000010",
+  :channel "replaced_in_test_case",
+  :event_ts "1482438181.000010"},
+ :type "event_callback",
+ :authed_users ["U395UPLDC" "U04SG55UU"]}

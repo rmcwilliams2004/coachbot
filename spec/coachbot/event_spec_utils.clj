@@ -18,11 +18,12 @@
 ;
 
 (ns coachbot.event-spec-utils
-  (:require [coachbot.events :as events]))
+  (:require [coachbot.events :as events]
+            [coachbot.mocking :refer :all]))
 
 (defn handle-event
   ([team-id user-id channel text]
-   (events/handle-raw-event {:token "none" :team_id team-id
+   (events/handle-raw-event {:token good-token :team_id team-id
                              :event {:text text :user user-id
                                      :channel channel}}))
   ([team-id user-id text]

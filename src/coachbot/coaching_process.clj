@@ -48,38 +48,39 @@
       (storage/add-custom-question!
         ds (slack/get-user-info access-token user-id) question))))
 
-(defmacro with-sending-constructs
-  [slack-user-id slack-team-id channel bindings & body]
+(defmacro with-sending-constructs [{:keys [team-id user-id channel]}
+                                   bindings & body]
   `(let [~(first bindings) (db/datasource)]
-     (storage/with-access-tokens ~(first bindings) ~slack-team-id
+     (storage/with-access-tokens ~(first bindings) ~team-id
        [~(nth bindings 2) bot-access-token#]
        (let [~(second bindings)
              (partial slack/send-message! bot-access-token#
-                      (or ~channel ~slack-user-id))]
+                      (or ~channel ~user-id))]
          ~@body))))
 
 (defn send-new-question!
   "Sends a new question to a specific individual."
   [{:keys [id asked-qid team-id] :as user} & [channel]]
-
-  (with-sending-constructs id team-id channel [ds send-fn _]
+  (with-sending-constructs {:user-id id :team-id team-id :channel channel}
+    [ds send-fn _]
     (let [{:keys [cquestion_id slack_user_id answered]}
           (storage/get-last-question-asked ds user)]
       (jdbc/with-db-transaction [conn ds]
         (when (and cquestion_id (not answered))
           (storage/mark-custom-question! conn slack_user_id cquestion_id
                                          :skipped))
-        (storage/next-question-for-sending! conn asked-qid user send-fn)))))
+        (send-fn (storage/next-question-for-sending! conn asked-qid user))))))
 
 (defn- send-next-or-resend-prev-question!
   ([user] (send-next-or-resend-prev-question! user nil))
   ([{:keys [id asked-qid answered-qid
             team-id]
      :as user} channel]
-   (with-sending-constructs id team-id channel [ds send-fn _]
-     (if (= asked-qid answered-qid)
-       (storage/next-question-for-sending! ds asked-qid user send-fn)
-       (storage/question-for-sending ds asked-qid user send-fn)))))
+   (with-sending-constructs {:user-id id :team-id team-id :channel channel}
+     [ds send-fn _]
+     (send-fn (if (= asked-qid answered-qid)
+                (storage/next-question-for-sending! ds asked-qid user)
+                (storage/question-for-sending! ds asked-qid user))))))
 
 (defn send-question-if-conditions-are-right!
   "Sends a question to a specific individual only if the conditions are
@@ -162,7 +163,8 @@
            (str/join ", " (map :group_name user-groups))))))
 
 (defn show-question-groups [team-id channel user-id _]
-  (with-sending-constructs user-id team-id channel [ds send-fn _]
+  (with-sending-constructs {:user-id user-id :team-id team-id :channel channel}
+    [ds send-fn _]
     (let [groups (storage/list-question-groups ds)]
       (send-fn (str
                  "The following groups are available:\n\n"
@@ -170,7 +172,8 @@
                  (question-group-display ds user-id))))))
 
 (defn add-to-question-group! [team-id channel user-id [group]]
-  (with-sending-constructs user-id team-id channel [ds send-fn access-token]
+  (with-sending-constructs {:user-id user-id :team-id team-id :channel channel}
+    [ds send-fn access-token]
     (ensure-user! ds access-token team-id user-id)
     (send-fn
       (if (storage/is-in-question-group? ds user-id group)
@@ -181,7 +184,8 @@
           (str group " does not exist."))))))
 
 (defn remove-from-question-group! [team-id channel user-id [group]]
-  (with-sending-constructs user-id team-id channel [ds send-fn _]
+  (with-sending-constructs {:user-id user-id :team-id team-id :channel channel}
+    [ds send-fn _]
     (send-fn
       (if (storage/is-in-question-group? ds user-id group)
         (if (seq (storage/remove-from-question-group! ds user-id group))
