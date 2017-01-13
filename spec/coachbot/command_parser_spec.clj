@@ -22,17 +22,28 @@
             [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
+(def ^:private start-coaching-pattern "start coaching at %s")
+
 (defmacro should-parse [expected command]
   `(should= ~expected (parse-command ~command)))
 
-(defmacro single-arg-variants [name expected-command pattern & arg-variants]
+(defmacro single-arg-variants [name pattern bindings arg-variants
+                               & assertion]
   (let [variants
         (map (fn [variant]
-               (let [command (format pattern variant)]
-                 `(it ~command
-                    (should-parse [~expected-command ~variant] ~command))))
+               `(let [~(first bindings) (format ~pattern ~variant)
+                      ~(second bindings) ~variant]
+                  (it ~(first bindings) ~@assertion)))
              arg-variants)]
     `(context ~name ~@variants)))
+
+(defmacro single-arg-successes [name pattern expected-command & arg-variants]
+  `(single-arg-variants ~name ~pattern [command# variant#] ~arg-variants
+                        (should-parse [~expected-command variant#] command#)))
+
+(defmacro single-arg-failures [name pattern & arg-variants]
+  `(single-arg-variants ~name ~pattern [command# _#] ~arg-variants
+                        (should-throw (parse-command command#))))
 
 (defmacro it-parses-variants [name expected & variants]
   (let [expectations
@@ -74,13 +85,10 @@
       #":type :coachbot.command-parser/parse-failure"
       (parse-command "die scum")))
 
-  (single-arg-variants "start coaching"
-                       :start-coaching "start coaching at %s"
-                       "9am" "9 am" "9 PM" "10pM" "10 a.m." "10 P.M."
-                       "10 PM." "10 PM" "10 P.M")
+  (context "start coaching"
+    (single-arg-successes "good" start-coaching-pattern :start-coaching
+                          "9am" "9 am" "9 PM" "10pM" "10 a.m." "10 P.M."
+                          "10 PM." "10 PM" "10 P.M")
 
-  (context "start coaching with bad numbers"
-    (it "start coaching at 13pm"
-      (should-throw (parse-command "start coaching at 13pm")))
-    (it "start coaching at 91am"
-      (should-throw (parse-command "start coaching at 91am")))))
+    (single-arg-failures "bad" start-coaching-pattern
+                         "13pm" "91am" "47" "111 A.M." "whenever")))
