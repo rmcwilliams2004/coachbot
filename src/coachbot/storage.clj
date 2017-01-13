@@ -108,7 +108,8 @@
                            (cske/transform-keys csk/->snake_case x)
                            (assoc x :team_id db-team-id)
                            (assoc x :created_date (env/now)) ;for unit tests
-                           (set/rename-keys x {:id :remote_user_id}))]
+                           (set/rename-keys x {:id :remote_user_id})
+                           (dissoc x :bot? :deleted?))]
       (when-not db-team-id (ss/throw+ {:type ::invalid-team :team-id team-id}))
 
       (if existing-record
