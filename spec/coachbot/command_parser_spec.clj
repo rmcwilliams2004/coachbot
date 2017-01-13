@@ -27,12 +27,11 @@
 
 (defmacro single-arg-variants [name expected-command pattern & arg-variants]
   (let [variants
-        (map
-          (fn [variant]
-            (let [command (format pattern variant)]
-              `(it ~command
-                 (should-parse [~expected-command ~variant] ~command))))
-          arg-variants)]
+        (map (fn [variant]
+               (let [command (format pattern variant)]
+                 `(it ~command
+                    (should-parse [~expected-command ~variant] ~command))))
+             arg-variants)]
     `(context ~name ~@variants)))
 
 (defmacro it-parses-variants [name expected & variants]
