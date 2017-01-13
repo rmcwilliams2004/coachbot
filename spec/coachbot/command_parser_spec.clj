@@ -75,14 +75,13 @@
       #":type :coachbot.command-parser/parse-failure"
       (parse-command "die scum")))
 
-  (context "Funky Commands"
-    (single-arg-variants "start coaching"
-                         :start-coaching "start coaching at %s"
-                         "9am" "9 am" "9 PM" "10pM" "10 a.m." "10 P.M."
-                         "10 PM." "10 PM" "10 P.M")
+  (single-arg-variants "start coaching"
+                       :start-coaching "start coaching at %s"
+                       "9am" "9 am" "9 PM" "10pM" "10 a.m." "10 P.M."
+                       "10 PM." "10 PM" "10 P.M")
 
-    (context "start coaching with bad numbers"
-      (it "start coaching at 13pm"
-        (should-throw (parse-command "start coaching at 13pm")))
-      (it "start coaching at 91am"
-        (should-throw (parse-command "start coaching at 91am"))))))
+  (context "start coaching with bad numbers"
+    (it "start coaching at 13pm"
+      (should-throw (parse-command "start coaching at 13pm")))
+    (it "start coaching at 91am"
+      (should-throw (parse-command "start coaching at 91am")))))
