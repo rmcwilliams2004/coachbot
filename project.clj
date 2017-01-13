@@ -46,7 +46,7 @@
   :test-paths ["spec"]
   :min-lein-version "2.0.0"
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "3.1.0"]
-                                  [cheshire "5.6.3"]
+                                  [cheshire "5.7.0"]
                                   [ring/ring-mock "0.3.0"]
                                   [speclj "3.3.2"]]
                    :plugins [[lein-ancient "0.6.10"]
