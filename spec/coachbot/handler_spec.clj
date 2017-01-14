@@ -38,7 +38,7 @@
   (let [base-event {:type "message", :user user0-id, :text "hi",
                     :ts "1478967753.000006", :channel user0-id,
                     :event_ts "1478967753.000006"}
-        result (merge {:token "none", :team_id team-id,
+        result (merge {:token good-token, :team_id team-id,
                        :api_app_id "A2R05RSQ3",
                        :type "event_callback", :authed_users ["U2X4SN7H9"]}
                       (dissoc msg :event))

@@ -18,13 +18,16 @@
 ;
 
 (ns coachbot.events-spec
-  (:require [coachbot.coaching-process :as coaching]
+  (:require [clojure.java.io :as io]
+            [coachbot.coaching-process :as coaching]
             [coachbot.event-spec-utils :refer :all]
             [coachbot.events :as events]
             [coachbot.handler :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
-            [speclj.core :refer :all]))
+            [speclj.core :refer :all]
+            [honeysql.helpers :as h]
+            [coachbot.hsql-utils :as hu]))
 
 (def first-question "first question")
 (def second-question "second question")
@@ -34,6 +37,7 @@
 (def some-fun-answer "some fun answer")
 (def another-fun-answer "another fun answer")
 (def some-confused-answer "some confused answer")
+(def some-large-answer (-> "events/large_answer.txt" io/resource slurp))
 
 (def general "general")
 
@@ -66,7 +70,7 @@
   (context "Start and stop coaching"
     (before-all (storage/replace-base-questions!
                   @ds [first-question second-question third-question
-                      fourth-question])
+                       fourth-question])
 
                 ;; Nobody should get any questions
                 (coaching/send-next-question-to-everyone-everywhere!)
@@ -149,7 +153,17 @@
                  (handle-event team-id user3-id "start coaching at 1 PM")
                  (coaching/send-question-if-conditions-are-right!
                    (storage/get-coaching-user @ds team-id user3-email))
-                 (storage/list-questions-asked @ds team-id user3-email))))))
+                 (storage/list-questions-asked @ds team-id user3-email)))))
+
+  (context "large answers"
+    (before-all (-> (h/delete-from :question_answers)
+                    (hu/execute-safely! @ds))
+                (handle-event team-id user1-id events/next-question-cmd)
+                (handle-event team-id user1-id some-large-answer))
+
+    (it "should have stored the question and answer"
+      (should= [{:question second-question, :answer some-large-answer}]
+               (storage/list-answers @ds team-id user1-email)))))
 
 (describe "translate start time"
   (it "should translate times properly"

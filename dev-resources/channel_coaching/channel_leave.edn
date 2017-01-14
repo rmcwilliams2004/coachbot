@@ -1,0 +1,13 @@
+{:token "replaced_in_test_case",
+ :team_id "replaced_in_test_case",
+ :api_app_id "A2AAAAAAA",
+ :event
+ {:user "U395UPLDC",
+  :text "<@U395UPLDC|coachbot3> has left the channel",
+  :type "message",
+  :subtype "channel_leave",
+  :ts "1482438226.000011",
+  :channel "replaced_in_test_case",
+  :event_ts "1482438226.000011"},
+ :type "event_callback",
+ :authed_users ["U04SG55UU"]}

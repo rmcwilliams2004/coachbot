@@ -31,7 +31,7 @@
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
                  [instaparse "1.4.5"]
-                 [metosin/compojure-api "1.1.9"]
+                 [metosin/compojure-api "1.1.10"]
                  [mysql/mysql-connector-java "6.0.5"]
                  [org.clojars.scstarkey/honeysql "0.8.2"]
                  [org.clojure/clojure "1.8.0"]
@@ -46,7 +46,7 @@
   :test-paths ["spec"]
   :min-lein-version "2.0.0"
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "3.1.0"]
-                                  [cheshire "5.6.3"]
+                                  [cheshire "5.7.0"]
                                   [ring/ring-mock "0.3.0"]
                                   [speclj "3.3.2"]]
                    :plugins [[lein-ancient "0.6.10"]

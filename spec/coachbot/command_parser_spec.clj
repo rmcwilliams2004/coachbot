@@ -22,97 +22,76 @@
             [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
+(def ^:private start-coaching-pattern "start coaching at %s")
+
+(defmacro should-parse [expected command]
+  `(should= ~expected (parse-command ~command)))
+
+(defmacro single-arg-variants [name pattern bindings arg-variants
+                               & assertion]
+  (let [variants
+        (map (fn [variant]
+               `(let [~(first bindings) (format ~pattern ~variant)
+                      ~(second bindings) ~variant]
+                  (it ~(first bindings) ~@assertion)))
+             arg-variants)]
+    `(context ~name ~@variants)))
+
+(defmacro single-arg-successes [name pattern expected-command & arg-variants]
+  `(single-arg-variants ~name ~pattern [command# variant#] ~arg-variants
+                        (should-parse [~expected-command variant#] command#)))
+
+(defmacro single-arg-failures [name pattern & arg-variants]
+  `(single-arg-variants ~name ~pattern [command# _#] ~arg-variants
+                        (should-throw (parse-command command#))))
+
+(defmacro it-parses-variants [name expected & variants]
+  (let [expectations
+        (map (fn [variant] `(should-parse ~expected ~variant)) variants)]
+    `(it (str "should parse variants of '" ~name "'") ~@expectations)))
+
 (describe "Command Parsing"
   (around-all [it] (log/with-level :error (it)))
 
-  (context "Simple commands"
-    (it "should parse a simple command"
-      (should= [:help] (parse-command "help"))
-      (should= [:help] (parse-command "Help"))
-      (should= [:help] (parse-command "Help "))
-      (should= [:help] (parse-command " Help")))
+  (it-parses-variants "help" [:help] "help" "Help" "Help " " Help ")
 
-    (it "should get a single argument"
-      (should= [:tell-coach "i have a question"]
-               (parse-command "tell coach i have a question")))
+  (it "should get a single argument"
+    (should-parse [:tell-coach "a question"] "tell coach a question"))
 
-    (context "question groups"
-      (it "should allow lots of variants"
-        (should= [:show-groups] (parse-command "group"))
-        (should= [:show-groups] (parse-command "groups"))
-        (should= [:show-groups] (parse-command "show group"))
-        (should= [:show-groups] (parse-command "show groups"))
-        (should= [:show-groups] (parse-command "question group"))
-        (should= [:show-groups] (parse-command "question groups"))
-        (should= [:show-groups] (parse-command "show question group"))
-        (should= [:show-groups] (parse-command "show question groups"))))
+  (it-parses-variants "show groups" [:show-groups]
+    "group" "groups" "show group" "show groups" "question group"
+    "question groups" "show question group" "show question groups")
 
-    (context "add question groups"
-      (it "should allow lots of variants"
-        (should= [:add-group "bill"] (parse-command "add group bill"))
-        (should= [:add-group "bill"] (parse-command "add to group bill"))
-        (should= [:add-group "bill"] (parse-command "add groups bill"))
-        (should= [:add-group "bill"] (parse-command "add to groups bill"))
-        (should= [:add-group "bill"]
-                 (parse-command "add to question groups bill"))
-        (should= [:add-group "bill"] (parse-command "add question group bill"))
-        (should= [:add-group "bill"]
-                 (parse-command "add question groups bill"))))
+  (it-parses-variants "add group" [:add-group "bill"]
+    "add group bill"
+    "add to group bill"
+    "add groups bill"
+    "add to groups bill"
+    "add to question groups bill"
+    "add question group bill"
+    "add question groups bill")
 
-    (context "remove question groups"
-      (it "should allow lots of variants"
-        (should= [:remove-group "bill"] (parse-command "remove group bill"))
-        (should= [:remove-group "bill"]
-                 (parse-command "remove from group bill"))
-        (should= [:remove-group "bill"] (parse-command "remove groups bill"))
-        (should= [:remove-group "bill"]
-                 (parse-command "remove from groups bill"))
-        (should= [:remove-group "bill"]
-                 (parse-command "remove from question groups bill"))
-        (should= [:remove-group "bill"]
-                 (parse-command "remove question group bill"))
-        (should= [:remove-group "bill"]
-                 (parse-command "remove question groups bill")))))
+  (it-parses-variants "remove group" [:remove-group "bill"]
+    "remove group bill"
+    "remove from group bill"
+    "remove groups bill"
+    "remove from groups bill"
+    "remove from question groups bill"
+    "remove question group bill"
+    "remove question groups bill")
 
-  (context "Bad Commands"
-    (it "should throw nice exceptions for bad commands"
-      (should-throw Exception
-        #":type :coachbot.command-parser/parse-failure"
-        (parse-command "die scum"))))
+  (it "should throw nice exceptions for bad commands"
+    (should-throw Exception
+      #":type :coachbot.command-parser/parse-failure"
+      (parse-command "die scum")))
 
-  (context "Funky Commands"
-    (context "start coaching"
-      (it "start coaching at 9am"
-        (should= [:start-coaching "9am"]
-                 (parse-command "start coaching at 9am")))
-      (it "start coaching at 9 am"
-        (should= [:start-coaching "9 am"]
-                 (parse-command "start coaching at 9 am")))
-      (it "start coaching at 9 PM"
-        (should= [:start-coaching "9 PM"]
-                 (parse-command "start coaching at 9 PM")))
-      (it "start coaching at 10pM"
-        (should= [:start-coaching "10pM"]
-                 (parse-command "start coaching at 10pM")))
-      (it "start coaching at 10 a.m."
-        (should= [:start-coaching "10 a.m."]
-                 (parse-command "start coaching at 10 a.m.")))
-      (it "start coaching at 10 a.m."
-        (should= [:start-coaching "10 P.M."]
-                 (parse-command "start coaching at 10 P.M.")))
-      (it "start coaching at 10 PM."
-        (should= [:start-coaching "10 PM."]
-                 (parse-command "start coaching at 10 PM.")))
-      (it "start coaching at 10 PM."
-        (should= [:start-coaching "10 PM."]
-                 (parse-command "start coaching at 10 PM.")))
-      (it "start coaching at 10 P.M"
-        (should= [:start-coaching "10 P.M"]
-                 (parse-command "start coaching at 10 P.M")))
-      (it "start coaching at 13pm"
-        (should-throw (parse-command "start coaching at 13pm")))
-      (it "start coaching at 91am"
-        (should-throw (parse-command "start coaching at 91am")))))
+  (context "start coaching"
+    (single-arg-successes "good" start-coaching-pattern :start-coaching
+                          "9am" "9 am" "9 PM" "10pM" "10 a.m." "10 P.M."
+                          "10 PM." "10 PM" "10 P.M")
+
+    (single-arg-failures "bad" start-coaching-pattern
+                         "13pm" "91am" "47" "111 A.M." "whenever"))
 
   (context "Friendly Commands"
     (it "Should say :) to lots of friendly commands"

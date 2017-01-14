@@ -33,12 +33,12 @@
             [slingshot.slingshot :as ss]
             [taoensso.timbre :as log]))
 
-(defn get-access-tokens [ds team-id]
+(defn get-access-tokens [ds slack-team-id]
   (let [[{:keys [access_token bot_access_token]}]
         (-> (h/select [:access_token "access_token"]
                       [:bot_access_token "bot_access_token"])
             (h/from :slack_teams)
-            (h/where [:= :team_id team-id])
+            (h/where [:= :team_id slack-team-id])
             (hu/query ds))]
     [access_token bot_access_token]))
 
@@ -47,10 +47,10 @@
          (get-access-tokens ~ds ~team-id)]
      ~@body))
 
-(defn get-bot-user-id [ds team-id]
+(defn get-bot-user-id [ds slack-team-id]
   (let [[{:keys [bot_user_id]}] (-> (h/select [:bot_user_id "bot_user_id"])
                                     (h/from :slack_teams)
-                                    (h/where [:= :team_id team-id])
+                                    (h/where [:= :team_id slack-team-id])
                                     (hu/query ds))]
     (log/debugf "Bot user ID: %s" bot_user_id)
     bot_user_id))
@@ -68,16 +68,16 @@
         (jdbc/update! conn :slack_teams new-record ["team_id = ?" team-id])
         (jdbc/insert! conn :slack_teams new-record)))))
 
-(defn get-team-id [ds team-id]
+(defn get-team-id [ds slack-team-id]
   (-> (h/select :id)
       (h/from :slack_teams)
-      (h/where [:= :team_id team-id])
+      (h/where [:= :team_id slack-team-id])
       (hu/query ds)
       first
       :id))
 
-(defn- get-coaching-user-raw [ds team-id user-email]
-  (let [team-internal-id (get-team-id ds team-id)
+(defn- get-coaching-user-raw [ds slack-team-id user-email]
+  (let [team-internal-id (get-team-id ds slack-team-id)
         where-clause [:and
                       [:= :team_id team-internal-id]
                       [:= :email user-email]]]
@@ -95,8 +95,9 @@
           (assoc x :team-id team-id)
           (set/rename-keys x {:remote-user-id :id}))))
 
-(defn get-coaching-user [ds team-id user-email]
-  (convert-user team-id (get-coaching-user-raw ds team-id user-email)))
+(defn get-coaching-user [ds slack-team-id user-email]
+  (convert-user slack-team-id
+                (get-coaching-user-raw ds slack-team-id user-email)))
 
 (defn add-coaching-user! [ds {:keys [email team-id coaching-time] :as user}]
   (jdbc/with-db-transaction
@@ -107,7 +108,8 @@
                            (cske/transform-keys csk/->snake_case x)
                            (assoc x :team_id db-team-id)
                            (assoc x :created_date (env/now)) ;for unit tests
-                           (set/rename-keys x {:id :remote_user_id}))]
+                           (set/rename-keys x {:id :remote_user_id})
+                           (dissoc x :bot? :deleted?))]
       (when-not db-team-id (ss/throw+ {:type ::invalid-team :team-id team-id}))
 
       (if existing-record
@@ -281,7 +283,7 @@
                                 question)
          question)))))
 
-(defn question-for-sending [ds qid {remote-user-id :id} send-fn]
+(defn question-for-sending! [ds qid {remote-user-id :id}]
   (jdbc/with-db-transaction [conn ds]
     (let [user-id (get-user-id conn remote-user-id)
           groups (list-groups-for-user conn remote-user-id)
@@ -299,15 +301,15 @@
           [qa-col asked-col] (if custom-question? custom-cols base-cols)
           question (add-question-metadata ds remote-user-id new-qid question
                                           custom-question?)]
-      (send-fn question)
       (jdbc/insert! conn :questions_asked
                     {:slack_user_id user-id qa-col new-qid})
       (jdbc/update! conn :slack_coaching_users
                     {asked-col new-qid :last_question_date (env/now)}
                     ["id  = ?" user-id])
       (when-not custom-question?
-        (jdbc/update! conn :slack_coaching_users
-                      {:asked_cqid nil} ["id  = ?" user-id])))))
+        (jdbc/update! conn :slack_coaching_users {:asked_cqid nil}
+                      ["id  = ?" user-id]))
+      question)))
 
 (defn add-custom-question! [ds {remote-user-id :id} question]
   (jdbc/with-db-transaction [conn ds]
@@ -321,14 +323,14 @@
       first
       :id))
 
-(defn next-question-for-sending! [ds qid {remote-user-id :id :as user} send-fn]
+(defn next-question-for-sending! [ds qid {remote-user-id :id :as user}]
   (let [user-groups (map :id (list-groups-for-user ds remote-user-id))
         qid (if-not qid qid (find-next-base-question ds qid user-groups))]
-    (question-for-sending ds qid user send-fn)))
+    (question-for-sending! ds qid user)))
 
-(defn submit-answer! [ds team-id user-email qid cqid text]
+(defn submit-answer! [ds slack-team-id user-email qid cqid text]
   (jdbc/with-db-transaction [conn ds]
-    (let [{:keys [id]} (get-coaching-user-raw conn team-id user-email)
+    (let [{:keys [id]} (get-coaching-user-raw conn slack-team-id user-email)
           answered-col (if cqid :cquestion_id :question_id)
           which-qid (or cqid qid)]
       (jdbc/insert! conn :question_answers
@@ -338,8 +340,8 @@
         (jdbc/update! conn :slack_coaching_users {:answered_qid qid}
                       ["id = ?" id])))))
 
-(defn list-questions-asked [ds team-id user-email]
-  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)]
+(defn list-questions-asked [ds slack-team-id user-email]
+  (let [{:keys [id]} (get-coaching-user-raw ds slack-team-id user-email)]
     (-> (h/select :bq.question)
         (h/from [:questions_asked :qa])
         (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
@@ -347,8 +349,8 @@
         (h/order-by :qa.created_date)
         (hu/query ds))))
 
-(defn list-answers [ds team-id user-email]
-  (let [{:keys [id]} (get-coaching-user-raw ds team-id user-email)
+(defn list-answers [ds slack-team-id user-email]
+  (let [{:keys [id]} (get-coaching-user-raw ds slack-team-id user-email)
         answers (-> (h/select :bq.question
                               [:cq.question :cquestion]
                               [:qa.answer :qa])
@@ -423,6 +425,68 @@
                     [:= :scu_id user-id]
                     [:= :question_group_id group-id]])
           (hu/execute-safely! conn)))))
+
+(def ^:private slack-coaching-channels [:slack_coaching_channels :scc])
+
+(defn- where-is-channel [hq team-id channel]
+  (h/where hq [:and [:= :scc.team_id team-id]
+               [:= :scc.channel_id channel]]))
+
+(defn- load-channel [conn slack-team-id channel field]
+  (-> (h/select field)
+      (h/from slack-coaching-channels)
+      (where-is-channel slack-team-id channel)
+      (hu/query conn)
+      first))
+
+(defn- set-channel-active! [conn slack-team-id channel active?]
+  (-> (h/update slack-coaching-channels)
+      (h/sset {:active active?})
+      (where-is-channel slack-team-id channel)
+      (hu/execute-safely! conn)))
+
+(defn add-coaching-channel! [ds slack-team-id channel]
+  (jdbc/with-db-transaction [conn ds]
+    (let [team-id (get-team-id ds slack-team-id)
+          new-record {:team_id team-id :channel_id channel}
+          existing-record (load-channel conn team-id channel :scc.channel_id)]
+      (if existing-record
+        (set-channel-active! conn team-id channel true)
+        (do (jdbc/insert! conn :slack_coaching_channels new-record) true)))))
+
+(defn stop-coaching-channel! [ds slack-team-id channel]
+  (jdbc/with-db-transaction [conn ds]
+    (let [team-id (get-team-id ds slack-team-id)
+          existing-record (load-channel conn team-id channel :scc.id)]
+      (if existing-record
+        (set-channel-active! conn team-id channel false)
+        (ss/throw+ {:type :channel-not-found
+                    :team team-id
+                    :channel channel})))))
+
+(defn list-coaching-channels [conn slack-team-id]
+  (-> (h/select :scc.channel_id)
+      (h/from slack-coaching-channels)
+      (h/join [:slack_teams :st]
+              [:= :st.team_id slack-team-id])
+      (h/where [:and [:= :st.team_id slack-team-id]
+                [:= :scc.active true]])
+      (hu/query conn :channel_id)))
+
+(defn add-channel-question! [ds slack-team-id channel question]
+  (jdbc/with-db-transaction [conn ds]
+    (let [team-id (get-team-id conn slack-team-id)
+          cid (:id (load-channel conn team-id channel :id))]
+      (-> (h/insert-into :channel_questions)
+          (h/values [{:channel_id cid
+                      :question question}])
+          (hu/execute-safely! conn))
+
+      (-> (h/insert-into :channel_questions_asked)
+          (h/values [{:question_id (db/fetch-last-insert-id conn)
+                      :expiration_timestamp (env/now)}])
+          (hu/execute-safely! conn))
+      (db/fetch-last-insert-id conn))))
 
 (defn log-user-activity! [ds {:keys [team_id slack_user_id] :as activity}]
   (jdbc/with-db-transaction [conn ds]
