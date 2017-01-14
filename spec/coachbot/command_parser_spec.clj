@@ -93,10 +93,5 @@
     (single-arg-failures "bad" start-coaching-pattern
                          "13pm" "91am" "47" "111 A.M." "whenever"))
 
-  (context "Friendly Commands"
-    (it "Should say :) to lots of friendly commands"
-      (should= [:friendly] (parse-command "thanks"))
-      (should= [:friendly] (parse-command "thanks coachbot"))
-      (should= [:friendly] (parse-command "thank you coachbot"))
-      (should= [:friendly] (parse-command "thank you"))
-      (should= [:friendly] (parse-command "Cheers")))))
+  (it-parses-variants "friendly" [:friendly]
+    "thanks" "thanks coachbot" "thank you coachbot" "thank you" "Cheers"))
