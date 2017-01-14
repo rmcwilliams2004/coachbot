@@ -55,6 +55,9 @@
 
   (it-parses-variants "help" [:help] "help" "Help" "Help " " Help ")
 
+  (it-parses-variants "friendly" [:friendly]
+    "thanks" "thanks coachbot" "thank you coachbot" "thank you" "Cheers")
+
   (it "should get a single argument"
     (should-parse [:tell-coach "a question"] "tell coach a question"))
 
@@ -91,7 +94,4 @@
                           "10 PM." "10 PM" "10 P.M")
 
     (single-arg-failures "bad" start-coaching-pattern
-                         "13pm" "91am" "47" "111 A.M." "whenever"))
-
-  (it-parses-variants "friendly" [:friendly]
-    "thanks" "thanks coachbot" "thank you coachbot" "thank you" "Cheers"))
+                         "13pm" "91am" "47" "111 A.M." "whenever")))
