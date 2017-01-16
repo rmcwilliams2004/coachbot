@@ -464,26 +464,31 @@
                     :team team-id
                     :channel channel})))))
 
+(defn- from-coaching-channels [conn slack-team-id field & where-clauses]
+  (let [select-field (keyword (str "scc." (name field)))]
+    (-> (h/select select-field)
+        (h/from slack-coaching-channels)
+        (h/join [:slack_teams :st]
+                [:= :st.team_id slack-team-id])
+        (h/where (into [:and
+                        [:= :st.team_id slack-team-id]
+                        [:= :scc.active true]] where-clauses))
+        (hu/query conn field))))
+
 (defn list-coaching-channels [conn slack-team-id]
-  (-> (h/select :scc.channel_id)
-      (h/from slack-coaching-channels)
-      (h/join [:slack_teams :st]
-              [:= :st.team_id slack-team-id])
-      (h/where [:and [:= :st.team_id slack-team-id]
-                [:= :scc.active true]])
-      (hu/query conn :channel_id)))
+  (from-coaching-channels conn slack-team-id :channel_id))
 
 (defn add-channel-question! [ds slack-team-id channel question]
   (jdbc/with-db-transaction [conn ds]
     (let [team-id (get-team-id conn slack-team-id)
           cid (:id (load-channel conn team-id channel :id))]
       (-> (h/insert-into :channel_questions)
-          (h/values [{:channel_id cid
-                      :question question}])
+          (h/values [{:question question}])
           (hu/execute-safely! conn))
 
       (-> (h/insert-into :channel_questions_asked)
-          (h/values [{:question_id (db/fetch-last-insert-id conn)
+          (h/values [{:channel_id cid
+                      :question_id (db/fetch-last-insert-id conn)
                       :expiration_timestamp (env/now)}])
           (hu/execute-safely! conn))
       (db/fetch-last-insert-id conn))))
@@ -502,3 +507,37 @@
         (jdbc/insert! conn :user_activity record)
         (log/errorf "Invalid team/user: t=%s/u=%s yielded %s/%s"
                     team_id slack_user_id db_team_id db_user_id)))))
+
+(defn- where-answer-is [q question-id user-id]
+  (h/where q [:and [:= :qa_id question-id]
+              [:= :scu_id user-id]]))
+
+(defn get-channel-question-response [conn slack-team-id question-id email]
+  (let [{user-id :id}
+        (get-coaching-user-raw conn slack-team-id email)]
+    (-> (h/select :id :answer)
+        (h/from :channel_question_answers)
+        (where-answer-is question-id user-id)
+        (hu/query conn)
+        first)))
+
+(defn store-channel-question-response! [ds slack-team-id email
+                                        question-id answer]
+  (jdbc/with-db-transaction [conn ds]
+    (let [{user-id :id}
+          (get-coaching-user-raw conn slack-team-id email)
+
+          existing-answer
+          (get-channel-question-response conn slack-team-id question-id email)
+
+          [hq result]
+          (if existing-answer
+            [(-> (h/update :channel_question_answers)
+                 (h/sset {:answer answer})
+                 (where-answer-is question-id user-id)) :updated]
+            [(h/values (h/insert-into :channel_question_answers)
+                       [{:qa_id question-id
+                         :scu_id user-id
+                         :answer answer}]) :added])]
+      (hu/execute-safely! hq conn)
+      result)))

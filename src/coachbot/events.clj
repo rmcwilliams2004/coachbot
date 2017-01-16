@@ -169,6 +169,9 @@
    "channel_join" ccp/coach-channel
    "channel_leave" ccp/stop-coaching-channel})
 
+(def ^:private callback-handlers
+  {"cquestion" ccp/send-channel-question-response})
+
 (defn- reshape-event [{:keys [event callback_id] :as e}]
   (cond
     event
@@ -195,15 +198,19 @@
 
 (defmacro with-ensured-user! [access-token team-id user-id bindings & body]
   `(jdbc/with-db-transaction [~(first bindings) (db/datasource)]
-     (cp/ensure-user! ~(first bindings) ~access-token ~team-id ~user-id)
-     ~@body))
+     (let [~(second bindings)
+           (cp/ensure-user! ~(first bindings) ~access-token ~team-id ~user-id)]
+       ~@body)))
+
+(defn- unhandled-callback [callback]
+  (log/errorf "Don't know how to handle this callback yet: %s" callback))
 
 (defn- process-callback [email access-token bot-access-token
                          raw-event
                          {:keys [team-id channel user-id
                                  callback-id action-name action-value
                                  response-url] :as callback}]
-  (with-ensured-user! access-token team-id user-id [conn]
+  (with-ensured-user! access-token team-id user-id [conn user]
     (storage/log-user-activity! conn
                                 {:team_id team-id
                                  :slack_user_id user-id
@@ -213,9 +220,20 @@
                                  :channel_id channel
                                  :cb_id callback-id
                                  :cb_aname action-name
-                                 :cb_aval action-value}))
-
-  (log/infof "Don't know how to handle callbacks yet: %s" callback))
+                                 :cb_aval action-value})
+    (let [unhandled (partial unhandled-callback callback)]
+      (try
+        (if-let [[_ type value-id] (re-matches #"^(\w+)-(\d+)$" callback-id)]
+          (if-let [handler-fn (callback-handlers type)]
+            (let [result (handler-fn conn team-id channel user
+                                     (Integer/parseInt value-id)
+                                     action-name action-value)]
+              (slack/send-response! response-url result))
+            (unhandled))
+          (unhandled))
+        (catch Exception e
+          (log/error e "Unable to process callback")
+          (unhandled))))))
 
 (defn- respond-to-user-event! [team-id channel user-id email text]
   (ss/try+
@@ -243,7 +261,7 @@
   (ss/try+
     (if-not (cp/is-bot-user? (db/datasource) team-id user-id)
       (when (slack/is-im-to-me? bot-access-token channel)
-        (with-ensured-user! access-token team-id user-id [conn]
+        (with-ensured-user! access-token team-id user-id [conn user]
           (storage/log-user-activity! conn
                                       {:team_id team-id
                                        :slack_user_id user-id

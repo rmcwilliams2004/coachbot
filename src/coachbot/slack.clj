@@ -108,6 +108,9 @@
   ([access-token channel message]
    (send-message! access-token channel message nil nil)))
 
+(defn send-response! [response-url message]
+  (post-url response-url message))
+
 (defn get-slack-auth [code]
   (let [auth-result
         (get-url "https://slack.com/api/oauth.access" :code code)]

@@ -1,0 +1,54 @@
+{:action_ts "1484235823.409404",
+ :callback_id "cquestion-%d",                               ;formatted in test
+ :channel {:id "replaced_in_test_case", :name "test"},
+ :actions [{:name "option", :value "replaced_in_test_case"}],
+ :token "replaced_in_test_case",
+ :attachment_id "1",
+ :team {:id "replaced_in_test_case", :domain "test"},
+ :message_ts "1484235698.000007",
+ :user {:id "replaced_in_test_case", :name "test"},
+ :response_url
+ "https://hooks.slack.com/actions/blah/123456789012/ab12C3DefGHIJ4kLm5Nopqr6",
+ :original_message
+ {:type "message",
+  :user "U395UPLDC",
+  :text "test question",
+  :bot_id "B12CD3EFG",
+  :attachments
+  [{:callback_id "cquestion-7",
+    :text "Please choose an option",
+    :id 1,
+    :actions
+    [{:id "1",
+      :name "option",
+      :text "1",
+      :type "button",
+      :value "1",
+      :style ""}
+     {:id "2",
+      :name "option",
+      :text "2",
+      :type "button",
+      :value "2",
+      :style ""}
+     {:id "3",
+      :name "option",
+      :text "3",
+      :type "button",
+      :value "3",
+      :style ""}
+     {:id "4",
+      :name "option",
+      :text "4",
+      :type "button",
+      :value "4",
+      :style ""}
+     {:id "5",
+      :name "option",
+      :text "5",
+      :type "button",
+      :value "5",
+      :style ""}],
+    :fallback "NO FALLBACK DEFINED"}],
+  :ts "1484235698.000007"}}
+

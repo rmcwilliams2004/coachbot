@@ -20,10 +20,12 @@
 (ns coachbot.manual-coaching
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
-            [coachbot.coaching-process :as coaching]
+            [coachbot.coaching-process :as cp]
+            [coachbot.channel-coaching-process :as ccp]
             [coachbot.db :as db]
             [coachbot.hsql-utils :as hu]
             [coachbot.slack :as slack]
+            [coachbot.storage :as storage]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]
@@ -97,12 +99,12 @@
 
         [{:keys [uid tid]}] (hu/query user-info-query ds)
         [{:keys [generated_key]}]
-        (coaching/register-custom-question! tid uid question)]
+        (cp/register-custom-question! tid uid question)]
     {:uid uid :tid tid :question-id generated_key}))
 
 (defn send-custom-question-now! [team-id user-id question]
   (let [{:keys [uid tid]} (register-custom-question! team-id user-id question)]
-    (coaching/next-question! tid uid uid)))
+    (cp/next-question! tid uid uid)))
 
 (defn delete-custom-question! [question-id]
   (jdbc/with-db-transaction
@@ -120,7 +122,7 @@
     (slack/send-message! bot_access_token remote_user_id message)))
 
 (defn send-question-w-buttons! [team-id user-id channel question callback-id]
-  (coaching/with-sending-constructs
+  (cp/with-sending-constructs
     {:user-id user-id :team-id team-id :channel channel} [ds send-fn _]
     (send-fn question callback-id
              (map #(hash-map :name "option" :value %) (range 1 6)))))
@@ -173,6 +175,22 @@
                           (h/join [:slack_teams :st]
                                   [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
+
+  ;; Send a channel question
+  (let [team-name "StephenCoachBotDemo"
+        ds (db/datasource)
+
+        {:keys [id team_id access_token bot_access_token]}
+        (-> (h/select :*)
+            (h/from :slack_teams)
+            (h/where [:= team-name :team_name])
+            (hu/query ds)
+            first)
+
+        channel-id (->> team_id
+                        (storage/list-coaching-channels ds)
+                        first)]
+    (ccp/send-channel-question team_id channel-id "Some channel question"))
 
   ;; Count Number of engaged users
   (map count-engaged [7 14 30 60])
