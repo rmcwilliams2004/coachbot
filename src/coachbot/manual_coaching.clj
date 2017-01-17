@@ -84,8 +84,7 @@
                           days)))
        (hu/query (db/datasource))
        first
-       :num_users
-       ))
+       :num_users))
   ([] (count-engaged 7)))
 
 (defn register-custom-question! [team-id user-id question]
@@ -141,6 +140,32 @@
       (hu/query (db/datasource))
       first
       :group_users))
+
+(defn count-question-answers
+  ([days]
+   (-> (h/select (sql/raw "count(qa.id) AS answers"))
+       (h/from [:question_answers :qa])
+       (h/where (sql/raw
+                  (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+                          days)))
+       (hu/query (db/datasource))
+       first
+       :answers))
+  ([] (count-question-answers 7)))
+
+(defn answers-by-users
+  ([days]
+   (-> (h/select (sql/raw "count(qa.id) AS answers, scu.id, scu.name"))
+       (h/from [:question_answers :qa])
+       (h/join [:slack_coaching_users :scu]
+               [:= :qa.slack_user_id :scu.id])
+       (h/where (sql/raw
+                  (format "timestampdiff(DAY, qa.created_date, now()) < %d"
+                          days)))
+       (h/group :qa.slack_user_id)
+       (h/order-by [:1 :desc])
+       (hu/query (db/datasource))))
+  ([] (answers-by-users 7)))
 
 (comment
   "This is the work area for coaches, for now. You'll need the following
@@ -199,6 +224,15 @@
   (count-group-users)
   (count-active)
   (/ (count-group-users) (count-active))
+
+  ;; List total number of questions answered over various time frames
+  (map count-question-answers [7 14 30 60])
+
+  ;; Questions answered by most active user over various time frames
+  (map #(-> (answers-by-users %)
+           (first)
+           (select-keys [:answers :name]))
+       [7 14 30 60])
 
   ;; Ask a question with buttons
   (send-question-w-buttons! "T04SG55UA" "U04T4P88M" nil "Test" 1)
