@@ -26,6 +26,14 @@
             [ring.mock.request :as mock]
             [speclj.core :refer :all]))
 
+(def howdy-regex "(:?Hello, |Yo, |Howdy, |Hola, |How's it going )")
+(def hello-regex
+  (re-pattern (format "%s: %s(%s|%s)" user0-id howdy-regex
+                   user1-first-name user3-name)))
+
+(defn- hi-search [l]
+  (every? (partial re-find hello-regex) l))
+
 (defn- message [& {:keys [event] :as msg}]
   (let [base-event {:type "message", :user user0-id, :text "hi",
                     :ts "1478967753.000006", :channel user0-id,
@@ -102,8 +110,7 @@
       (it "Handles the 'hi' event"
         (should= 200 (:status (send-event (message))))
         (should= 200 (:status (send-event (message :event {:user user3-id}))))
-        (should= [(uc user0-id "Hello, Bill")
-                  (uc user0-id "Hello, suser")] @@messages))
+        (should-be hi-search @@messages))
 
       (it "Ignores the 'hi' event in a public channel"
         (should= 200 (:status (send-event (message :event {:channel

@@ -55,6 +55,9 @@
 
   (it-parses-variants "help" [:help] "help" "Help" "Help " " Help ")
 
+  (it-parses-variants "friendly" [:friendly]
+    "thanks" "thanks coachbot" "thank you coachbot" "thank you" "Cheers")
+
   (it "should get a single argument"
     (should-parse [:tell-coach "a question"] "tell coach a question"))
 

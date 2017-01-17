@@ -50,7 +50,6 @@
     (it "responds to help command properly"
       (should=
         [(str user1-id ": Here are the commands I respond to:\n"
-              " • hi -- checks if I'm listening\n"
               " • help -- display this help message\n"
               " • start coaching -- send daily motivational questions at "
               "10am every day in your timezone\n"
