@@ -29,6 +29,15 @@
 
 (log/set-level! :error)
 
+(defn response [response-fmt text answer] (format response-fmt answer text))
+
+(def first-response
+  (partial response "response: Thanks! I've got you down for *%d* for *%s*"))
+
+(def next-response
+  (partial response
+           "response: Great! I've changed your answer to *%d* for *%s*."))
+
 (defn set-event-channel-id [msg channel-id]
   (assoc-in msg [:event :channel] channel-id))
 
@@ -79,7 +88,7 @@
               [{:name "option", :value 1} {:name "option", :value 2}
                {:name "option", :value 3} {:name "option", :value 4}
                {:name "option", :value 5}]}]
-            (do (send-channel-question team-id channel-id ~question)
+            (do (send-channel-question! team-id channel-id ~question)
                 (~latest-messages))))
 
 (defmacro should-store-response [id answer qid email]
@@ -115,10 +124,10 @@
       (should-ask-question "second" 2 latest-messages))
 
     (it "should accept answers"
-      (should= ["response: Thanks for your response!"
-                "response: Thanks for your response!"
-                "response: Great! I've changed your response."
-                "response: Thanks for your response!"]
+      (should= [(first-response "test" 3)
+                (first-response "second" 3)
+                (next-response "second" 5)
+                (first-response "second" 4)]
                (do (events/handle-raw-event (button-pressed 1 user1-id 3))
                    (events/handle-raw-event (button-pressed 2 user1-id 3))
                    (events/handle-raw-event (button-pressed 2 user1-id 5))

@@ -97,7 +97,7 @@
          (filter (comp (complement nil?) :command-text val))
          (map help-for-event)
          (flatten)
-         (str/join "\n" )
+         (str/join "\n")
          (str "Here are the commands I respond to:\n")
          (slack/send-message! bot-access-token channel))))
 
@@ -181,7 +181,7 @@
    "channel_leave" ccp/stop-coaching-channel})
 
 (def ^:private callback-handlers
-  {"cquestion" ccp/send-channel-question-response})
+  {"cquestion" ccp/send-channel-question-response!})
 
 (defn- reshape-event [{:keys [event callback_id] :as e}]
   (cond

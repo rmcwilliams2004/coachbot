@@ -24,8 +24,8 @@
             [coachbot.storage :as storage]))
 
 (def ^:private question-response-messages
-  {:added "Thanks for your response!"
-   :updated "Great! I've changed your response."})
+  {:added "Thanks! I've got you down for *%d* for *%s*"
+   :updated "Great! I've changed your answer to *%d* for *%s*."})
 
 (def channel-coaching-message
   (str "Hi everyone! I'm here to send periodic coaching questions. "
@@ -44,7 +44,7 @@
 (defn list-channels [team-id]
   (storage/list-coaching-channels (db/datasource) team-id))
 
-(defn send-channel-question [slack-team-id channel msg]
+(defn send-channel-question! [slack-team-id channel msg]
   (cp/with-sending-constructs
     {:team-id slack-team-id :channel channel} [ds send-fn _]
     (let [question-id (storage/add-channel-question!
@@ -52,9 +52,15 @@
       (send-fn msg (format "cquestion-%s" question-id)
                (map #(hash-map :name "option" :value %) (range 1 6))))))
 
-(defn send-channel-question-response [conn slack-team-id _ {:keys [email]}
-                                      question-id _ value]
+(defn send-channel-question-response! [conn slack-team-id _ {:keys [email]}
+                                       question-id _ value]
+  (let [value (Integer/parseInt value)
 
-  (question-response-messages
-    (storage/store-channel-question-response!
-      conn slack-team-id email question-id (Integer/parseInt value))))
+        question
+        (storage/get-channel-question-text conn question-id)
+
+        response-format
+        (question-response-messages
+          (storage/store-channel-question-response!
+            conn slack-team-id email question-id value))]
+    (format response-format value question)))

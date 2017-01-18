@@ -202,20 +202,25 @@
                           (hu/query (db/datasource))))
 
   ;; Send a channel question
-  (let [team-name "StephenCoachBotDemo"
-        ds (db/datasource)
+  (log/with-level :debug
+    (let [team-name "Courage Labs"
+          ds (db/datasource)
 
-        {:keys [id team_id access_token bot_access_token]}
-        (-> (h/select :*)
-            (h/from :slack_teams)
-            (h/where [:= team-name :team_name])
-            (hu/query ds)
-            first)
+          {:keys [id team_id access_token bot_access_token]}
+          (-> (h/select :*)
+              (h/from :slack_teams)
+              (h/where [:= :team_name team-name])
+              (hu/query ds)
+              first)
 
-        channel-id (->> team_id
-                        (storage/list-coaching-channels ds)
-                        first)]
-    (ccp/send-channel-question team_id channel-id "Some channel question"))
+          channel-id (->> team_id
+                          (storage/list-coaching-channels ds)
+                          first)]
+      (log/infof "%s: %s" team-name team_id)
+      (ccp/send-channel-question! team_id channel-id "How happy are you right now?")))
+
+  ;; Print last stack trace
+  (clojure.stacktrace/print-cause-trace *e)
 
   ;; Count Number of engaged users
   (map count-engaged [7 14 30 60])

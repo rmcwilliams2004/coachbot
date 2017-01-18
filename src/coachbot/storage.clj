@@ -521,6 +521,15 @@
         (hu/query conn)
         first)))
 
+(defn get-channel-question-text [conn question-id]
+  (-> (h/select :cq.question)
+      (h/from [:channel_questions_asked :cqa])
+      (h/join [:channel_questions :cq]
+              [:= :cq.id :cqa.question_id])
+      (h/where [:= :cqa.id question-id])
+      (hu/query conn :question)
+      first))
+
 (defn store-channel-question-response! [ds slack-team-id email
                                         question-id answer]
   (jdbc/with-db-transaction [conn ds]
