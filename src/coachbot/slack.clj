@@ -109,7 +109,7 @@
    (send-message! access-token channel message nil nil)))
 
 (defn send-response! [response-url message]
-  (post-url response-url message))
+  (post-url response-url :text message))
 
 (defn get-slack-auth [code]
   (let [auth-result

@@ -469,7 +469,7 @@
     (-> (h/select select-field)
         (h/from slack-coaching-channels)
         (h/join [:slack_teams :st]
-                [:= :st.team_id slack-team-id])
+                [:= :st.id :scc.team_id])
         (h/where (into [:and
                         [:= :st.team_id slack-team-id]
                         [:= :scc.active true]] where-clauses))
