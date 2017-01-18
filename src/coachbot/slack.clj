@@ -86,7 +86,7 @@
       (log/errorf "Unable to get user info: %s" body))))
 
 (defn buttons-to-attachment [callback-id buttons]
-  (when buttons {:text "Please choose an option"
+  (when buttons {:text "1=Completely Disagree, 5=Completely Agree"
                  :callback_id callback-id
                  :actions (map #(let [{:keys [name value]} %]
                                   {:name name
