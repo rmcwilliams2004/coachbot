@@ -35,12 +35,13 @@
 (defn- get-url [url & {:as param-map}]
   (client/get url {:query-params (params param-map)}))
 
-(defn- post-url [url & {:as param-map}]
+(defn- post-url! [url & {:keys [content-type] :as param-map}]
   (let [param-map (-> param-map
+                      (dissoc :content-type)
                       params
                       (update-in [:attachments] cheshire/generate-string))]
-    (client/post url {:content-type :json
-                      :form-params param-map})))
+    (client/post url (merge {:form-params param-map}
+                            (when content-type {:content-type content-type})))))
 
 (defn- parse-body [result]
   (-> result
@@ -97,23 +98,24 @@
   "Send a message to a channel."
   ([access-token channel message callback-id buttons]
    (log/infof "Sending '%s' to '%s'" message channel)
-   (let [result (post-url "https://slack.com/api/chat.postMessage"
-                          :token access-token
-                          :channel channel
-                          :text message
-                          :attachments
-                          [(buttons-to-attachment callback-id buttons)]
+   (let [result (post-url! "https://slack.com/api/chat.postMessage"
+                           :token access-token
+                           :channel channel
+                           :text message
+                           :attachments
+                           [(buttons-to-attachment callback-id buttons)]
 
-                          :as_user true)]
+                           :as_user true)]
      (log/debugf "Result of message dispatch: %s" result)))
   ([access-token channel message]
    (send-message! access-token channel message nil nil)))
 
 (defn send-response! [response-url message]
-  (post-url response-url
-            :text message
-            :replace_original false
-            :response_type "ephemeral"))
+  (post-url! response-url
+             :content-type :json
+             :text message
+             :replace_original false
+             :response_type "ephemeral"))
 
 (defn get-slack-auth [code]
   (let [auth-result
