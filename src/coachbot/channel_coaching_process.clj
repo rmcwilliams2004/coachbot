@@ -25,7 +25,7 @@
 
 (def ^:private question-response-messages
   {:added "Thanks! I've got you down for *%d* for *%s*"
-   :updated "Great! I've changed your answer to *%d* for *%s*."})
+   :updated "Great! I've changed your answer to *%d* for *%s*"})
 
 (def channel-coaching-message
   (str "Hi everyone! I'm here to send periodic coaching questions. "

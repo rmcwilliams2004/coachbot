@@ -36,7 +36,7 @@
 
 (def next-response
   (partial response
-           "response: Great! I've changed your answer to *%d* for *%s*."))
+           "response: Great! I've changed your answer to *%d* for *%s*"))
 
 (defn set-event-channel-id [msg channel-id]
   (assoc-in msg [:event :channel] channel-id))
@@ -69,6 +69,9 @@
 (def channel-join-bob (bob channel-join))
 (def channel-leave (load-event-edn "channel_leave.edn"))
 (def channel-leave-bob (bob channel-leave))
+
+(def first-question "test question")
+(def second-question "second question")
 
 (def cmsg (partial uc channel-id))
 
@@ -120,14 +123,14 @@
     (with-all channels-coached (list-channels team-id))
 
     (it "should ask questions to the channel"
-      (should-ask-question "test" 1 latest-messages)
-      (should-ask-question "second" 2 latest-messages))
+      (should-ask-question first-question 1 latest-messages)
+      (should-ask-question second-question 2 latest-messages))
 
     (it "should accept answers"
-      (should= [(first-response "test" 3)
-                (first-response "second" 3)
-                (next-response "second" 5)
-                (first-response "second" 4)]
+      (should= [(first-response first-question 3)
+                (first-response second-question 3)
+                (next-response second-question 5)
+                (first-response second-question 4)]
                (do (events/handle-raw-event (button-pressed 1 user1-id 3))
                    (events/handle-raw-event (button-pressed 2 user1-id 3))
                    (events/handle-raw-event (button-pressed 2 user1-id 5))
