@@ -39,7 +39,8 @@
   (let [param-map (-> param-map
                       params
                       (update-in [:attachments] cheshire/generate-string))]
-    (client/post url {:form-params param-map})))
+    (client/post url {:content-type :json
+                      :form-params param-map})))
 
 (defn- parse-body [result]
   (-> result
@@ -109,7 +110,10 @@
    (send-message! access-token channel message nil nil)))
 
 (defn send-response! [response-url message]
-  (post-url response-url :text message))
+  (post-url response-url
+            :text message
+            :replace_original false
+            :response_type "ephemeral"))
 
 (defn get-slack-auth [code]
   (let [auth-result
