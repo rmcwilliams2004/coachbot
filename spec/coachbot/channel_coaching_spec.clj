@@ -123,14 +123,14 @@
                   (events/handle-raw-event (button-pressed 2 user1-id 3))
                   (~latest-messages)))))
 
-(def average-response
+(def stats-response
   (partial format (str "Results from question: *%s*\n"
                        "Average: *%.2f*\n"
                        "Max: *%.2f*\n"
                        "Min: *%.2f*\n"
                        "From *%d* people responding")))
 
-(def average-response3 (average-response first-question 4.5 5.0 4.0 3))
+(def stats-response3 (stats-response first-question 4.5 5.0 4.0 3))
 
 (describe-mocked "Channel coaching" [ds latest-messages]
   (describe "Channel joins"
