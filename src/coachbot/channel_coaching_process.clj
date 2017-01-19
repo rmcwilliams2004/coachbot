@@ -19,7 +19,6 @@
 
 (ns coachbot.channel-coaching-process
   (:require [clj-time.core :as t]
-            [clj-time.local :as l]
             [coachbot.coaching-process :as cp]
             [coachbot.db :as db]
             [coachbot.env :as env]
@@ -73,12 +72,7 @@
 
         now (env/now)
         plus-now (partial t/plus now)
-
-        expiration-timestamp
-        (as-> expiration-specs x
-              (apply plus-now x)
-              (t/to-time-zone x (t/time-zone-for-id "America/Chicago"))
-              (l/to-local-date-time x))
+        expiration-timestamp (apply plus-now expiration-specs)
 
         time-diff (.toPeriod (t/interval now expiration-timestamp))]
     (cp/with-sending-constructs
