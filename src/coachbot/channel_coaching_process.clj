@@ -23,7 +23,12 @@
             [coachbot.db :as db]
             [coachbot.env :as env]
             [coachbot.slack :as slack]
-            [coachbot.storage :as storage])
+            [coachbot.storage :as storage]
+            [clojurewerkz.quartzite.jobs :as qj]
+            [taoensso.timbre :as log]
+            [clojurewerkz.quartzite.triggers :as qt]
+            [clojurewerkz.quartzite.schedule.cron :as qc]
+            [clojurewerkz.quartzite.scheduler :as qs])
   (:import (org.joda.time.format PeriodFormatterBuilder)))
 
 (def ^:private question-response-messages
@@ -97,3 +102,23 @@
           (storage/store-channel-question-response!
             conn slack-team-id email question-id value))]
     (format response-format value question)))
+
+(defn send-channel-question-results! []
+  )
+
+(qj/defjob ChannelCoachingJob [ctx]
+           (try
+             (send-channel-question-results!)
+             (catch Throwable t
+               (log/errorf t "Unable to send next question to everyone everywhere"))))
+
+(defn schedule-channel-coaching! [scheduler]
+  (let [job (qj/build
+              (qj/of-type ChannelCoachingJob)
+              (qj/with-identity (qj/key "jobs.coaching.channel")))
+        trigger (qt/build
+                  (qt/with-identity (qt/key "triggers.every-hour"))
+                  (qt/start-now)
+                  (qt/with-schedule
+                    (qc/schedule (qc/cron-schedule "0 0 * ? * *"))))]
+    (qs/schedule scheduler job trigger)))
