@@ -478,7 +478,8 @@
 (defn list-coaching-channels [conn slack-team-id]
   (from-coaching-channels conn slack-team-id :channel_id))
 
-(defn add-channel-question! [ds slack-team-id channel question]
+(defn add-channel-question! [ds slack-team-id channel question
+                             expiration-timestamp]
   (jdbc/with-db-transaction [conn ds]
     (let [team-id (get-team-id conn slack-team-id)
           cid (:id (load-channel conn team-id channel :id))]
@@ -489,7 +490,7 @@
       (-> (h/insert-into :channel_questions_asked)
           (h/values [{:channel_id cid
                       :question_id (db/fetch-last-insert-id conn)
-                      :expiration_timestamp (env/now)}])
+                      :expiration_timestamp expiration-timestamp}])
           (hu/execute-safely! conn))
       (db/fetch-last-insert-id conn))))
 
@@ -512,6 +513,18 @@
   (h/where q [:and [:= :qa_id question-id]
               [:= :scu_id user-id]]))
 
+(defmacro get-channel-question-data [conn question-id field]
+  `(-> (h/select ~field)
+       (h/from [:channel_questions_asked :cqa])
+       (h/join [:channel_questions :cq]
+               [:= :cq.id :cqa.question_id])
+       (h/where [:= :cqa.id ~question-id])
+       (hu/query ~conn)
+       first))
+
+(defn get-channel-question-text [conn question-id]
+  (:question (get-channel-question-data conn question-id :cq.question)))
+
 (defn get-channel-question-response [conn slack-team-id question-id email]
   (let [{user-id :id}
         (get-coaching-user-raw conn slack-team-id email)]
@@ -521,14 +534,19 @@
         (hu/query conn)
         first)))
 
-(defn get-channel-question-text [conn question-id]
-  (-> (h/select :cq.question)
-      (h/from [:channel_questions_asked :cqa])
-      (h/join [:channel_questions :cq]
-              [:= :cq.id :cqa.question_id])
-      (h/where [:= :cqa.id question-id])
-      (hu/query conn :question)
-      first))
+(defn- execute-channel-question-reponse-storage!
+  [conn user-id question-id answer existing-answer]
+  (let [[hq result]
+        (if existing-answer
+          [(-> (h/update :channel_question_answers)
+               (h/sset {:answer answer})
+               (where-answer-is question-id user-id)) :updated]
+          [(h/values (h/insert-into :channel_question_answers)
+                     [{:qa_id question-id
+                       :scu_id user-id
+                       :answer answer}]) :added])]
+    (hu/execute-safely! hq conn)
+    result))
 
 (defn store-channel-question-response! [ds slack-team-id email
                                         question-id answer]
@@ -536,17 +554,12 @@
     (let [{user-id :id}
           (get-coaching-user-raw conn slack-team-id email)
 
-          existing-answer
-          (get-channel-question-response conn slack-team-id question-id email)
+          expiration-timestamp
+          (:expiration_timestamp
+            (get-channel-question-data conn question-id
+                                       :cqa.expiration_timestamp))
 
-          [hq result]
-          (if existing-answer
-            [(-> (h/update :channel_question_answers)
-                 (h/sset {:answer answer})
-                 (where-answer-is question-id user-id)) :updated]
-            [(h/values (h/insert-into :channel_question_answers)
-                       [{:qa_id question-id
-                         :scu_id user-id
-                         :answer answer}]) :added])]
-      (hu/execute-safely! hq conn)
-      result)))
+          existing-answer
+          (get-channel-question-response conn slack-team-id question-id email)]
+      (execute-channel-question-reponse-storage! conn user-id question-id answer
+                                                 existing-answer))))

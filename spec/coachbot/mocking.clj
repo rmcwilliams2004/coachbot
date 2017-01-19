@@ -99,10 +99,12 @@
                  :bot-access-token bot-access-token
                  :bot-user-id bot-user-id})
 
+(defn now-fn [when]
+  (fn [] (tf/parse (tf/formatters :date-time-no-ms) when)))
+
 (defn mock-event-boundary [messages ds it]
   (with-redefs
-    [env/now (fn [] (tf/parse (tf/formatters :date-time-no-ms)
-                              "2016-01-01T10:10:00-06:00"))
+    [env/now (now-fn "2016-01-01T10:10:00-06:00")
      db/datasource (fn [] ds)
      slack/send-message! (fn [_ channel msg & [callback-id buttons]]
                            (swap! messages conj

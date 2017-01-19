@@ -18,7 +18,8 @@
 ;
 
 (ns coachbot.manual-coaching
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clj-time.core :as t]
+            [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [coachbot.coaching-process :as cp]
             [coachbot.channel-coaching-process :as ccp]
@@ -217,7 +218,9 @@
                           (storage/list-coaching-channels ds)
                           first)]
       (log/infof "%s: %s" team-name team_id)
-      (ccp/send-channel-question! team_id channel-id "How happy are you right now?")))
+      (ccp/send-channel-question! team_id channel-id
+                                  "I am happy on my team right now."
+                                  (t/days 1))))
 
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)
