@@ -22,11 +22,13 @@
             [coachbot.coaching-process :as coaching]
             [coachbot.env :as env]
             [coachbot.events :as events]
+            [coachbot.scheduling :as sch]
             [compojure.api.sweet :refer :all]
             [compojure.route :as r]
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [coachbot.channel-coaching-process :as ccp])
   (:gen-class))
 
 (defn wrap-dir-index [handler]
@@ -56,6 +58,12 @@
 
     (undocumented (r/resources "/"))))
 
+(sch/defsfn schedule-individual-coaching! "0 * * ? * *"
+            coaching/send-next-question-to-everyone-everywhere!)
+
+(sch/defsfn schedule-channel-coaching! "0 0 * ? * *"
+            ccp/send-channel-question-results!)
+
 (defn -main
   "Main function. Invoked to run the application using httpkit."
   []
@@ -66,8 +74,10 @@
         _ (log/merge-config! log-config)
         port @env/port
         scheduler (qs/start (qs/initialize))]
-    (log/info "Starting scheduler")
-    (coaching/schedule-individual-coaching! scheduler)
+
+    (log/info "Starting scheduled jobs")
+    (schedule-individual-coaching! scheduler)
+    (schedule-channel-coaching! scheduler)
 
     (log/infof "Getting ready to listen on port %d" port)
     (srv/run-server app {:port port})))

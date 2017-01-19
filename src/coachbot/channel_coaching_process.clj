@@ -105,20 +105,3 @@
 
 (defn send-channel-question-results! []
   )
-
-(qj/defjob ChannelCoachingJob [ctx]
-           (try
-             (send-channel-question-results!)
-             (catch Throwable t
-               (log/errorf t "Unable to send next question to everyone everywhere"))))
-
-(defn schedule-channel-coaching! [scheduler]
-  (let [job (qj/build
-              (qj/of-type ChannelCoachingJob)
-              (qj/with-identity (qj/key "jobs.coaching.channel")))
-        trigger (qt/build
-                  (qt/with-identity (qt/key "triggers.every-hour"))
-                  (qt/start-now)
-                  (qt/with-schedule
-                    (qc/schedule (qc/cron-schedule "0 0 * ? * *"))))]
-    (qs/schedule scheduler job trigger)))
