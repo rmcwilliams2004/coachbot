@@ -18,14 +18,28 @@
 ;
 
 (ns coachbot.channel-coaching-process
-  (:require [coachbot.coaching-process :as cp]
+  (:require [clj-time.core :as t]
+            [clj-time.local :as l]
+            [coachbot.coaching-process :as cp]
             [coachbot.db :as db]
+            [coachbot.env :as env]
             [coachbot.slack :as slack]
-            [coachbot.storage :as storage]))
+            [coachbot.storage :as storage])
+  (:import (org.joda.time.format PeriodFormatterBuilder)))
 
 (def ^:private question-response-messages
   {:added "Thanks! I've got you down for *%d* for *%s*"
-   :updated "Great! I've changed your answer to *%d* for *%s*"})
+   :updated "Great! I've changed your answer to *%d* for *%s*"
+   :expired "Sorry, but I can't submit *%d* to *%s* because it's expired!"})
+
+(def msg-format "%s _(expires in %s)_")
+
+(def period-formatter
+  (.toFormatter
+    (doto (PeriodFormatterBuilder.)
+      (.appendDays) (.appendSuffix " day" " days")
+      (.appendSeparator ", " ", ")
+      (.appendHours) (.appendSuffix " hour" " hours"))))
 
 (def channel-coaching-message
   (str "Hi everyone! I'm here to send periodic coaching questions. "
@@ -44,13 +58,38 @@
 (defn list-channels [team-id]
   (storage/list-coaching-channels (db/datasource) team-id))
 
-(defn send-channel-question! [slack-team-id channel msg]
-  (cp/with-sending-constructs
-    {:team-id slack-team-id :channel channel} [ds send-fn _]
-    (let [question-id (storage/add-channel-question!
-                        (db/datasource) slack-team-id channel msg)]
-      (send-fn msg (format "cquestion-%s" question-id)
-               (map #(hash-map :name "option" :value %) (range 1 6))))))
+(defn send-channel-question!
+  "Send a question to a channel. Expiration specs are one or more of the
+   clj-time functions for adding time to a date. They are added to env/now
+   and submitted as the new expiration date for the question. If you don't
+   specify any expiration-specs, it will expire in 1 day.
+
+   e.g. (send-channel-question! id ch msg (t/days 1) (t/hours 12))
+
+   Would make the question expire 1.5 days after the current time."
+  [slack-team-id channel msg & expiration-specs]
+  (let [expiration-specs
+        (if (empty? expiration-specs) [(t/days 1)] expiration-specs)
+
+        now (env/now)
+        plus-now (partial t/plus now)
+
+        expiration-timestamp
+        (as-> expiration-specs x
+              (apply plus-now x)
+              (t/to-time-zone x (t/time-zone-for-id "America/Chicago"))
+              (l/to-local-date-time x))
+
+        time-diff (.toPeriod (t/interval now expiration-timestamp))]
+    (cp/with-sending-constructs
+      {:team-id slack-team-id :channel channel} [ds send-fn _]
+      (let [question-id (storage/add-channel-question!
+                          (db/datasource) slack-team-id channel msg
+                          expiration-timestamp)]
+        (send-fn
+          (format msg-format msg (.print period-formatter time-diff))
+          (format "cquestion-%s" question-id)
+          (map #(hash-map :name "option" :value %) (range 1 6)))))))
 
 (defn send-channel-question-response! [conn slack-team-id _ {:keys [email]}
                                        question-id _ value]

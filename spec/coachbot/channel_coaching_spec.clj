@@ -18,8 +18,10 @@
 ;
 
 (ns coachbot.channel-coaching-spec
-  (:require [clojure.edn :as edn]
+  (:require [clj-time.core :as t]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [coachbot.env :as env]
             [coachbot.events :as events]
             [coachbot.channel-coaching-process :refer :all]
             [coachbot.mocking :refer :all]
@@ -29,14 +31,18 @@
 
 (log/set-level! :error)
 
-(defn response [response-fmt text answer] (format response-fmt answer text))
+(defn response [response-fmt text answer]
+  (format (str "response: " response-fmt) answer text))
 
 (def first-response
-  (partial response "response: Thanks! I've got you down for *%d* for *%s*"))
+  (partial response "Thanks! I've got you down for *%d* for *%s*"))
 
 (def next-response
+  (partial response "Great! I've changed your answer to *%d* for *%s*"))
+
+(def expired-response
   (partial response
-           "response: Great! I've changed your answer to *%d* for *%s*"))
+           "Sorry, but I can't submit *%d* to *%s* because it's expired!"))
 
 (defn set-event-channel-id [msg channel-id]
   (assoc-in msg [:event :channel] channel-id))
@@ -70,8 +76,17 @@
 (def channel-leave (load-event-edn "channel_leave.edn"))
 (def channel-leave-bob (bob channel-leave))
 
+(defn expected [question expires-when]
+  (format "%s _(expires in %s)_" question expires-when))
 (def first-question "test question")
 (def second-question "second question")
+(def third-question "third question")
+(def fourth-question "fourth question")
+
+(def fq-expected (expected first-question "1 day"))
+(def sq-expected (expected second-question "2 days, 1 hour"))
+(def tq-expected (expected third-question "4 days, 2 hours"))
+(def fourthq-expected (expected fourth-question "3 hours"))
 
 (def cmsg (partial uc channel-id))
 
@@ -85,18 +100,22 @@
   (let [raw-events (map (fn [event] `(events/handle-raw-event ~event)) events)]
     `(should= ~expected-channels (do ~@raw-events (list-channels ~team-id)))))
 
-(defmacro should-ask-question [question id latest-messages]
-  `(should= [{:msg (cmsg ~question) :cid (format "cquestion-%d" ~id)
+(defmacro should-ask-question [question expected id latest-messages &
+                               expiration-specs]
+  `(should= [{:msg (cmsg ~expected) :cid (format "cquestion-%d" ~id)
               :btns
               [{:name "option", :value 1} {:name "option", :value 2}
                {:name "option", :value 3} {:name "option", :value 4}
                {:name "option", :value 5}]}]
-            (do (send-channel-question! team-id channel-id ~question)
+            (do (send-channel-question! team-id channel-id ~question
+                                        ~@expiration-specs)
                 (~latest-messages))))
 
 (defmacro should-store-response [id answer qid email]
-  `(should= {:id ~id, :answer ~answer}
-            (storage/get-channel-question-response @ds team-id ~qid ~email)))
+  `(should=
+     {:id ~id, :answer ~answer}
+     (dissoc (storage/get-channel-question-response @ds team-id ~qid ~email)
+             :expiration_timestamp)))
 
 (describe-mocked "Channel coaching" [ds latest-messages]
   (describe "Channel joins"
@@ -118,13 +137,18 @@
                                                  channel-join-bob])
       (should-be-in-channels [channel-id] [channel-leave-bob])))
 
-  (describe "Asking questions"
+  (describe "Channel questions"
     (before-all (latest-messages))
     (with-all channels-coached (list-channels team-id))
 
     (it "should ask questions to the channel"
-      (should-ask-question first-question 1 latest-messages)
-      (should-ask-question second-question 2 latest-messages))
+      (should-ask-question first-question fq-expected 1 latest-messages)
+      (should-ask-question second-question sq-expected 2 latest-messages
+                           (t/days 2) (t/hours 1))
+      (should-ask-question third-question tq-expected 3 latest-messages
+                           (t/days 4) (t/hours 2))
+      (should-ask-question fourth-question fourthq-expected 4 latest-messages
+                           (t/hours 3)))
 
     (it "should accept answers"
       (should= [(first-response first-question 3)
@@ -140,6 +164,10 @@
       (should-store-response 2 5 2 user1-email)
       (should-store-response 3 4 2 user2-email))
 
-    (it "should not accept answers after the question has expired")
+    (context "after expiration"
+      (around [it]
+        (with-redefs [env/now (now-fn "2016-01-03T10:10:00-06:00")]) (it))
 
-    (it "should express the results of the questions in an aggregated way")))
+      (it "should not accept answers")
+
+      (it "should express the results of the questions in an aggregated way"))))
