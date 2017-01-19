@@ -563,5 +563,5 @@
           (get-channel-question-response conn slack-team-id question-id email)]
       (if (t/after? (env/now) expiration-timestamp )
         :expired
-        (execute-channel-question-reponse-storage! conn user-id question-id answer
-                                                   existing-answer)))))
+        (execute-channel-question-reponse-storage! conn user-id question-id
+                                                   answer existing-answer)))))
