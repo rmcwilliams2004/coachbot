@@ -30,7 +30,7 @@
                  [com.taoensso/timbre "4.8.0"]
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
-                 [incanter "1.5.7"]
+                 [incanter "1.5.7" :upgrade false]
                  [instaparse "1.4.5"]
                  [joda-time "2.9.7"]
                  [metosin/compojure-api "1.1.10"]
