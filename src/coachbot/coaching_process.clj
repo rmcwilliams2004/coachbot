@@ -203,7 +203,7 @@
     (log/debugf "Users to send to: %d" (count users))
     (doall (map send-question-if-conditions-are-right! users))))
 
-(qj/defjob DailyCoachingJob [ctx]
+(qj/defjob IndividualCoachingJob [ctx]
   (try
     (send-next-question-to-everyone-everywhere!)
     (catch Throwable t
@@ -211,7 +211,7 @@
 
 (defn schedule-individual-coaching! [scheduler]
   (let [job (qj/build
-              (qj/of-type DailyCoachingJob)
+              (qj/of-type IndividualCoachingJob)
               (qj/with-identity (qj/key "jobs.coaching.individual")))
         trigger (qt/build
                   (qt/with-identity (qt/key "triggers.every-minute"))

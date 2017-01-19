@@ -21,7 +21,6 @@
   (:require [clj-time.core :as t]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [coachbot.env :as env]
             [coachbot.events :as events]
             [coachbot.channel-coaching-process :refer :all]
             [coachbot.mocking :refer :all]
@@ -116,17 +115,12 @@
      {:id ~id, :answer ~answer}
      (storage/get-channel-question-response @ds team-id ~qid ~email)))
 
-(defmacro check-expired-questions [name latest-messages when-is-now
-                                   & expectations]
-  `(context ~name
-     (around [it#]
-       (with-redefs [env/now (now-fn ~when-is-now)] (it#)))
-
-     (it "should not accept answers"
-       (should= [~@expectations]
-                (do (events/handle-raw-event (button-pressed 1 user1-id 3))
-                    (events/handle-raw-event (button-pressed 2 user1-id 3))
-                    (~latest-messages))))))
+(defmacro check-expired-questions [latest-messages & expectations]
+  `(it "should not accept answers"
+     (should= [~@expectations]
+              (do (events/handle-raw-event (button-pressed 1 user1-id 3))
+                  (events/handle-raw-event (button-pressed 2 user1-id 3))
+                  (~latest-messages)))))
 
 (describe-mocked "Channel coaching" [ds latest-messages]
   (describe "Channel joins"
@@ -163,28 +157,39 @@
 
     (it "should accept answers"
       (should= [(first-response first-question 3)
+
                 (first-response second-question 3)
                 (next-response second-question 5)
-                (first-response second-question 4)]
+                (first-response second-question 4)
+
+                (first-response third-question 3)
+                (first-response third-question 4)
+                (first-response third-question 5)]
                (do (events/handle-raw-event (button-pressed 1 user1-id 3))
+
                    (events/handle-raw-event (button-pressed 2 user1-id 3))
                    (events/handle-raw-event (button-pressed 2 user1-id 5))
                    (events/handle-raw-event (button-pressed 2 user2-id 4))
+
+                   (events/handle-raw-event (button-pressed 3 user1-id 3))
+                   (events/handle-raw-event (button-pressed 3 user2-id 4))
+                   (events/handle-raw-event (button-pressed 3 user3-id 5))
+
                    (latest-messages)))
       (should-store-response 1 3 1 user1-email)
       (should-store-response 2 5 2 user1-email)
       (should-store-response 3 4 2 user2-email))
 
     (context "after expiration"
-      (check-expired-questions "earlier" latest-messages
-                               "2016-01-03T10:10:00-06:00"
-                               (expired-response first-question 3)
-                               (next-response second-question 3))
+      (now-context "earlier" "2016-01-03T10:10:00-06:00"
+        (check-expired-questions latest-messages
+                                 (expired-response first-question 3)
+                                 (next-response second-question 3)))
 
-      (check-expired-questions "later" latest-messages
-                               "2016-01-04T10:10:00-06:00"
-                               (expired-response first-question 3)
-                               (expired-response second-question 3))
+      (now-context "later" "2016-01-06T10:10:00-06:00"
+        (check-expired-questions latest-messages
+                                 (expired-response first-question 3)
+                                 (expired-response second-question 3))
 
-      (it "should express the results of the questions in an aggregated way"
-        ))))
+        (it "should express the results of the questions in an aggregated way"
+          )))))

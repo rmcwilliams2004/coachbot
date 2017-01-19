@@ -102,6 +102,11 @@
 (defn now-fn [when]
   (fn [] (tf/parse (tf/formatters :date-time-no-ms) when)))
 
+(defmacro now-context [name when & body]
+  `(context ~name
+     (around-all [it#] (with-redefs [env/now (now-fn ~when)] (it#)))
+     ~@body))
+
 (defn mock-event-boundary [messages ds it]
   (with-redefs
     [env/now (now-fn "2016-01-01T10:10:00-06:00")
