@@ -513,14 +513,14 @@
   (h/where q [:and [:= :qa_id question-id]
               [:= :scu_id user-id]]))
 
-(defmacro get-channel-question-data [conn question-id field]
-  `(-> (h/select ~field)
-       (h/from [:channel_questions_asked :cqa])
-       (h/join [:channel_questions :cq]
-               [:= :cq.id :cqa.question_id])
-       (h/where [:= :cqa.id ~question-id])
-       (hu/query ~conn)
-       first))
+(defn get-channel-question-data [conn question-id field]
+  (-> (h/select field)
+      (h/from [:channel_questions_asked :cqa])
+      (h/join [:channel_questions :cq]
+              [:= :cq.id :cqa.question_id])
+      (h/where [:= :cqa.id question-id])
+      (hu/query conn)
+      first))
 
 (defn get-channel-question-text [conn question-id]
   (:question (get-channel-question-data conn question-id :cq.question)))
@@ -561,5 +561,7 @@
 
           existing-answer
           (get-channel-question-response conn slack-team-id question-id email)]
-      (execute-channel-question-reponse-storage! conn user-id question-id answer
-                                                 existing-answer))))
+      (if (t/after? (env/now) expiration-timestamp )
+        :expired
+        (execute-channel-question-reponse-storage! conn user-id question-id answer
+                                                   existing-answer)))))
