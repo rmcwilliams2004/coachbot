@@ -565,3 +565,27 @@
         :expired
         (execute-channel-question-reponse-storage! conn user-id question-id
                                                    answer existing-answer)))))
+
+(defn see-active-channel-questions []
+  (-> (h/select [:cqa.expiration_timestamp :expiration]
+                [:cqa.created_date :created-date]
+                [:cq.question :question]
+                [:scc.channel_id :channel_id]
+                [:cqan.id :qa_id]
+                [:cqan.scu_id :scu_id]
+                [:cqan.answer :answer]
+                [:scu.remote_user_id :remote_user_id]
+                [:scu.name :name]
+                [:cqa.question_id :question_id])
+      (h/from [:channel_questions_asked :cqa])
+      (h/join [:channel_questions :cq]
+              [:= :cq.id :cqa.question_id]
+              [:slack_coaching_channels :scc]
+              [:= :scc.id :cqa.channel_id]
+              [:channel_question_answers :cqan]
+              [:= :cqan.qa_id :cqa.id]
+              [:slack_coaching_users :scu]
+              [:= :cqan.scu_id :scu.id])
+      (h/where [:= :scc.active true])
+      (h/order-by  :question_id)
+      (hu/query (db/datasource))))
