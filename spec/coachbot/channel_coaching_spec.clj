@@ -27,7 +27,8 @@
             [coachbot.storage :as storage]
             [incanter.stats :as stats]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.string :as str]))
 
 (log/set-level! :error)
 
@@ -124,11 +125,11 @@
                   (~latest-messages)))))
 
 (def stats-response
-  (partial format (str "Results from question: *%s*\n"
-                       "Average: *%.2f*\n"
-                       "Max: *%.2f*\n"
-                       "Min: *%.2f*\n"
-                       "From *%d* people responding")))
+  (partial format (str/join "\n" ["Results from question: *%s*"
+                                  "Average: *%.2f*"
+                                  "Max: *%.2f*"
+                                  "Min: *%.2f*"
+                                  "From *%d* people responding"])))
 
 (def stats-response3 (stats-response first-question 4.5 5.0 4.0 3))
 
