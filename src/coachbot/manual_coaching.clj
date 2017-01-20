@@ -204,7 +204,7 @@
 
   ;; Send a channel question
   (log/with-level :debug
-    (let [team-name "Courage Labs"
+    (let [team-name "CoachBot"
           ds (db/datasource)
 
           {:keys [id team_id access_token bot_access_token]}
@@ -219,8 +219,42 @@
                           first)]
       (log/infof "%s: %s" team-name team_id)
       (ccp/send-channel-question! team_id channel-id
-                                  "I am happy on my team right now."
+                                  "I am sending a test right now."
                                   (t/days 1))))
+
+  ;; Show a list of all the answers to active questions
+  ;; This SQL below works as I would expect
+  ;; SELECT cqa.expiration_timestamp, cqa.created_date, cq.question, scc.channel_id, cqan.id, cqan.scu_id, cqan.answer, scu.remote_user_id, scu.name, cqa.question_id
+  ;FROM channel_questions_asked cqa
+  ;JOIN channel_questions cq ON  cq.id = cqa.question_id
+  ;JOIN slack_coaching_channels scc ON scc.id = cqa.channel_id
+  ;JOIN channel_question_answers cqan ON cqan.qa_id = cqa.id
+  ;JOIN slack_coaching_users scu ON cqan.scu_id = scu.id
+  ;WHERE scc.active = TRUE
+  ;AND cqa.expiration_timestamp <= NOW())
+
+  (pprint/print-table
+    (-> (h/select [:cqa.expiration_timestamp :expiration]
+                  [:cqa.created_date :created-date]
+                  [:cq.question :question]
+                  [:scc.channel_id :channel_id]
+                  [:cqan.id :qa_id]
+                  [:cqan.scu_id :scu_id]
+                  [:cqan.answer :answer]
+                  [:scu.remote_user_id :remote_user_id]
+                  [:scu.name :name]
+                  [:cqa.question_id :question_id])
+        (h/from [:channel_questions_asked :cqa])
+        (h/join [:channel_questions :cq]
+                [:= :cq.id :cqa.question_id])
+        (h/join [:slack_coaching_channels :scc]
+                [:= :scc.id :cqa.channel_id])
+        (h/join [:channel_question_answers :cqan]
+                [:= :cqan.qa_id :cqa.id])
+        (h/join [:slack_coaching_users :scu]
+                [:= :cqan.scu_id :scu.id])
+        (h/where [:= :scc.active true])
+        (hu/query (db/datasource))))
 
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)

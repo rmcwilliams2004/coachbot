@@ -202,4 +202,5 @@
                                  (expired-response second-question 3))
 
         (it "should express the results of the questions in an aggregated way"
-          )))))
+          (should= [stats-response3]
+                   (send-channel-question-results!)))))))
