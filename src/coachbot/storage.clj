@@ -566,7 +566,7 @@
         (execute-channel-question-reponse-storage! conn user-id question-id
                                                    answer existing-answer)))))
 
-(defn see-active-channel-questions []
+(defn list-active-channel-questions [ds]
   (-> (h/select [:cqa.expiration_timestamp :expiration]
                 [:cqa.created_date :created-date]
                 [:cq.question :question]
@@ -588,4 +588,4 @@
               [:= :cqan.scu_id :scu.id])
       (h/where [:= :scc.active true])
       (h/order-by  :question_id)
-      (hu/query (db/datasource))))
+      (hu/query ds)))

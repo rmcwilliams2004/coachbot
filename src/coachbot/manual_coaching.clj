@@ -223,7 +223,8 @@
                                   (t/days 1))))
 
   ;; Show a list of all the answers to active channel questions
-  (pprint/print-table (storage/see-active-channel-questions))
+  (pprint/print-table
+    (storage/list-active-channel-questions (db/datasource)))
 
   ;; Group active channel question responses by question number
   ;; This doesn't work, but I don't understand why
@@ -283,8 +284,8 @@
 
   ;; Questions answered by most active user over various time frames
   (map #(-> (answers-by-users %)
-           (first)
-           (select-keys [:answers :name]))
+            (first)
+            (select-keys [:answers :name]))
        [7 14 30 60])
 
   ;; Ask a question with buttons
