@@ -223,11 +223,13 @@
                                   (t/days 1))))
 
   ;; Show a list of all the answers to active channel questions
-  (pprint/print-table (storage/see-active-channel-questions))
+  (pprint/print-table
+    (storage/see-active-channel-questions (db/datasource)))
 
   ;; Group active channel question responses by question number
   ;; This doesn't work, but I don't understand why
-  (group-by #(map :question-id %) (storage/see-active-channel-questions))
+  (group-by #(map :question-id %)
+            (storage/see-active-channel-questions (db/datasource)))
 
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)
