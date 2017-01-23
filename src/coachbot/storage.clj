@@ -566,7 +566,7 @@
         (execute-channel-question-reponse-storage! conn user-id question-id
                                                    answer existing-answer)))))
 
-(defn see-active-channel-questions [ds]
+(defn list-active-channel-questions [ds]
   (-> (h/select [:cqa.expiration_timestamp :expiration]
                 [:cqa.created_date :created-date]
                 [:cq.question :question]
