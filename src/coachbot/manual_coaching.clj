@@ -227,7 +227,45 @@
 
   ;; Group active channel question responses by question number
   ;; This doesn't work, but I don't understand why
-  (group-by #(map :question-id %) (storage/see-active-channel-questions))
+  (group-by :question_id (storage/see-active-channel-questions))
+  (map (comp count second) *1)
+  (filter #(>= %1 2) *1)
+  (filter #(>= (count (second %1)) 2) *1)
+  (first *1)
+  (map :answer (second (first *1)))
+
+  (def grouped-answers
+    (->> (storage/see-active-channel-questions)
+         (group-by :question_id)
+         #_(filter #(>= (count (second %1)) 2))
+         #_(map second)
+         #_(map (partial map :answer))))
+
+  (let [answers (map (partial map :answer) (map second grouped-answers))
+        questions (map first (map (partial map :question) (map second grouped-answers)))
+        channel_ids (map first (map (partial map :channel_id) (map second grouped-answers)))
+        channel_ids (map first (map (partial map :channel_id) (map second grouped-answers)))]
+    (map vector questions channel_ids answers)
+    #_(if (>= (count (last zipped) 2))
+      ))
+
+  ;; Test functions for analyzing, will clean up later
+  (for [a_question *1]
+    (if (>= (count (last a_question)) 2)
+      ()
+      (println a_question "has less than 2 responses")))
+
+  ;; Test functions for analyzing, will clean up later
+  (if (>= (count (last *1)))
+    (println "yes"))
+  (map last *1)
+  grouped-answers
+
+  ;; Test functions for analyzing, will clean up later
+  (map first (map (partial map :question) (map second grouped-answers)))
+  (->> (map second grouped-answers)
+       (map (partial map :channel_id))
+       (map first))
 
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)
