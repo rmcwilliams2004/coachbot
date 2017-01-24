@@ -18,15 +18,12 @@
 ;
 
 (ns coachbot.manual-coaching
-  (:require [clj-time.core :as t]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [coachbot.coaching-process :as cp]
-            [coachbot.channel-coaching-process :as ccp]
             [coachbot.db :as db]
             [coachbot.hsql-utils :as hu]
             [coachbot.slack :as slack]
-            [coachbot.storage :as storage]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]

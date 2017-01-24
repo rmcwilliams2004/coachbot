@@ -570,7 +570,7 @@
   (let [channel-question (as-> first-response x
                                (select-keys x [:expiration :question
                                                :created_date :channel_id
-                                               :question_id])
+                                               :question_id :team_id])
                                (cske/transform-keys csk/->kebab-case x))]
     (assoc channel-question :answers (map :answer question))))
 
@@ -584,7 +584,8 @@
                   [:cqan.answer :answer]
                   [:scu.remote_user_id :remote_user_id]
                   [:scu.name :name]
-                  [:cqa.question_id :question_id]) x
+                  [:cqa.question_id :question_id]
+                  :st.team_id) x
         (h/from x [:channel_questions_asked :cqa])
         (h/join x [:channel_questions :cq]
                 [:= :cq.id :cqa.question_id]
@@ -593,8 +594,11 @@
                 [:channel_question_answers :cqan]
                 [:= :cqan.qa_id :cqa.id]
                 [:slack_coaching_users :scu]
-                [:= :cqan.scu_id :scu.id])
-        (h/where x [:= :scc.active true])
+                [:= :cqan.scu_id :scu.id]
+                [:slack_teams :st]
+                [:= :st.id :scc.team_id])
+        (h/where x [:and [:= :scc.active true]
+                    [:<= :cqa.expiration_timestamp (env/now)]])
         (h/order-by x :question_id)
         (hu/query x ds)
         (group-by :question_id x)

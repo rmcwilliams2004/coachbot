@@ -129,13 +129,21 @@
                   (~latest-messages)))))
 
 (def stats-response
-  (partial format (str/join "\n" ["Results from question: *%s*"
+  (partial format (str/join "\n" ["%s: Results from question: *%s*"
                                   "Average: *%.2f*"
-                                  "Max: *%.2f*"
-                                  "Min: *%.2f*"
+                                  "Max: *%d*"
+                                  "Min: *%d*"
                                   "From *%d* people responding"])))
 
-(def stats-response3 (stats-response first-question 4.5 5.0 4.0 3))
+(def not-enough-response
+  (partial format
+           (str "%s: Question *%s* only had *%d* response(s). "
+                "We don't display results unless we get at least *%d* "
+                "because we care about your privacy.")))
+
+(def stats-response2-3 (stats-response channel-id second-question 3.0 4 2 3))
+(def not-enough-response1-1
+  (not-enough-response channel-id first-question 1 3))
 
 (describe-mocked "Channel coaching" [ds latest-messages]
   (describe "Channel joins"
@@ -176,6 +184,7 @@
                 (first-response second-question 3)
                 (next-response second-question 5)
                 (first-response second-question 4)
+                (first-response second-question 2)
 
                 (first-response third-question 3)
                 (first-response third-question 4)
@@ -185,6 +194,7 @@
                    (events/handle-raw-event (button-pressed 2 user1-id 3))
                    (events/handle-raw-event (button-pressed 2 user1-id 5))
                    (events/handle-raw-event (button-pressed 2 user2-id 4))
+                   (events/handle-raw-event (button-pressed 2 user3-id 2))
 
                    (events/handle-raw-event (button-pressed 3 user1-id 3))
                    (events/handle-raw-event (button-pressed 3 user2-id 4))
@@ -201,13 +211,13 @@
                                  (expired-response first-question 3)
                                  (next-response second-question 3)))
 
-      (now-context "later" "2016-01-06T10:10:00-06:00"
+      (now-context "later" "2016-01-04T10:10:00-06:00"
         (check-expired-questions latest-messages
                                  (expired-response first-question 3)
                                  (expired-response second-question 3))
 
         (it "should express the results of the questions in an aggregated way"
-          (should= [stats-response3]
+          (should= [not-enough-response1-1 stats-response2-3]
                    (send-channel-question-results! latest-messages))
 
           (should= [] (send-channel-question-results! latest-messages)))))))

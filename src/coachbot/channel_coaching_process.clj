@@ -20,6 +20,7 @@
 (ns coachbot.channel-coaching-process
   (:require [clj-time.core :as t]
             [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [coachbot.coaching-process :as cp]
             [coachbot.db :as db]
             [coachbot.env :as env]
@@ -100,16 +101,44 @@
             conn slack-team-id email question-id value))]
     (format response-format value question)))
 
-(defn- run-stats-functions [answers]
-  (reduce
-    (fn [m [k f]] (assoc m k (f answers))) {}
-    [[:mean is/mean] [:median is/median] [:max max] [:min min] [:stdev is/sd]]))
-
 (defn- calculate-stats-for-channel-question [{:keys [answers] :as question}]
-  (merge question (run-stats-functions answers)))
+  (merge
+    question
+    (reduce
+      (fn [m [k f]] (assoc m k (f answers))) {}
+      [[:mean is/mean] [:median is/median] [:result-max (partial apply max)]
+       [:result-min (partial apply min)] [:stdev is/sd]
+       [:result-count count]])))
+
+(def ^:private results-format (str/join "\n" ["Results from question: *%s*"
+                                              "Average: *%.2f*"
+                                              "Max: *%d*"
+                                              "Min: *%d*"
+                                              "From *%d* people responding"]))
+
+(def ^:private not-enough-results-format
+  (str "Question *%s* only had *%d* response(s). "
+       "We don't display results unless we get at least *%d* because we "
+       "care about your privacy."))
+
+(defn- send-results-if-possible! [conn questions]
+  (let [min-results 3]
+    (doseq [{:keys [result-count mean result-min result-max question
+                    team-id channel-id]}
+            questions
+
+            :let
+            [message
+             (if (>= result-count min-results)
+               (format results-format question mean result-max result-min
+                       result-count)
+               (format not-enough-results-format question result-count
+                       min-results))]]
+      (storage/with-access-tokens conn team-id [access-token bot-access-token]
+        (slack/send-message! bot-access-token channel-id message)))))
 
 (defn send-results-for-all-channel-questions! []
   (jdbc/with-db-transaction [conn (db/datasource)]
     (->> (storage/list-active-channel-questions conn)
          (map calculate-stats-for-channel-question)
-         (clojure.pprint/print-table))))
+         (send-results-if-possible! conn))))
