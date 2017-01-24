@@ -196,10 +196,6 @@
                                   [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
 
-  (pprint/print-table (jdbc/query
-                        (db/datasource)
-                        ["describe slack_coaching_channels"]))
-
   ;; List channels we're coaching
   (pprint/print-table
     (-> (h/select :st.team_id :scc.channel_id :st.team_name
@@ -210,21 +206,11 @@
         (h/where [:= :active true])
         (hu/query (db/datasource))))
 
-  (-> (h/update :channel_questions_asked)
-      (h/sset {:expiration_timestamp (t/plus (coachbot.env/now) (t/hours 15))
-               :delivered false})
-      (h/where [:= :id 19])
-      (hu/execute-safely! (db/datasource)))
-
-  (pprint/print-table
-    (-> (h/select :*)
-        (h/from :channel_questions_asked)
-        (hu/query (db/datasource))))
-
 
   ;; Send a coaching question to a channel
-  (ccp/send-channel-question! "T04SG55UA" "C2K6SEQV8"
-                              "How happy are you NOW?" (t/minutes 15))
+  (ccp/send-channel-question!
+    "T04SG55UA" "C3F03UHS6"
+    "I feel strongly engaged with Courage Labs" (t/days 2))
 
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)
