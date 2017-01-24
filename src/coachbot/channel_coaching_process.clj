@@ -26,7 +26,8 @@
             [coachbot.env :as env]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
-            [incanter.stats :as is])
+            [incanter.stats :as is]
+            [taoensso.timbre :as log])
   (:import (org.joda.time.format PeriodFormatterBuilder)))
 
 (def ^:private question-response-messages
@@ -135,6 +136,8 @@
                        result-count)
                (format not-enough-results-format question result-count
                        min-results))]]
+      (log/infof "Sending results for %s / %s / %s / '%s'" team-id channel-id
+                 question-id question)
       (jdbc/with-db-transaction [conn ds]
         (storage/with-access-tokens conn team-id [access-token bot-access-token]
           (storage/question-results-delivered! conn question-id)
