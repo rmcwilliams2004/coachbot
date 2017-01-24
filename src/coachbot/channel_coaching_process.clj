@@ -149,6 +149,6 @@
 
 (defn send-results-for-all-channel-questions! []
   (let [ds (db/datasource)]
-    (->> (storage/list-active-channel-questions ds)
+    (->> (storage/list-expired-channel-questions ds)
          (map calculate-stats-for-channel-question)
          (send-results-if-possible! ds))))

@@ -576,7 +576,7 @@
                                (cske/transform-keys csk/->kebab-case x))]
     (assoc channel-question :answers (map :answer question))))
 
-(defn list-active-channel-questions [ds]
+(defn list-expired-channel-questions [ds]
   (as-> (h/select [:cqa.expiration_timestamp :expiration]
                   [:cqa.created_date :created-date]
                   [:cq.question :question]
@@ -586,7 +586,7 @@
                   [:cqan.answer :answer]
                   [:scu.remote_user_id :remote_user_id]
                   [:scu.name :name]
-                  [:cqa.question_id :question_id]
+                  [:cqa.id :question_id]
                   :st.team_id) x
         (h/from x [:channel_questions_asked :cqa])
         (h/join x [:channel_questions :cq]
