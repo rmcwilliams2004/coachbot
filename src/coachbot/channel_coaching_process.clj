@@ -52,7 +52,8 @@
     (storage/with-access-tokens ds slack-team-id [access-token bot-access-token]
       (let [channel-name (slack/get-channel-name access-token channel)]
         (storage/add-coaching-channel! ds slack-team-id channel channel-name)
-        (slack/send-message! bot-access-token channel channel-coaching-message)))))
+        (slack/send-message! bot-access-token channel
+                             channel-coaching-message)))))
 
 (defn stop-coaching-channel! [slack-team-id channel _]
   (storage/stop-coaching-channel! (db/datasource) slack-team-id channel))
