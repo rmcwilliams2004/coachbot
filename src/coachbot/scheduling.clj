@@ -42,6 +42,7 @@
     `(do
        (defjob job# [ctx]
          (try
+           (log/debugf "Executing: %s" ~f)
            (~f)
            (catch Throwable t#
              (log/error t# ~unable-to-execute))))

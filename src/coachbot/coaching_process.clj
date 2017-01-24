@@ -193,7 +193,6 @@
 (defn send-next-question-to-everyone-everywhere! []
   (let [ds (db/datasource)
         users (storage/list-coaching-users-across-all-teams ds)]
-    (log/debugf "Users to send to: %d" (count users))
     (doall (map send-question-if-conditions-are-right! users))))
 
 (defn is-bot-user? [ds team-id slack-user-id]
