@@ -38,18 +38,18 @@
   (let [fname-str (.toString (UUID/randomUUID))
         unable-to-execute (format "Unable to execute job '%s'" fname-str)
         job-key (str "jobs." fname-str)
-        trigger-key (str "triggers." fname-str)]
+        trigger-key (str "triggers." fname-str)
+        job-class (symbol (.replace fname-str "-" ""))]
     `(do
-       (defjob job# [ctx]
+       (defjob ~job-class [ctx]
          (try
-           (log/debugf "Executing: %s" ~f)
            (~f)
            (catch Throwable t#
              (log/error t# ~unable-to-execute))))
 
        (defn ~fname [scheduler#]
          (let [job# (qj/build
-                      (qj/of-type job#)
+                      (qj/of-type ~job-class)
                       (qj/with-identity (qj/key ~job-key)))
                trigger# (qt/build
                           (qt/with-identity (qt/key ~trigger-key))
