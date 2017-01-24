@@ -597,10 +597,18 @@
                 [:= :cqan.scu_id :scu.id]
                 [:slack_teams :st]
                 [:= :st.id :scc.team_id])
-        (h/where x [:and [:= :scc.active true]
+        (h/where x [:and
+                    [:= :cq.delivered false]
+                    [:= :scc.active true]
                     [:<= :cqa.expiration_timestamp (env/now)]])
         (h/order-by x :question_id)
         (hu/query x ds)
         (group-by :question_id x)
         (vals x)
         (map transform-channel-question x)))
+
+(defn question-results-delivered! [conn question-id]
+  (-> (h/update :channel-questions)
+      (h/sset {:delivered true})
+      (h/where [:= :id question-id])
+      (hu/execute-safely! conn)))

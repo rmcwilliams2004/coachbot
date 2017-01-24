@@ -121,10 +121,10 @@
        "We don't display results unless we get at least *%d* because we "
        "care about your privacy."))
 
-(defn- send-results-if-possible! [conn questions]
+(defn- send-results-if-possible! [ds questions]
   (let [min-results 3]
     (doseq [{:keys [result-count mean result-min result-max question
-                    team-id channel-id]}
+                    team-id channel-id question-id]}
             questions
 
             :let
@@ -134,11 +134,13 @@
                        result-count)
                (format not-enough-results-format question result-count
                        min-results))]]
-      (storage/with-access-tokens conn team-id [access-token bot-access-token]
-        (slack/send-message! bot-access-token channel-id message)))))
+      (jdbc/with-db-transaction [conn ds]
+        (storage/with-access-tokens conn team-id [access-token bot-access-token]
+          (storage/question-results-delivered! conn question-id)
+          (slack/send-message! bot-access-token channel-id message))))))
 
 (defn send-results-for-all-channel-questions! []
-  (jdbc/with-db-transaction [conn (db/datasource)]
-    (->> (storage/list-active-channel-questions conn)
+  (let [ds (db/datasource)]
+    (->> (storage/list-active-channel-questions ds)
          (map calculate-stats-for-channel-question)
-         (send-results-if-possible! conn))))
+         (send-results-if-possible! ds))))
