@@ -104,11 +104,9 @@
   [[:mean is/mean] [:median is/median]
    [:max max] [:min min] [:stdev is/sd]])
 
-(defn- apply-stats-function [answers m [k f]]
-  (assoc m k (f answers)))
-
 (defn- run-stats-functions [answers]
-  (reduce (partial apply-stats-function answers) {} functions-to-run))
+  (letfn [(apply-stats-function [m [k f]] (assoc m k (f answers)))]
+    (reduce apply-stats-function {} functions-to-run)))
 
 (defn- calculate-stats-for-channel-question [{:keys [answers] :as question}]
   (merge question (run-stats-functions answers)))
