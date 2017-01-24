@@ -138,10 +138,14 @@
                        min-results))]]
       (log/infof "Sending results for %s / %s / %s / '%s'" team-id channel-id
                  question-id question)
-      (jdbc/with-db-transaction [conn ds]
-        (storage/with-access-tokens conn team-id [access-token bot-access-token]
-          (storage/question-results-delivered! conn question-id)
-          (slack/send-message! bot-access-token channel-id message))))))
+      (try
+        (jdbc/with-db-transaction [conn ds]
+          (storage/with-access-tokens conn team-id [access-token bot-access-token]
+            (storage/question-results-delivered! conn question-id)
+            (slack/send-message! bot-access-token channel-id message)))
+        (catch Throwable t
+          (log/errorf t "Could not send results for %s / %s / %s / '%s'"
+                      team-id channel-id question-id question))))))
 
 (defn send-results-for-all-channel-questions! []
   (let [ds (db/datasource)]
