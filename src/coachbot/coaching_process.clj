@@ -23,10 +23,6 @@
             [clj-time.format :as tf]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [clojurewerkz.quartzite.jobs :as qj]
-            [clojurewerkz.quartzite.schedule.cron :as qc]
-            [clojurewerkz.quartzite.scheduler :as qs]
-            [clojurewerkz.quartzite.triggers :as qt]
             [coachbot.db :as db]
             [coachbot.env :as env]
             [coachbot.messages :as messages]
@@ -202,23 +198,6 @@
         users (storage/list-coaching-users-across-all-teams ds)]
     (log/debugf "Users to send to: %d" (count users))
     (doall (map send-question-if-conditions-are-right! users))))
-
-(qj/defjob IndividualCoachingJob [ctx]
-  (try
-    (send-next-question-to-everyone-everywhere!)
-    (catch Throwable t
-      (log/errorf t "Unable to send next question to everyone everywhere"))))
-
-(defn schedule-individual-coaching! [scheduler]
-  (let [job (qj/build
-              (qj/of-type IndividualCoachingJob)
-              (qj/with-identity (qj/key "jobs.coaching.individual")))
-        trigger (qt/build
-                  (qt/with-identity (qt/key "triggers.every-minute"))
-                  (qt/start-now)
-                  (qt/with-schedule
-                    (qc/schedule (qc/cron-schedule "0 * * ? * *"))))]
-    (qs/schedule scheduler job trigger)))
 
 (defn is-bot-user? [ds team-id slack-user-id]
   (or (= "USLACKBOT" slack-user-id)

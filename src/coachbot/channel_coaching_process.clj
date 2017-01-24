@@ -19,11 +19,14 @@
 
 (ns coachbot.channel-coaching-process
   (:require [clj-time.core :as t]
+            [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str]
             [coachbot.coaching-process :as cp]
             [coachbot.db :as db]
             [coachbot.env :as env]
             [coachbot.slack :as slack]
-            [coachbot.storage :as storage])
+            [coachbot.storage :as storage]
+            [incanter.stats :as is])
   (:import (org.joda.time.format PeriodFormatterBuilder)))
 
 (def ^:private question-response-messages
@@ -44,14 +47,14 @@
   (str "Hi everyone! I'm here to send periodic coaching questions. "
        "Just kick me out if you get sick of them."))
 
-(defn coach-channel [slack-team-id channel _]
+(defn coach-channel! [slack-team-id channel _]
   (let [ds (db/datasource)]
     (storage/add-coaching-channel! ds slack-team-id channel)
     (storage/with-access-tokens ds slack-team-id [_ bot-access-token]
       (slack/send-message! bot-access-token channel
                            channel-coaching-message))))
 
-(defn stop-coaching-channel [slack-team-id channel _]
+(defn stop-coaching-channel! [slack-team-id channel _]
   (storage/stop-coaching-channel! (db/datasource) slack-team-id channel))
 
 (defn list-channels [team-id]
@@ -97,3 +100,47 @@
           (storage/store-channel-question-response!
             conn slack-team-id email question-id value))]
     (format response-format value question)))
+
+(defn- calculate-stats-for-channel-question [{:keys [answers] :as question}]
+  (merge
+    question
+    (reduce
+      (fn [m [k f]] (assoc m k (f answers))) {}
+      [[:mean is/mean] [:median is/median] [:result-max (partial apply max)]
+       [:result-min (partial apply min)] [:stdev is/sd]
+       [:result-count count]])))
+
+(def ^:private results-format (str/join "\n" ["Results from question: *%s*"
+                                              "Average: *%.2f*"
+                                              "Max: *%d*"
+                                              "Min: *%d*"
+                                              "From *%d* people responding"]))
+
+(def ^:private not-enough-results-format
+  (str "Question *%s* only had *%d* response(s). "
+       "We don't display results unless we get at least *%d* because we "
+       "care about your privacy."))
+
+(defn- send-results-if-possible! [ds questions]
+  (let [min-results 3]
+    (doseq [{:keys [result-count mean result-min result-max question
+                    team-id channel-id question-id]}
+            questions
+
+            :let
+            [message
+             (if (>= result-count min-results)
+               (format results-format question mean result-max result-min
+                       result-count)
+               (format not-enough-results-format question result-count
+                       min-results))]]
+      (jdbc/with-db-transaction [conn ds]
+        (storage/with-access-tokens conn team-id [access-token bot-access-token]
+          (storage/question-results-delivered! conn question-id)
+          (slack/send-message! bot-access-token channel-id message))))))
+
+(defn send-results-for-all-channel-questions! []
+  (let [ds (db/datasource)]
+    (->> (storage/list-active-channel-questions ds)
+         (map calculate-stats-for-channel-question)
+         (send-results-if-possible! ds))))

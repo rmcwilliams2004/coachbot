@@ -18,15 +18,12 @@
 ;
 
 (ns coachbot.manual-coaching
-  (:require [clj-time.core :as t]
-            [clojure.java.jdbc :as jdbc]
+  (:require [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [coachbot.coaching-process :as cp]
-            [coachbot.channel-coaching-process :as ccp]
             [coachbot.db :as db]
             [coachbot.hsql-utils :as hu]
             [coachbot.slack :as slack]
-            [coachbot.storage :as storage]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]
@@ -121,12 +118,6 @@
               (hu/query (db/datasource)))]
     (slack/send-message! bot_access_token remote_user_id message)))
 
-(defn send-question-w-buttons! [team-id user-id channel question callback-id]
-  (cp/with-sending-constructs
-    {:user-id user-id :team-id team-id :channel channel} [ds send-fn _]
-    (send-fn question callback-id
-             (map #(hash-map :name "option" :value %) (range 1 6)))))
-
 (defn count-active []
   (-> (h/select (sql/raw "count(distinct scu.id) AS users"))
       (h/from [:slack_coaching_users :scu])
@@ -202,26 +193,6 @@
                                   [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
 
-  ;; Send a channel question
-  (log/with-level :debug
-    (let [team-name "Courage Labs"
-          ds (db/datasource)
-
-          {:keys [id team_id access_token bot_access_token]}
-          (-> (h/select :*)
-              (h/from :slack_teams)
-              (h/where [:= :team_name team-name])
-              (hu/query ds)
-              first)
-
-          channel-id (->> team_id
-                          (storage/list-coaching-channels ds)
-                          first)]
-      (log/infof "%s: %s" team-name team_id)
-      (ccp/send-channel-question! team_id channel-id
-                                  "I am happy on my team right now."
-                                  (t/days 1))))
-
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)
 
@@ -238,8 +209,8 @@
 
   ;; Questions answered by most active user over various time frames
   (map #(-> (answers-by-users %)
-           (first)
-           (select-keys [:answers :name]))
+            (first)
+            (select-keys [:answers :name]))
        [7 14 30 60])
 
   ;; Ask a question with buttons
