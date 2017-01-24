@@ -22,17 +22,25 @@
             [taoensso.timbre :as log]
             [clojurewerkz.quartzite.triggers :as qt]
             [clojurewerkz.quartzite.schedule.cron :as qc]
-            [clojurewerkz.quartzite.scheduler :as qs]))
+            [clojurewerkz.quartzite.scheduler :as qs])
+  (:import (java.util UUID)
+           (org.quartz DisallowConcurrentExecution)
+           (coachbot.scheduling NonConcurrentJob)))
+
+(defmacro defjob
+  [jtype args & body]
+  `(defrecord ~jtype [] NonConcurrentJob
+     (execute [this ~@args] ~@body)))
 
 (defmacro defsfn
   "Define a function that runs a function on a schedule when executed"
-  [fname schedule f]
-  (let [fname-str (name fname)
+  [fname name schedule f]
+  (let [fname-str (.toString (UUID/randomUUID))
         unable-to-execute (format "Unable to execute job '%s'" fname-str)
         job-key (str "jobs." fname-str)
         trigger-key (str "triggers." fname-str)]
     `(do
-       (qj/defjob job# [ctx]
+       (defjob job# [ctx]
          (try
            (~f)
            (catch Throwable t#
@@ -47,4 +55,8 @@
                           (qt/start-now)
                           (qt/with-schedule
                             (qc/schedule (qc/cron-schedule ~schedule))))]
+           (log/infof
+             (str "Scheduling job '%s' as %s with trigger %s "
+                  "on schedule %s")
+             ~name ~job-key ~trigger-key ~schedule)
            (qs/schedule scheduler# job# trigger#))))))

@@ -123,24 +123,24 @@
        "We don't display results unless we get at least *%d* because we "
        "care about your privacy."))
 
-(defn- send-results-if-possible! [ds questions]
-  (let [min-results 3]
-    (doseq [{:keys [result-count mean result-min result-max question
-                    team-id channel-id question-id]}
-            questions
+(def ^:private min-results 3)
 
-            :let
-            [message
-             (if (>= result-count min-results)
-               (format results-format question mean result-max result-min
-                       result-count)
-               (format not-enough-results-format question result-count
-                       min-results))]]
-      (log/infof "Sending results for %s / %s / %s / '%s'" team-id channel-id
-                 question-id question)
+(defn- send-results-if-possible! [ds questions]
+  (doseq [{:keys [result-count mean result-min result-max question
+                  team-id channel-id question-id]}
+          questions]
+    (let [message
+          (if (>= result-count min-results)
+            (format results-format question mean result-max result-min
+                    result-count)
+            (format not-enough-results-format question result-count
+                    min-results))]
+      (log/infof "Sending results for %s / %s / %s / '%s'"
+                 team-id channel-id question-id question)
       (try
         (jdbc/with-db-transaction [conn ds]
-          (storage/with-access-tokens conn team-id [access-token bot-access-token]
+          (storage/with-access-tokens conn team-id
+            [access-token bot-access-token]
             (storage/question-results-delivered! conn question-id)
             (slack/send-message! bot-access-token channel-id message)))
         (catch Throwable t

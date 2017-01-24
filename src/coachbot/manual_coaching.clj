@@ -18,7 +18,8 @@
 ;
 
 (ns coachbot.manual-coaching
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [clj-time.core :as t]
+            [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [coachbot.channel-coaching-process :as ccp]
             [coachbot.coaching-process :as cp]
@@ -173,7 +174,7 @@
   (in-ns 'coachbot.manual-coaching)
 
   ;; Get rid of annoying logging
-  (log/set-level! :warn)
+  (log/set-level! :info)
 
   ;; Use this to see the last X days of answers
   (pprint/print-table (list-answers 7))
@@ -210,12 +211,20 @@
         (hu/query (db/datasource))))
 
   (-> (h/update :channel_questions_asked)
-      (h/sset {:delivered false})
+      (h/sset {:expiration_timestamp (t/plus (coachbot.env/now) (t/hours 15))
+               :delivered false})
+      (h/where [:= :id 19])
       (hu/execute-safely! (db/datasource)))
+
+  (pprint/print-table
+    (-> (h/select :*)
+        (h/from :channel_questions_asked)
+        (hu/query (db/datasource))))
+
 
   ;; Send a coaching question to a channel
   (ccp/send-channel-question! "T04SG55UA" "C2K6SEQV8"
-                              "How happy are you?" (t/days 2))
+                              "How happy are you NOW?" (t/minutes 15))
 
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)

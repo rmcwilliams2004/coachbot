@@ -58,10 +58,10 @@
 
     (undocumented (r/resources "/"))))
 
-(sch/defsfn schedule-individual-coaching! "0 * * ? * *"
+(sch/defsfn schedule-individual-coaching! "Individual Coaching" "0 * * ? * *"
             coaching/send-next-question-to-everyone-everywhere!)
 
-(sch/defsfn schedule-channel-coaching! "0 * * ? * *"
+(sch/defsfn schedule-channel-coaching! "Channel Coaching" "0 * * ? * *"
             ccp/send-results-for-all-channel-questions!)
 
 (defn -main

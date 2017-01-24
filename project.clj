@@ -46,6 +46,7 @@
                  [slingshot "0.12.2"]]
   :ring {:handler coachbot.handler/app}
   :uberjar-name "server.jar"
+  :java-source-paths ["java-src"]
   :test-paths ["spec"]
   :min-lein-version "2.0.0"
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "3.1.0"]
