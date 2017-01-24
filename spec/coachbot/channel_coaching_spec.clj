@@ -25,7 +25,6 @@
             [coachbot.channel-coaching-process :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
-            [incanter.stats :as stats]
             [speclj.core :refer :all]
             [taoensso.timbre :as log]
             [clojure.string :as str]))
@@ -203,5 +202,9 @@
                                  (expired-response second-question 3))
 
         (it "should express the results of the questions in an aggregated way"
-          (should= [stats-response3]
-                   (send-channel-question-results!)))))))
+          (should= [stats-response3] (do
+                                       (send-results-for-all-channel-questions!)
+                                       (latest-messages)))
+          (should= [] (do
+                        (send-results-for-all-channel-questions!)
+                        (latest-messages))))))))

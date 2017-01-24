@@ -121,12 +121,6 @@
               (hu/query (db/datasource)))]
     (slack/send-message! bot_access_token remote_user_id message)))
 
-(defn send-question-w-buttons! [team-id user-id channel question callback-id]
-  (cp/with-sending-constructs
-    {:user-id user-id :team-id team-id :channel channel} [ds send-fn _]
-    (send-fn question callback-id
-             (map #(hash-map :name "option" :value %) (range 1 6)))))
-
 (defn count-active []
   (-> (h/select (sql/raw "count(distinct scu.id) AS users"))
       (h/from [:slack_coaching_users :scu])
@@ -201,72 +195,6 @@
                           (h/join [:slack_teams :st]
                                   [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
-
-  ;; Send a channel question
-  (log/with-level :debug
-    (let [team-name "CoachBot"
-          ds (db/datasource)
-
-          {:keys [id team_id access_token bot_access_token]}
-          (-> (h/select :*)
-              (h/from :slack_teams)
-              (h/where [:= :team_name team-name])
-              (hu/query ds)
-              first)
-
-          channel-id (->> team_id
-                          (storage/list-coaching-channels ds)
-                          first)]
-      (log/infof "%s: %s" team-name team_id)
-      (ccp/send-channel-question! team_id channel-id
-                                  "I am sending a test right now."
-                                  (t/days 1))))
-
-  ;; Show a list of all the answers to active channel questions
-  (pprint/print-table
-    (storage/list-active-channel-questions (db/datasource)))
-
-  ;; Group active channel question responses by question number
-  ;; This doesn't work, but I don't understand why
-  (group-by :question_id (storage/see-active-channel-questions))
-  (map (comp count second) *1)
-  (filter #(>= %1 2) *1)
-  (filter #(>= (count (second %1)) 2) *1)
-  (first *1)
-  (map :answer (second (first *1)))
-
-  (def grouped-answers
-    (->> (storage/see-active-channel-questions)
-         (group-by :question_id)
-         #_(filter #(>= (count (second %1)) 2))
-         #_(map second)
-         #_(map (partial map :answer))))
-
-  (let [answers (map (partial map :answer) (map second grouped-answers))
-        questions (map first (map (partial map :question) (map second grouped-answers)))
-        channel_ids (map first (map (partial map :channel_id) (map second grouped-answers)))
-        channel_ids (map first (map (partial map :channel_id) (map second grouped-answers)))]
-    (map vector questions channel_ids answers)
-    #_(if (>= (count (last zipped) 2))
-      ))
-
-  ;; Test functions for analyzing, will clean up later
-  (for [a_question *1]
-    (if (>= (count (last a_question)) 2)
-      ()
-      (println a_question "has less than 2 responses")))
-
-  ;; Test functions for analyzing, will clean up later
-  (if (>= (count (last *1)))
-    (println "yes"))
-  (map last *1)
-  grouped-answers
-
-  ;; Test functions for analyzing, will clean up later
-  (map first (map (partial map :question) (map second grouped-answers)))
-  (->> (map second grouped-answers)
-       (map (partial map :channel_id))
-       (map first))
 
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)

@@ -175,10 +175,10 @@
 (defevent {:command :friendly} friendly-reply)
 
 (def ^:private event-subtype-handlers
-  {"group_join" ccp/coach-channel
-   "group_leave" ccp/stop-coaching-channel
-   "channel_join" ccp/coach-channel
-   "channel_leave" ccp/stop-coaching-channel})
+  {"group_join" ccp/coach-channel!
+   "group_leave" ccp/stop-coaching-channel!
+   "channel_join" ccp/coach-channel!
+   "channel_leave" ccp/stop-coaching-channel!})
 
 (def ^:private callback-handlers
   {"cquestion" ccp/send-channel-question-response!})

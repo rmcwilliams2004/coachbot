@@ -19,16 +19,13 @@
 
 (ns coachbot.channel-coaching-process
   (:require [clj-time.core :as t]
+            [clojure.java.jdbc :as jdbc]
             [coachbot.coaching-process :as cp]
             [coachbot.db :as db]
             [coachbot.env :as env]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
-            [clojurewerkz.quartzite.jobs :as qj]
-            [taoensso.timbre :as log]
-            [clojurewerkz.quartzite.triggers :as qt]
-            [clojurewerkz.quartzite.schedule.cron :as qc]
-            [clojurewerkz.quartzite.scheduler :as qs])
+            [incanter.stats :as is])
   (:import (org.joda.time.format PeriodFormatterBuilder)))
 
 (def ^:private question-response-messages
@@ -49,14 +46,14 @@
   (str "Hi everyone! I'm here to send periodic coaching questions. "
        "Just kick me out if you get sick of them."))
 
-(defn coach-channel [slack-team-id channel _]
+(defn coach-channel! [slack-team-id channel _]
   (let [ds (db/datasource)]
     (storage/add-coaching-channel! ds slack-team-id channel)
     (storage/with-access-tokens ds slack-team-id [_ bot-access-token]
       (slack/send-message! bot-access-token channel
                            channel-coaching-message))))
 
-(defn stop-coaching-channel [slack-team-id channel _]
+(defn stop-coaching-channel! [slack-team-id channel _]
   (storage/stop-coaching-channel! (db/datasource) slack-team-id channel))
 
 (defn list-channels [team-id]
@@ -103,5 +100,21 @@
             conn slack-team-id email question-id value))]
     (format response-format value question)))
 
-(defn send-channel-question-results! []
-  )
+(def ^:private functions-to-run
+  [[:mean is/mean] [:median is/median]
+   [:max max] [:min min] [:stdev is/sd]])
+
+(defn- apply-stats-function [answers m [k f]]
+  (assoc m k (f answers)))
+
+(defn- run-stats-functions [answers]
+  (reduce (partial apply-stats-function answers) {} functions-to-run))
+
+(defn- calculate-stats-for-channel-question [{:keys [answers] :as question}]
+  (merge question (run-stats-functions answers)))
+
+(defn send-results-for-all-channel-questions! []
+  (jdbc/with-db-transaction [conn (db/datasource)]
+    (->> (storage/list-active-channel-questions conn)
+         (map calculate-stats-for-channel-question)
+         (clojure.pprint/print-table))))

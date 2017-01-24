@@ -62,7 +62,7 @@
             coaching/send-next-question-to-everyone-everywhere!)
 
 (sch/defsfn schedule-channel-coaching! "0 0 * ? * *"
-            ccp/send-channel-question-results!)
+            ccp/send-results-for-all-channel-questions!)
 
 (defn -main
   "Main function. Invoked to run the application using httpkit."
