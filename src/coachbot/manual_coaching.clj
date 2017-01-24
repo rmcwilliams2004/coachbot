@@ -209,6 +209,10 @@
         (h/where [:= :active true])
         (hu/query (db/datasource))))
 
+  (-> (h/update :channel_questions_asked)
+      (h/sset {:delivered false})
+      (hu/execute-safely! (db/datasource)))
+
   ;; Send a coaching question to a channel
   (ccp/send-channel-question! "T04SG55UA" "C2K6SEQV8"
                               "How happy are you?" (t/days 2))
@@ -271,6 +275,4 @@
             hours_since, "
             "current_timestamp as now "
             "from slack_coaching_users where email = ?")
-       "travis@couragelabs.com"]))
-
-  )
+       "travis@couragelabs.com"])))

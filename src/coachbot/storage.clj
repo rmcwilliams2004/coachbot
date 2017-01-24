@@ -600,7 +600,7 @@
                 [:slack_teams :st]
                 [:= :st.id :scc.team_id])
         (h/where x [:and
-                    [:= :cq.delivered false]
+                    [:= :cqa.delivered false]
                     [:= :scc.active true]
                     [:<= :cqa.expiration_timestamp (env/now)]])
         (h/order-by x :question_id)
@@ -610,7 +610,7 @@
         (map transform-channel-question x)))
 
 (defn question-results-delivered! [conn question-id]
-  (-> (h/update :channel-questions)
+  (-> (h/update :channel-questions-asked)
       (h/sset {:delivered true})
       (h/where [:= :id question-id])
       (hu/execute-safely! conn)))
