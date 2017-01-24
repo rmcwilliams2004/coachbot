@@ -100,13 +100,10 @@
             conn slack-team-id email question-id value))]
     (format response-format value question)))
 
-(def ^:private functions-to-run
-  [[:mean is/mean] [:median is/median]
-   [:max max] [:min min] [:stdev is/sd]])
-
 (defn- run-stats-functions [answers]
-  (letfn [(apply-stats-function [m [k f]] (assoc m k (f answers)))]
-    (reduce apply-stats-function {} functions-to-run)))
+  (reduce
+    (fn [m [k f]] (assoc m k (f answers))) {}
+    [[:mean is/mean] [:median is/median] [:max max] [:min min] [:stdev is/sd]]))
 
 (defn- calculate-stats-for-channel-question [{:keys [answers] :as question}]
   (merge question (run-stats-functions answers)))
