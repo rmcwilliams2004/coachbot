@@ -49,10 +49,10 @@
 
 (defn coach-channel! [slack-team-id channel _]
   (let [ds (db/datasource)]
-    (storage/add-coaching-channel! ds slack-team-id channel)
-    (storage/with-access-tokens ds slack-team-id [_ bot-access-token]
-      (slack/send-message! bot-access-token channel
-                           channel-coaching-message))))
+    (storage/with-access-tokens ds slack-team-id [access-token bot-access-token]
+      (let [channel-name (slack/get-channel-name access-token channel)]
+        (storage/add-coaching-channel! ds slack-team-id channel channel-name)
+        (slack/send-message! bot-access-token channel channel-coaching-message)))))
 
 (defn stop-coaching-channel! [slack-team-id channel _]
   (storage/stop-coaching-channel! (db/datasource) slack-team-id channel))
@@ -66,10 +66,10 @@
    and submitted as the new expiration date for the question. If you don't
    specify any expiration-specs, it will expire in 1 day.
 
-   e.g. (send-channel-question! id ch msg (t/days 1) (t/hours 12))
+   e.g. (send-channel-question! id ch question (t/days 1) (t/hours 12))
 
    Would make the question expire 1.5 days after the current time."
-  [slack-team-id channel msg & expiration-specs]
+  [slack-team-id channel question & expiration-specs]
   (let [expiration-specs
         (if (empty? expiration-specs) [(t/days 1)] expiration-specs)
 
@@ -81,10 +81,10 @@
     (cp/with-sending-constructs
       {:team-id slack-team-id :channel channel} [ds send-fn _]
       (let [question-id (storage/add-channel-question!
-                          (db/datasource) slack-team-id channel msg
+                          (db/datasource) slack-team-id channel question
                           expiration-timestamp)]
         (send-fn
-          (format msg-format msg (.print period-formatter time-diff))
+          (format msg-format question (.print period-formatter time-diff))
           (format "cquestion-%s" question-id)
           (map #(hash-map :name "option" :value %) (range 1 6)))))))
 

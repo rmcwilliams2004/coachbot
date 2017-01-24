@@ -20,10 +20,12 @@
 (ns coachbot.manual-coaching
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
+            [coachbot.channel-coaching-process :as ccp]
             [coachbot.coaching-process :as cp]
             [coachbot.db :as db]
             [coachbot.hsql-utils :as hu]
             [coachbot.slack :as slack]
+            [coachbot.storage :as storage]
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]
@@ -193,6 +195,24 @@
                                   [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
 
+  (pprint/print-table (jdbc/query
+                        (db/datasource)
+                        ["describe slack_coaching_channels"]))
+
+  ;; List channels we're coaching
+  (pprint/print-table
+    (-> (h/select :st.team_id :scc.channel_id :st.team_name
+                  :scc.channel_name)
+        (h/from storage/slack-coaching-channels)
+        (h/join [:slack_teams :st]
+                [:= :st.id :scc.team_id])
+        (h/where [:= :active true])
+        (hu/query (db/datasource))))
+
+  ;; Send a coaching question to a channel
+  (ccp/send-channel-question! "T04SG55UA" "C2K6SEQV8"
+                              "How happy are you?" (t/days 2))
+
   ;; Print last stack trace
   (clojure.stacktrace/print-cause-trace *e)
 
@@ -212,9 +232,6 @@
             (first)
             (select-keys [:answers :name]))
        [7 14 30 60])
-
-  ;; Ask a question with buttons
-  (send-question-w-buttons! "T04SG55UA" "U04T4P88M" nil "Test" 1)
 
   ;;Common Messages to send
   (def usage-checkin

@@ -426,7 +426,7 @@
                     [:= :question_group_id group-id]])
           (hu/execute-safely! conn)))))
 
-(def ^:private slack-coaching-channels [:slack_coaching_channels :scc])
+(def slack-coaching-channels [:slack_coaching_channels :scc])
 
 (defn- where-is-channel [hq team-id channel]
   (h/where hq [:and [:= :scc.team_id team-id]
@@ -439,19 +439,21 @@
       (hu/query conn)
       first))
 
-(defn- set-channel-active! [conn slack-team-id channel active?]
+(defn- update-channel! [conn slack-team-id channel active? & [channel-name]]
   (-> (h/update slack-coaching-channels)
-      (h/sset {:active active?})
+      (h/sset (merge {:active active?}
+                     (when channel-name {:channel_name channel-name})))
       (where-is-channel slack-team-id channel)
       (hu/execute-safely! conn)))
 
-(defn add-coaching-channel! [ds slack-team-id channel]
+(defn add-coaching-channel! [ds slack-team-id channel channel-name]
   (jdbc/with-db-transaction [conn ds]
     (let [team-id (get-team-id ds slack-team-id)
-          new-record {:team_id team-id :channel_id channel}
+          new-record {:team_id team-id :channel_id channel
+                      :channel_name channel-name}
           existing-record (load-channel conn team-id channel :scc.channel_id)]
       (if existing-record
-        (set-channel-active! conn team-id channel true)
+        (update-channel! conn team-id channel true channel-name)
         (do (jdbc/insert! conn :slack_coaching_channels new-record) true)))))
 
 (defn stop-coaching-channel! [ds slack-team-id channel]
@@ -459,7 +461,7 @@
     (let [team-id (get-team-id ds slack-team-id)
           existing-record (load-channel conn team-id channel :scc.id)]
       (if existing-record
-        (set-channel-active! conn team-id channel false)
+        (update-channel! conn team-id channel false)
         (ss/throw+ {:type :channel-not-found
                     :team team-id
                     :channel channel})))))

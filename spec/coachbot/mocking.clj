@@ -122,6 +122,7 @@
      slack/send-response! (fn [_ message] (swap! messages conj
                                                  (str "response: " message)))
      slack/get-user-info (fn [_ user-id] (users user-id))
+     slack/get-channel-name (fn [_ _] "test channel")
      slack/is-im-to-me? (fn [_ channel] (contains? users channel))
      events/is-event-authorized? (fn [token] (= token good-token))
      events/handle-unknown-failure

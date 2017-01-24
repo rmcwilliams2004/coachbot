@@ -52,9 +52,6 @@
   (storage/store-slack-auth! (db/datasource) auth-data)
   (let [members (slack/list-members access-token)]
     (doseq [{:keys [id name first-name]} members]
-      ; don't overrun the slack servers
-      (Thread/sleep 500)
-
       (slack/send-message!
         bot-access-token id
         (format (str "Hello, %s. I'm a coaching robot. To get started, you "

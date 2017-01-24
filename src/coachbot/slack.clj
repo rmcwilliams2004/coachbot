@@ -85,6 +85,18 @@
       (transform-user-info user)
       (log/errorf "Unable to get user info: %s" body))))
 
+(defn get-channel-name "Gets information about a channel."
+  [access-token channel-id]
+  (let [channel-info-result
+        (get-url "https://slack.com/api/channels.info"
+                 :token access-token :channel channel-id)
+
+        {:keys [ok channel] :as body}
+        (parse-body channel-info-result)]
+    (if ok
+      (:name channel)
+      (log/errorf "Unable to get channel info: %s" body))))
+
 (defn buttons-to-attachment [callback-id buttons]
   (when buttons {:text "1=Completely Disagree, 5=Completely Agree"
                  :callback_id callback-id

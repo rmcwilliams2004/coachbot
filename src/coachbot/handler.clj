@@ -19,6 +19,7 @@
 
 (ns coachbot.handler
   (:require [clojurewerkz.quartzite.scheduler :as qs]
+            [coachbot.channel-coaching-process :as ccp]
             [coachbot.coaching-process :as coaching]
             [coachbot.env :as env]
             [coachbot.events :as events]
@@ -27,8 +28,7 @@
             [compojure.route :as r]
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
-            [taoensso.timbre :as log]
-            [coachbot.channel-coaching-process :as ccp])
+            [taoensso.timbre :as log])
   (:gen-class))
 
 (defn wrap-dir-index [handler]
@@ -61,7 +61,7 @@
 (sch/defsfn schedule-individual-coaching! "0 * * ? * *"
             coaching/send-next-question-to-everyone-everywhere!)
 
-(sch/defsfn schedule-channel-coaching! "0 0 * ? * *"
+(sch/defsfn schedule-channel-coaching! "0 * * ? * *"
             ccp/send-results-for-all-channel-questions!)
 
 (defn -main
