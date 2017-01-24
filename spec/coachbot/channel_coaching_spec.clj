@@ -90,6 +90,11 @@
 
 (def cmsg (partial uc channel-id))
 
+(defn send-channel-question-results! [latest-messages]
+  (do
+    (send-results-for-all-channel-questions!)
+    (latest-messages)))
+
 (defmacro a-channel-event [name message expectation latest-messages]
   `(it ~name
      (should= {:status 200, :headers {}, :body nil}
@@ -202,9 +207,7 @@
                                  (expired-response second-question 3))
 
         (it "should express the results of the questions in an aggregated way"
-          (should= [stats-response3] (do
-                                       (send-results-for-all-channel-questions!)
-                                       (latest-messages)))
-          (should= [] (do
-                        (send-results-for-all-channel-questions!)
-                        (latest-messages))))))))
+          (should= [stats-response3]
+                   (send-channel-question-results! latest-messages))
+
+          (should= [] (send-channel-question-results! latest-messages)))))))
