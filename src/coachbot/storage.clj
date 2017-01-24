@@ -570,24 +570,29 @@
 
 (defn- transform-channel-question [[first-response :as question]]
   (let [channel-question (as-> first-response x
-                               (select-keys x [:expiration :question
-                                               :created_date :channel_id
-                                               :question_id :team_id])
+                               (select-keys x [:question
+                                               :expiration
+                                               :created_date
+                                               :channel_name
+                                               :channel_id
+                                               :question_id :team_id
+                                               :team_name])
                                (cske/transform-keys csk/->kebab-case x))]
     (assoc channel-question :answers (map :answer question))))
 
-(defn list-expired-channel-questions [ds]
+(defn- list-channel-questions [ds & where-clauses]
   (as-> (h/select [:cqa.expiration_timestamp :expiration]
-                  [:cqa.created_date :created-date]
-                  [:cq.question :question]
-                  [:scc.channel_id :channel_id]
+                  :cqa.created_date
+                  :cq.question
+                  :scc.channel_id
+                  :scc.channel_name
                   [:cqan.id :qa_id]
                   [:cqan.scu_id :scu_id]
-                  [:cqan.answer :answer]
-                  [:scu.remote_user_id :remote_user_id]
-                  [:scu.name :name]
+                  :cqan.answer
+                  :scu.remote_user_id
+                  :scu.name
                   [:cqa.id :question_id]
-                  :st.team_id) x
+                  :st.team_id :st.team_name) x
         (h/from x [:channel_questions_asked :cqa])
         (h/join x [:channel_questions :cq]
                 [:= :cq.id :cqa.question_id]
@@ -599,15 +604,24 @@
                 [:= :cqan.scu_id :scu.id]
                 [:slack_teams :st]
                 [:= :st.id :scc.team_id])
-        (h/where x [:and
-                    [:= :cqa.delivered false]
-                    [:= :scc.active true]
-                    [:<= :cqa.expiration_timestamp (env/now)]])
+        (h/where x (into [:and [:= :scc.active true]] where-clauses))
         (h/order-by x :question_id)
         (hu/query x ds)
         (group-by :question_id x)
         (vals x)
         (map transform-channel-question x)))
+
+(defn list-expired-channel-questions [ds]
+  (list-channel-questions
+    ds
+    [:= :cqa.delivered false]
+    [:<= :cqa.expiration_timestamp (env/now)]))
+
+(defn list-delivered-channel-questions [ds expiration-timestamp]
+  (list-channel-questions
+    ds
+    [:= :cqa.delivered true]
+    [:>= :cqa.expiration_timestamp expiration-timestamp]))
 
 (defn question-results-delivered! [conn question-id]
   (-> (h/update :channel-questions-asked)

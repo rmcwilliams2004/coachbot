@@ -174,7 +174,7 @@
   (in-ns 'coachbot.manual-coaching)
 
   ;; Get rid of annoying logging
-  (log/set-level! :info)
+  (log/set-level! :warn)
 
   ;; Use this to see the last X days of answers
   (pprint/print-table (list-answers 7))
@@ -206,6 +206,9 @@
         (h/where [:= :active true])
         (hu/query (db/datasource))))
 
+  ;; Find the results of the questions that expired recently
+  (pprint/print-table
+    (ccp/get-results-for-channel-questions! (t/days 5)))
 
   ;; Send a coaching question to a channel
   (ccp/send-channel-question!
@@ -270,4 +273,5 @@
             hours_since, "
             "current_timestamp as now "
             "from slack_coaching_users where email = ?")
-       "travis@couragelabs.com"])))
+       "travis@couragelabs.com"]))
+  )

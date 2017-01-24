@@ -152,3 +152,10 @@
     (->> (storage/list-expired-channel-questions ds)
          (map calculate-stats-for-channel-question)
          (send-results-if-possible! ds))))
+
+(defn get-results-for-channel-questions! [& expiration-specs]
+  (let [timestamp (apply (partial t/minus (env/now)) expiration-specs)]
+    (let [ds (db/datasource)]
+      (->> (storage/list-delivered-channel-questions ds timestamp)
+           (map calculate-stats-for-channel-question)
+           (map #(dissoc % :answers))))))
