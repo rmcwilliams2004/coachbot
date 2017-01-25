@@ -56,7 +56,10 @@
         (content-type (ok @env/letsencrypt-challenge-response) "text/plain")
         (not-found)))
 
-    (undocumented (r/resources "/"))))
+    (undocumented
+      (GET "/charts/channel/:id" {:as r}
+        (not-found "not yet implemented"))
+      (r/resources "/"))))
 
 (sch/defsfn schedule-individual-coaching! "Individual Coaching" "0 * * ? * *"
             coaching/send-next-question-to-everyone-everywhere!)

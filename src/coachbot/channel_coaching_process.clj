@@ -26,6 +26,8 @@
             [coachbot.env :as env]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
+            [incanter.core :as ic]
+            [incanter.charts :as ich]
             [incanter.stats :as is]
             [taoensso.timbre :as log])
   (:import (org.joda.time.format PeriodFormatterBuilder)))
@@ -159,3 +161,11 @@
       (->> (storage/list-delivered-channel-questions ds timestamp)
            (map calculate-stats-for-channel-question)
            (map #(dissoc % :answers))))))
+
+(defn render-plot-for-channel-question! [out-stream question-id]
+  (let [ds (db/datasource)
+        {:keys [answers]} (storage/get-channel-question-results ds question-id)
+        data (ic/dataset [:answer] (map (partial hash-map :answer) answers))]
+    (ic/with-data data
+      (ic/save
+        (ich/box-plot :answer :y-label "") out-stream))))

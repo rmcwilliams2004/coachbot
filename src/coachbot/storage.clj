@@ -623,6 +623,9 @@
     [:= :cqa.delivered true]
     [:>= :cqa.expiration_timestamp expiration-timestamp]))
 
+(defn get-channel-question-results [ds question-id]
+  (first (list-channel-questions ds [:= :cqa.id question-id])))
+
 (defn question-results-delivered! [conn question-id]
   (-> (h/update :channel-questions-asked)
       (h/sset {:delivered true})
