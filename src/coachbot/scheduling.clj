@@ -35,7 +35,7 @@
 (defmacro defsfn
   "Define a function that runs a function on a schedule when executed"
   [fname name schedule f]
-  (let [fname-str (.toString (UUID/randomUUID))
+  (let [fname-str (str (UUID/randomUUID))
         unable-to-execute (format "Unable to execute job '%s'" fname-str)
         job-key (str "jobs." fname-str)
         trigger-key (str "triggers." fname-str)
