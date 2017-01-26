@@ -44,7 +44,7 @@
 
 (def channel-chart-url-pattern "/charts/channel/%s")
 (def channel-chart-url-out-pattern
-  (format "%s%s" @env/robot-url channel-chart-url-pattern))
+  (str @env/robot-url channel-chart-url-pattern))
 (def channel-chart-url-in-pattern (format channel-chart-url-pattern ":id"))
 
 (def period-formatter
