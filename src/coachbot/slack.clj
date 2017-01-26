@@ -117,13 +117,14 @@
 (defn send-message!
   "Send a message to a channel."
   ([access-token channel message attachments]
-   (log/infof "Sending '%s' with attachments %s to '%s'"
-              message attachments channel)
-   (let [result (post-url! "https://slack.com/api/chat.postMessage"
+   (let [processed-attachments (map convert-attachment attachments)
+         _ (log/infof "Sending '%s' with attachments %s to '%s'"
+                      message attachments channel)
+         result (post-url! "https://slack.com/api/chat.postMessage"
                            :token access-token
                            :channel channel
                            :text message
-                           :attachments (map convert-attachment attachments)
+                           :attachments processed-attachments
                            :as_user true)]
      (log/debugf "Result of message dispatch: %s" result)))
   ([access-token channel message]

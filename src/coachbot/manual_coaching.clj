@@ -213,7 +213,7 @@
 
   (-> (h/update :channel-questions-asked)
       (h/sset {:delivered false})
-      (h/where [:> :id 17])
+      (h/where [:= :id 15])
       (hu/execute-safely! (db/datasource)))
 
   ;; Render a box plot for data to local disk
