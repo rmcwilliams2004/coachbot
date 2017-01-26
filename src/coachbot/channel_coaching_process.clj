@@ -18,7 +18,9 @@
 ;
 
 (ns coachbot.channel-coaching-process
-  (:require [clj-time.core :as t]
+  (:require [buddy.core.hash :as jwth]
+            [buddy.sign.jwt :as jwt]
+            [clj-time.core :as t]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [coachbot.coaching-process :as cp]
@@ -29,7 +31,8 @@
             [incanter.core :as ic]
             [incanter.charts :as ich]
             [incanter.stats :as is]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [slingshot.slingshot :as ss])
   (:import (org.joda.time.format PeriodFormatterBuilder)))
 
 (def ^:private question-response-messages
@@ -123,10 +126,10 @@
 (def ^:private channel-results-format "Results from question: *%s*")
 
 (def ^:private channel-results-stats-format
-  (str/join "\n" ["Average: *%.2f*"
-                  "Max: *%d*"
-                  "Min: *%d*"
-                  "From *%d* people responding"]))
+  (str/join "\n" ["Average: %.2f"
+                  "Max: %d"
+                  "Min: %d"
+                  "From %d people responding"]))
 
 (def ^:private not-enough-results-format
   (str "Question *%s* only had *%d* response(s). "
@@ -135,15 +138,26 @@
 
 (def ^:private min-results 3)
 
+(defn encrypt-id
+  ([question-id]
+   (encrypt-id @env/jwt-encryption-key question-id))
+  ([encryption-key question-id]
+   (jwt/encrypt {:exp (t/plus (env/now) (t/weeks 1))
+                 :id question-id} encryption-key)))
+
+(defn decrypt-id [v]
+  (:id (jwt/decrypt v @env/jwt-encryption-key {:now (env/now)})))
+
 (defn- send-results-if-possible! [ds questions]
   (doseq [{:keys [result-count mean result-min result-max question
                   team-id channel-id question-id]}
           questions]
-    (let [[message attachments]
+    (let [encrypted-id (encrypt-id question-id)
+          [message attachments]
           (if (>= result-count min-results)
             [(format channel-results-format question)
              [{:type :image
-               :url (format channel-chart-url-out-pattern question-id)
+               :url (format channel-chart-url-out-pattern encrypted-id)
                :description (format channel-results-stats-format
                                     mean result-max result-min result-count)}]]
             [(format not-enough-results-format question result-count
@@ -174,9 +188,10 @@
            (map calculate-stats-for-channel-question)
            (map #(dissoc % :answers))))))
 
-(defn render-plot-for-channel-question! [question-id out-stream]
-  (log/debugf "Rendering plot for channel question %d" question-id)
-  (let [ds (db/datasource)
+(defn render-plot-for-channel-question! [encrypted-question-id out-stream]
+  (let [question-id (decrypt-id encrypted-question-id)
+        _ (log/debugf "Rendering plot for channel question %d" question-id)
+        ds (db/datasource)
         {:keys [answers]} (storage/get-channel-question-results ds question-id)
         data (ic/dataset [:answer] (map (partial hash-map :answer) answers))]
     (ic/with-data data

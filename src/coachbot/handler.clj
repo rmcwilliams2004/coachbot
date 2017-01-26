@@ -85,7 +85,7 @@
 
     (undocumented
       (GET ccp/channel-chart-url-in-pattern []
-        :path-params [id :- s/Int]
+        :path-params [id :- String]
         (ok (get-channel-chart-stream id)))
       (r/resources "/"))))
 

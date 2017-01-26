@@ -18,7 +18,8 @@
 ;
 
 (ns coachbot.env
-  (:require [clj-time.local :as tl]))
+  (:require [clj-time.local :as tl]
+            [buddy.core.hash :as jwth]))
 
 (defn- env-or [env-key f]
   (let [val (System/getenv env-key)]
@@ -77,3 +78,8 @@
 
 (defenv log-requests? "LOG_REQUESTS" :tfn Boolean/parseBoolean
         :default "false")
+
+(defenv jwt-encryption-key "JWT_ENCRYPTION_KEY"
+        :tfn jwth/sha256
+        :default (str "thuiquoh3iemaibaeshe0Kaihaedaeria6jeis2ChaeShahph"
+                      "4guoch3Pohquous"))

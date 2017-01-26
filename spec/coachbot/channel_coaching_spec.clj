@@ -21,13 +21,15 @@
   (:require [clj-time.core :as t]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [coachbot.events :as events]
             [coachbot.channel-coaching-process :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]
             [taoensso.timbre :as log]
-            [clojure.string :as str]))
+            [buddy.core.hash :as jwth])
+  (:import (clojure.lang ExceptionInfo)))
 
 (log/set-level! :error)
 
@@ -130,16 +132,14 @@
                   (events/handle-raw-event (button-pressed 2 user1-id 3))
                   (~latest-messages)))))
 
-(defn stats-response [channel question-id question-text avg smax smin
-                      scount]
+(defn stats-response [channel question-text avg smax smin scount]
   {:msg (format "%s: Results from question: *%s*" channel question-text)
    :attachments [{:type :image
-                  :url (str "http://localhost:3000/charts/channel/" question-id)
                   :description
-                  (format (str/join "\n" ["Average: *%.2f*"
-                                          "Max: *%d*"
-                                          "Min: *%d*"
-                                          "From *%d* people responding"])
+                  (format (str/join "\n" ["Average: %.2f"
+                                          "Max: %d"
+                                          "Min: %d"
+                                          "From %d people responding"])
                           avg smax smin scount)}]})
 
 (def not-enough-response
@@ -148,7 +148,8 @@
                 "We don't display results unless we get at least *%d* "
                 "because we care about your privacy.")))
 
-(def stats-response2-3 (stats-response channel-id 2 second-question 3.0 4 2 3))
+(def stats-response2-3
+  (stats-response channel-id second-question 3.0 4 2 3))
 (def not-enough-response1-1
   (not-enough-response channel-id first-question 1 3))
 
@@ -219,12 +220,40 @@
                                  (next-response second-question 3)))
 
       (now-context "later" "2016-01-04T10:10:00-06:00"
+        (with-all channel-question-results
+          (send-channel-question-results! latest-messages))
+
+        (with-all url-id
+          (->> @channel-question-results
+               second
+               :attachments
+               first
+               :url
+               (re-find #"^http://localhost:3000/charts/channel/(.*)$")
+               second))
+
         (check-expired-questions latest-messages
                                  (expired-response first-question 3)
                                  (expired-response second-question 3))
 
         (it "should express the results of the questions in an aggregated way"
           (should= [not-enough-response1-1 stats-response2-3]
-                   (send-channel-question-results! latest-messages))
+                   (update-in @channel-question-results
+                              [1 :attachments 0]
+                              dissoc :url))
 
-          (should= [] (send-channel-question-results! latest-messages)))))))
+          (should= [] (send-channel-question-results! latest-messages)))
+
+        (it "should decrypt question ID properly"
+            (should= 2 (decrypt-id @url-id)))
+        (it "should not decrypt a question ID signed with the wrong key"
+          (should-throw ExceptionInfo "Message seems corrupt or manipulated."
+            (decrypt-id (encrypt-id (jwth/sha256 "wrong") 2))))
+
+        (now-context "much later" "2016-02-28T10:10:00-06:00"
+          (it "should not decrypt a question ID that has expired"
+              (should-throw ExceptionInfo "Token is expired (1452528600)"
+                (decrypt-id @url-id))))))
+    (it "should not decrypt gibberish"
+      (should-throw ExceptionInfo "Message seems corrupt or manipulated."
+        (decrypt-id "gibberish")))))

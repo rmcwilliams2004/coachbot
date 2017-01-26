@@ -19,7 +19,8 @@
 
 (defproject coachbot "0.1.0-SNAPSHOT"
   :description "Simple, elegant, automatic motivation"
-  :dependencies [[camel-snake-kebab "0.4.0"]
+  :dependencies [[buddy/buddy-sign "1.4.0"]
+                 [camel-snake-kebab "0.4.0"]
                  [clj-cron-parse "0.1.4"]
                  [clj-http "3.4.1"]
                  [clj-time "0.13.0"]
@@ -30,7 +31,9 @@
                  [com.taoensso/timbre "4.8.0"]
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
-                 [incanter "1.5.7" :upgrade false]
+                 [incanter "1.5.7" :upgrade false
+                  ;; pulls in an incompatible bouncycastle
+                  :exclusions [incanter/incanter-pdf]]
                  [instaparse "1.4.5"]
                  [joda-time "2.9.7"]
                  [listora/again "0.1.0"]

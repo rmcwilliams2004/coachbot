@@ -211,11 +211,6 @@
   (pprint/print-table
     (ccp/get-results-for-channel-questions! (t/days 5)))
 
-  (-> (h/update :channel-questions-asked)
-      (h/sset {:delivered false})
-      (h/where [:= :id 15])
-      (hu/execute-safely! (db/datasource)))
-
   ;; Render a box plot for data to local disk
   (with-open [out (FileOutputStream. "/tmp/test.png")]
     (ccp/render-plot-for-channel-question! out 17))
