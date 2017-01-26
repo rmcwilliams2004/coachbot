@@ -72,3 +72,6 @@
 (defenv letsencrypt-challenge-response "LETSENCRYPT_CHALLENGE_RESPONSE")
 
 (defn now [] (tl/local-now))
+
+(defenv log-requests? "LOG_REQUESTS" :tfn Boolean/parseBoolean
+        :default "false")

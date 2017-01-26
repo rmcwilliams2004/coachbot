@@ -30,7 +30,8 @@
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [linked.core :as linked]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log])
+  (:import [java.io FileOutputStream]))
 
 (defn list-answers
   ([max-days-back]
@@ -209,6 +210,10 @@
   ;; Find the results of the questions that expired recently
   (pprint/print-table
     (ccp/get-results-for-channel-questions! (t/days 5)))
+
+  ;; Render a box plot for data to local disk
+  (with-open [out (FileOutputStream. "/tmp/test.png")]
+    (ccp/render-plot-for-channel-question! out 17))
 
   ;; Send a coaching question to a channel
   (ccp/send-channel-question!

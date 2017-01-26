@@ -107,11 +107,13 @@
 
 (defmacro should-ask-question [question expected id latest-messages &
                                expiration-specs]
-  `(should= [{:msg (cmsg ~expected) :cid (format "cquestion-%d" ~id)
-              :btns
-              [{:name "option", :value 1} {:name "option", :value 2}
-               {:name "option", :value 3} {:name "option", :value 4}
-               {:name "option", :value 5}]}]
+  `(should= [{:msg (cmsg ~expected)
+              :attachments
+              [{:type :buttons
+                :callback-id (format "cquestion-%d" ~id)
+                :buttons [{:name "option", :value 1} {:name "option", :value 2}
+                          {:name "option", :value 3} {:name "option", :value 4}
+                          {:name "option", :value 5}]}]}]
             (do (send-channel-question! team-id channel-id ~question
                                         ~@expiration-specs)
                 (~latest-messages))))
@@ -128,12 +130,15 @@
                   (events/handle-raw-event (button-pressed 2 user1-id 3))
                   (~latest-messages)))))
 
-(def stats-response
-  (partial format (str/join "\n" ["%s: Results from question: *%s*"
-                                  "Average: *%.2f*"
-                                  "Max: *%d*"
-                                  "Min: *%d*"
-                                  "From *%d* people responding"])))
+(defn stats-response [channel question-id question-text avg smax smin
+                      scount]
+  {:msg (format (str/join "\n" ["%s: Results from question: *%s*"
+                                "Average: *%.2f*"
+                                "Max: *%d*"
+                                "Min: *%d*"
+                                "From *%d* people responding"])
+                channel question-text avg smax smin scount)
+   :attachments [{:type :image :url (str "/charts/channel/" question-id)}]})
 
 (def not-enough-response
   (partial format
@@ -141,7 +146,7 @@
                 "We don't display results unless we get at least *%d* "
                 "because we care about your privacy.")))
 
-(def stats-response2-3 (stats-response channel-id second-question 3.0 4 2 3))
+(def stats-response2-3 (stats-response channel-id 2 second-question 3.0 4 2 3))
 (def not-enough-response1-1
   (not-enough-response channel-id first-question 1 3))
 

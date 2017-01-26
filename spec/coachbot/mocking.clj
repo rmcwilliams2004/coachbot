@@ -111,13 +111,12 @@
   (with-redefs
     [env/now (now-fn "2016-01-01T10:10:00-06:00")
      db/datasource (fn [] ds)
-     slack/send-message! (fn [_ channel msg & [callback-id buttons]]
+     slack/send-message! (fn [_ channel msg & [attachments]]
                            (swap! messages conj
                                   (let [out-msg (str channel ": " msg)]
-                                    (if callback-id
+                                    (if attachments
                                       {:msg out-msg
-                                       :cid callback-id
-                                       :btns buttons}
+                                       :attachments attachments}
                                       out-msg))))
      slack/send-response! (fn [_ message] (swap! messages conj
                                                  (str "response: " message)))

@@ -26,6 +26,8 @@
             [coachbot.env :as env]
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
+            [incanter.core :as ic]
+            [incanter.charts :as ich]
             [incanter.stats :as is]
             [taoensso.timbre :as log])
   (:import (org.joda.time.format PeriodFormatterBuilder)))
@@ -36,6 +38,9 @@
    :expired "Sorry, but I can't submit *%d* to *%s* because it's expired!"})
 
 (def msg-format "%s _(expires in %s)_")
+
+(def channel-chart-url-pattern "/charts/channel/%s")
+(def channel-chart-url-in-pattern (format channel-chart-url-pattern ":id"))
 
 (def period-formatter
   (.toFormatter
@@ -87,8 +92,9 @@
                           expiration-timestamp)]
         (send-fn
           (format msg-format question (.print period-formatter time-diff))
-          (format "cquestion-%s" question-id)
-          (map #(hash-map :name "option" :value %) (range 1 6)))))))
+          [{:type :buttons :callback-id (format "cquestion-%s" question-id)
+            :buttons
+            (map #(hash-map :name "option" :value %) (range 1 6))}])))))
 
 (defn send-channel-question-response! [conn slack-team-id _ {:keys [email]}
                                        question-id _ value]
@@ -129,12 +135,14 @@
   (doseq [{:keys [result-count mean result-min result-max question
                   team-id channel-id question-id]}
           questions]
-    (let [message
+    (let [[message attachments]
           (if (>= result-count min-results)
-            (format results-format question mean result-max result-min
-                    result-count)
-            (format not-enough-results-format question result-count
-                    min-results))]
+            [(format results-format question mean result-max result-min
+                     result-count)
+             [{:type :image
+               :url (format channel-chart-url-pattern question-id)}]]
+            [(format not-enough-results-format question result-count
+                     min-results) nil])]
       (log/infof "Sending results for %s / %s / %s / '%s'"
                  team-id channel-id question-id question)
       (try
@@ -142,7 +150,8 @@
           (storage/with-access-tokens conn team-id
             [access-token bot-access-token]
             (storage/question-results-delivered! conn question-id)
-            (slack/send-message! bot-access-token channel-id message)))
+            (slack/send-message! bot-access-token channel-id
+                                 message attachments)))
         (catch Throwable t
           (log/errorf t "Could not send results for %s / %s / %s / '%s'"
                       team-id channel-id question-id question))))))
@@ -159,3 +168,12 @@
       (->> (storage/list-delivered-channel-questions ds timestamp)
            (map calculate-stats-for-channel-question)
            (map #(dissoc % :answers))))))
+
+(defn render-plot-for-channel-question! [question-id out-stream]
+  (log/debugf "Rendering plot for channel question %d" question-id)
+  (let [ds (db/datasource)
+        {:keys [answers]} (storage/get-channel-question-results ds question-id)
+        data (ic/dataset [:answer] (map (partial hash-map :answer) answers))]
+    (ic/with-data data
+      (ic/save
+        (ich/box-plot :answer :y-label "") out-stream))))
