@@ -18,7 +18,8 @@
 ;
 
 (ns coachbot.handler
-  (:require [clojurewerkz.quartzite.scheduler :as qs]
+  (:require [clojure.pprint :as pprint]
+            [clojurewerkz.quartzite.scheduler :as qs]
             [coachbot.channel-coaching-process :as ccp]
             [coachbot.coaching-process :as coaching]
             [coachbot.env :as env]
@@ -28,9 +29,8 @@
             [compojure.route :as r]
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
-            [taoensso.timbre :as log]
             [schema.core :as s]
-            [clojure.pprint :as pprint])
+            [taoensso.timbre :as log])
   (:gen-class)
   (:import (java.io PipedInputStream PipedOutputStream)
            (java.util.concurrent Executors)))

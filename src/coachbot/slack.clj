@@ -106,7 +106,7 @@
                                    :type "button"
                                    :value value}) buttons)}))
 
-(defn image-to-attachment [{:keys [url]}] {:image-url url})
+(defn image-to-attachment [{:keys [url]}] {:image_url url})
 
 (def ^:private attachment-converters
   {:buttons buttons-to-attachment :image image-to-attachment})
