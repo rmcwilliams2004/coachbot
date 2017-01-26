@@ -120,8 +120,8 @@
   "Send a message to a channel."
   ([access-token channel message attachments]
    (let [processed-attachments (map convert-attachment attachments)
-         _ (log/infof "Sending '%s' with attachments %s to '%s'"
-                      message attachments channel)
+         _ (log/debugf "Sending '%s' with attachments %s to '%s'"
+                       message attachments channel)
          result (post-url! "https://slack.com/api/chat.postMessage"
                            :token access-token
                            :channel channel
