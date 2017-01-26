@@ -120,11 +120,13 @@
        [:result-min (partial apply min)] [:stdev is/sd]
        [:result-count count]])))
 
-(def ^:private results-format (str/join "\n" ["Results from question: *%s*"
-                                              "Average: *%.2f*"
-                                              "Max: *%d*"
-                                              "Min: *%d*"
-                                              "From *%d* people responding"]))
+(def ^:private channel-results-format "Results from question: *%s*")
+
+(def ^:private channel-results-stats-format
+  (str/join "\n" ["Average: *%.2f*"
+                  "Max: *%d*"
+                  "Min: *%d*"
+                  "From *%d* people responding"]))
 
 (def ^:private not-enough-results-format
   (str "Question *%s* only had *%d* response(s). "
@@ -139,10 +141,11 @@
           questions]
     (let [[message attachments]
           (if (>= result-count min-results)
-            [(format results-format question mean result-max result-min
-                     result-count)
+            [(format channel-results-format question)
              [{:type :image
-               :url (format channel-chart-url-out-pattern question-id)}]]
+               :url (format channel-chart-url-out-pattern question-id)
+               :description (format channel-results-stats-format
+                                    mean result-max result-min result-count)}]]
             [(format not-enough-results-format question result-count
                      min-results) nil])]
       (log/infof "Sending results for %s / %s / %s / '%s'"

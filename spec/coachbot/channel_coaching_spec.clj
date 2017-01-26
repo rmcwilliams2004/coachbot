@@ -132,13 +132,15 @@
 
 (defn stats-response [channel question-id question-text avg smax smin
                       scount]
-  {:msg (format (str/join "\n" ["%s: Results from question: *%s*"
-                                "Average: *%.2f*"
-                                "Max: *%d*"
-                                "Min: *%d*"
-                                "From *%d* people responding"])
-                channel question-text avg smax smin scount)
-   :attachments [{:type :image :url (str "/charts/channel/" question-id)}]})
+  {:msg (format "%s: Results from question: *%s*" channel question-text)
+   :attachments [{:type :image
+                  :url (str "http://localhost:3000/charts/channel/" question-id)
+                  :description
+                  (format (str/join "\n" ["Average: *%.2f*"
+                                          "Max: *%d*"
+                                          "Min: *%d*"
+                                          "From *%d* people responding"])
+                          avg smax smin scount)}]})
 
 (def not-enough-response
   (partial format
