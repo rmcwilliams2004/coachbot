@@ -106,7 +106,8 @@
                                    :type "button"
                                    :value value}) buttons)}))
 
-(defn image-to-attachment [{:keys [url description]}]
+(defn image-to-attachment [{:keys [url description]
+                            :or {description "Image"}}]
   {:image_url url :fallback description :text description})
 
 (def ^:private attachment-converters
