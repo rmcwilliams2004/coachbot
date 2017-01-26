@@ -40,6 +40,10 @@
 (def msg-format "%s _(expires in %s)_")
 
 (def channel-chart-url-pattern "/charts/channel/%s")
+(def channel-chart-url-out-pattern
+  (format channel-chart-url-pattern "%s/%s"
+          @env/robot-url
+          channel-chart-url-pattern))
 (def channel-chart-url-in-pattern (format channel-chart-url-pattern ":id"))
 
 (def period-formatter
@@ -140,7 +144,7 @@
             [(format results-format question mean result-max result-min
                      result-count)
              [{:type :image
-               :url (format channel-chart-url-pattern question-id)}]]
+               :url (format channel-chart-url-out-pattern question-id)}]]
             [(format not-enough-results-format question result-count
                      min-results) nil])]
       (log/infof "Sending results for %s / %s / %s / '%s'"

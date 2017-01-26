@@ -59,6 +59,7 @@
 (defenv slack-verification-token "SLACK_VERIFICATION_TOKEN" :default "none")
 
 (defenv port "PORT" :tfn Integer/parseInt :default "3000")
+(defenv robot-url "ROBOT_URL" :default "http://localhost:3000")
 
 (defenv log-level "LOG_LEVEL" :tfn keyword :default "info")
 (defenv log-other-libs "LOG_OTHER_LIBS" :tfn Boolean/parseBoolean
