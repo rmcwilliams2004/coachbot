@@ -117,7 +117,8 @@
 (defn send-message!
   "Send a message to a channel."
   ([access-token channel message attachments]
-   (log/infof "Sending '%s' to '%s'" message channel)
+   (log/infof "Sending '%s' with attachments %s to '%s'"
+              message attachments channel)
    (let [result (post-url! "https://slack.com/api/chat.postMessage"
                            :token access-token
                            :channel channel
