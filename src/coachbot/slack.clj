@@ -97,7 +97,7 @@
       (:name channel)
       (log/errorf "Unable to get channel info: %s" body))))
 
-(defn buttons-to-attachment [callback-id buttons]
+(defn buttons-to-attachment [{:keys [callback-id buttons]}]
   (when buttons {:text "1=Completely Disagree, 5=Completely Agree"
                  :callback_id callback-id
                  :actions (map #(let [{:keys [name value]} %]
@@ -106,21 +106,27 @@
                                    :type "button"
                                    :value value}) buttons)}))
 
+(defn image-to-attachment [{:keys [url]}] {:image-url url})
+
+(def ^:private attachment-converters
+  {:buttons buttons-to-attachment :image image-to-attachment})
+
+(defn convert-attachment [{:keys [type] :as attachment}]
+  ((attachment-converters type) attachment))
+
 (defn send-message!
   "Send a message to a channel."
-  ([access-token channel message callback-id buttons]
+  ([access-token channel message attachments]
    (log/infof "Sending '%s' to '%s'" message channel)
    (let [result (post-url! "https://slack.com/api/chat.postMessage"
                            :token access-token
                            :channel channel
                            :text message
-                           :attachments
-                           [(buttons-to-attachment callback-id buttons)]
-
+                           :attachments (map convert-attachment attachments)
                            :as_user true)]
      (log/debugf "Result of message dispatch: %s" result)))
   ([access-token channel message]
-   (send-message! access-token channel message nil nil)))
+   (send-message! access-token channel message nil)))
 
 (defn send-response! [response-url message]
   (post-url! response-url

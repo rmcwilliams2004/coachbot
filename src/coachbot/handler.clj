@@ -28,14 +28,41 @@
             [compojure.route :as r]
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
-            [taoensso.timbre :as log])
-  (:gen-class))
+            [taoensso.timbre :as log]
+            [schema.core :as s]
+            [clojure.pprint :as pprint])
+  (:gen-class)
+  (:import (java.io PipedInputStream PipedOutputStream)
+           (java.util.concurrent Executors)))
+
+(defn wrap-log-requests [handler]
+  (fn [req]
+    (when @env/log-requests?
+      (log/with-level :debug
+        (log/debugf "Request Details: %s"
+                    (with-out-str (pprint/pprint req)))))
+    (handler req)))
 
 (defn wrap-dir-index [handler]
   (fn [req]
     (handler
       (update-in req [:uri]
                  #(if (= "/" %) "/index.html" %)))))
+
+(def ^:private chart-streamers (Executors/newCachedThreadPool))
+
+(defn get-channel-chart-stream [id]
+  (let [in (PipedInputStream.)
+        out (PipedOutputStream. in)]
+    (.submit chart-streamers
+             (cast Callable
+                   #(try
+                      (ccp/render-plot-for-channel-question! id out)
+                      (catch Throwable t
+                        (log/error t "Unable to render chart"))
+                      (finally (.close out)))))
+
+    in))
 
 (defapi app
   {:swagger
@@ -45,7 +72,7 @@
                   :description "Simple, elegant, automatic motivation"}
            :tags [{:name "api", :description "CoachBot APIs"}]}}}
 
-  (middleware [wrap-dir-index]
+  (middleware [wrap-dir-index wrap-log-requests]
     (context "/api/v1" []
       :tags ["APIs"]
       events/event-routes)
@@ -57,8 +84,9 @@
         (not-found)))
 
     (undocumented
-      (GET "/charts/channel/:id" {:as r}
-        (not-found "not yet implemented"))
+      (GET ccp/channel-chart-url-in-pattern []
+        :path-params [id :- s/Int]
+        (ok (get-channel-chart-stream id)))
       (r/resources "/"))))
 
 (sch/defsfn schedule-individual-coaching! "Individual Coaching" "0 * * ? * *"
