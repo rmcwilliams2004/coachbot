@@ -211,6 +211,7 @@
   (pprint/print-table
     (ccp/get-results-for-channel-questions! (t/days 5)))
 
+  ;; Reset a question to send its results again
   (-> (h/update :channel-questions-asked)
       (h/sset {:delivered false})
       (h/where [:= :id 17])

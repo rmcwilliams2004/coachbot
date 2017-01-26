@@ -18,8 +18,7 @@
 ;
 
 (ns coachbot.channel-coaching-spec
-  (:require [buddy.core.hash :as jwth]
-            [clj-time.core :as t]
+  (:require [clj-time.core :as t]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -248,7 +247,7 @@
             (should= 2 (decrypt-id @url-id)))
         (it "should not decrypt a question ID signed with the wrong key"
           (should-throw ExceptionInfo "Message seems corrupt or manipulated."
-            (decrypt-id (encrypt-id (jwth/sha256 "wrong") 2))))
+            (decrypt-id (encrypt-id "wrong" 2))))
 
         (now-context "much later" "2016-02-28T10:10:00-06:00"
           (it "should not decrypt a question ID that has expired"

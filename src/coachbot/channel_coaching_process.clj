@@ -18,8 +18,8 @@
 ;
 
 (ns coachbot.channel-coaching-process
-  (:require [buddy.core.hash :as jwth]
-            [buddy.sign.jwt :as jwt]
+  (:require [buddy.sign.jwt :as jwt]
+            [buddy.core.hash :as jwth]
             [clj-time.core :as t]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
@@ -143,10 +143,12 @@
    (encrypt-id @env/jwt-encryption-key question-id))
   ([encryption-key question-id]
    (jwt/encrypt {:exp (t/plus (env/now) (t/weeks 1))
-                 :id question-id} encryption-key)))
+                 :id question-id} (jwth/sha256 encryption-key))))
 
 (defn decrypt-id [v]
-  (:id (jwt/decrypt v @env/jwt-encryption-key {:now (env/now)})))
+  (-> v
+      (jwt/decrypt (jwth/sha256 @env/jwt-encryption-key) {:now (env/now)})
+      :id))
 
 (defn- send-results-if-possible! [ds questions]
   (doseq [{:keys [result-count mean result-min result-max question
