@@ -18,7 +18,8 @@
 ;
 
 (ns coachbot.channel-coaching-spec
-  (:require [clj-time.core :as t]
+  (:require [buddy.core.hash :as jwth]
+            [clj-time.core :as t]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -27,8 +28,7 @@
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]
-            [buddy.core.hash :as jwth])
+            [taoensso.timbre :as log])
   (:import (clojure.lang ExceptionInfo)))
 
 (log/set-level! :error)
