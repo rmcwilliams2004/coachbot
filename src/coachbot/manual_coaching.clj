@@ -140,6 +140,19 @@
       first
       :group_users))
 
+(defn show-groups-by-user []
+  (-> (h/select [:scu.id :scu-id] [:sqg.question_group_id :qg-id]
+                [:qg.group_name :group-name] [:scu.team_id :team-id]
+                [:scu.name :name])
+      (h/from [:scu_question_groups :sqg])
+      (h/join [:slack_coaching_users :scu]
+              [:= :sqg.scu_id :scu.id]
+              [:question_groups :qg]
+              [:= :qg.id :sqg.question_group_id])
+      (h/where [:= :scu.active true])
+      (h/order-by :scu.id)
+      (hu/query (db/datasource))))
+
 (defn count-question-answers
   ([days]
    (-> (h/select (sql/raw "count(qa.id) AS answers"))
@@ -256,6 +269,8 @@
             "current_timestamp as now "
             "from slack_coaching_users where email = ?")
        "travis@couragelabs.com"]))
+
+  (pprint/print-table (show-groups-by-user))
 
   ;; ----------------------  Team Coaching -----------------------------------
 
