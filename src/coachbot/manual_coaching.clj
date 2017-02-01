@@ -265,6 +265,20 @@
         question "What part of 'CB' would be in between valuable to focus on?"]
     (register-custom-question! team-id user-id question))
 
+  ;; Register an array of custom questions
+  (def custom-question-list
+    ["How do I feel today?
+    What is affecting me?
+    What is going on in my life?"
+     "What do I feel like doing today?"
+     "What are my tasks today?"
+     "Who should I proactively communicate with?"
+     "What do I want to learn today?"
+     "What did I actually learn from yesterday?"
+     "What actions, if any, can apply this insight?"])
+
+  (map #(register-custom-question! 3 12 %1) custom-question-list)
+
   ;; Use this to send a custom question immediately.
   (let [team-id 3
         user-id 18
