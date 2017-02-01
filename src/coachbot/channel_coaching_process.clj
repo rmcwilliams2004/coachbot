@@ -40,7 +40,7 @@
    :updated "Great! I've changed your answer to *%d* for *%s*"
    :expired "Sorry, but I can't submit *%d* to *%s* because it's expired!"})
 
-(def msg-format "%s _(expires in %s)_")
+(def msg-format "@here %s _(expires in %s)_")
 
 (def channel-chart-url-pattern "/charts/channel/%s")
 (def channel-chart-url-out-pattern

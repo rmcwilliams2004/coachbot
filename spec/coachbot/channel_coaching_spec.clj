@@ -78,7 +78,7 @@
 (def channel-leave-bob (bob channel-leave))
 
 (defn expected [question expires-when]
-  (format "%s _(expires in %s)_" question expires-when))
+  (format "@here %s _(expires in %s)_" question expires-when))
 (def first-question "test question")
 (def second-question "second question")
 (def third-question "third question")
