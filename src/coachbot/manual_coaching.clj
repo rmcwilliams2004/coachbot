@@ -130,9 +130,12 @@
       first
       :users))
 
-(defn count-group-users []
+(defn count-active-group-users []
   (-> (h/select (sql/raw "count(distinct scu_id) AS group_users"))
-      (h/from :scu_question_groups)
+      (h/from [:scu_question_groups :qg])
+      (h/join [:slack_coaching_users :scu]
+              [:= :scu.id :qg.scu_id])
+      (h/where [:= :scu.active true])
       (hu/query (db/datasource))
       first
       :group_users))
@@ -290,13 +293,14 @@
     "T04SG55UA" "C3F03UHS6"
     "I feel strongly engaged with Courage Labs" (t/days 1))
 
-  ;; Stats and Data
+  ;; ----------------------  Stats and Data   ---------------------------
+
   ;; Count Number of engaged users
   (map count-engaged [7 14 30 60])
 
   ;; Count # of users using categories
   (count-active)
-  (count-group-users)
+  (count-active-group-users)
 
   ;; List total number of questions answered over various time frames
   (map count-question-answers [7 14 30 60])
