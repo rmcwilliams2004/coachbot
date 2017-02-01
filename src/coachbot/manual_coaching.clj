@@ -171,20 +171,18 @@
    And DB_MAX_CONN=2
    And DB_CONN_TIMEOUT=600000"
 
+  ;;----------------------  Basics & Bookkeeping ------------------------------
+
   ;; Switch to manual-coaching namespace in the REPL
   (in-ns 'coachbot.manual-coaching)
 
   ;; Get rid of annoying logging
   (log/set-level! :warn)
 
-  ;; Use this to see the last X days of answers
-  (pprint/print-table (list-answers 7))
-  (pprint/print-table (list-answers 30 18))
+  ;; Print last stack trace
+  (clojure.stacktrace/print-cause-trace *e)
 
-  ;; List all the teams
-  (pprint/print-table (-> (h/select :*)
-                          (h/from :slack_teams)
-                          (hu/query (db/datasource))))
+  ;;----------------------  Individual Coaching  -----------------------------
 
   ;; List all active users
   (pprint/print-table (-> (h/select [:st.id :tid] [:st.team_id :slack_team_id]
@@ -197,7 +195,73 @@
                                   [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
 
-  ;; List channels we're coaching
+  ;; Use this to see the last X days of answers
+  (pprint/print-table (list-answers 7))
+  (pprint/print-table (list-answers 30 17))
+
+  ;;Common Messages to send
+  (def usage-checkin
+    (str
+      "Just wanted to check in.  I noticed that you haven't had "
+      "a chance to use CoachBot much recently.  I was just curious if "
+      "you have just been busy in the new year or if something else is "
+      "annoying you about coachbot"))
+
+  (def a-custom-question
+    (str
+      "You mentioned reaching out to your brother and sister are people "
+      "that are important but you haven't reached out to recently.  "
+      "How would you feel if you did reach out to them?"))
+
+  ;; Use this to register a custom question.
+  (let [team-id 3
+        user-id 17
+        question a-custom-question]
+    (register-custom-question! team-id user-id question))
+
+  ;; Register an array of custom questions
+  (def custom-question-list
+    ["How do I feel today?
+    What is affecting me?
+    What is going on in my life?"
+     "What do I feel like doing today?"
+     "What are my tasks today?"
+     "Who should I proactively communicate with?"
+     "What do I want to learn today?"
+     "What did I actually learn from yesterday?"
+     "What actions, if any, can apply this insight?"])
+
+  (map #(register-custom-question! 3 12 %1) custom-question-list)
+
+  ;; Use this to send a custom question immediately.
+  (let [team-id 3
+        user-id 18
+        question oops]
+    (send-custom-question-now! team-id user-id question))
+
+  ;; In case you made a mistake, you can delete a question using the ID that
+  ;; the above command returned.
+  (delete-custom-question! 70)
+
+  ;; Show a bunch of data about a single slack coaching user
+  (pprint/print-table
+    (jdbc/query
+      (db/datasource)
+      [(str "select *, "
+            "timestampdiff(HOUR, last_question_date, current_timestamp()) AS
+            hours_since, "
+            "current_timestamp as now "
+            "from slack_coaching_users where email = ?")
+       "travis@couragelabs.com"]))
+
+  ;; ----------------------  Team Coaching -----------------------------------
+
+  ;; List all the teams
+  (pprint/print-table (-> (h/select :*)
+                          (h/from :slack_teams)
+                          (hu/query (db/datasource))))
+
+  ;; List all active channels (channels we're coaching)
   (pprint/print-table
     (-> (h/select :st.team_id :scc.channel_id :st.team_name
                   :scc.channel_name)
@@ -226,16 +290,13 @@
     "T04SG55UA" "C3F03UHS6"
     "I feel strongly engaged with Courage Labs" (t/days 1))
 
-  ;; Print last stack trace
-  (clojure.stacktrace/print-cause-trace *e)
-
+  ;; Stats and Data
   ;; Count Number of engaged users
   (map count-engaged [7 14 30 60])
 
   ;; Count # of users using categories
-  (count-group-users)
   (count-active)
-  (/ (count-group-users) (count-active))
+  (count-group-users)
 
   ;; List total number of questions answered over various time frames
   (map count-question-answers [7 14 30 60])
@@ -245,58 +306,4 @@
             (first)
             (select-keys [:answers :name]))
        [7 14 30 60])
-
-  ;;Common Messages to send
-  (def usage-checkin
-    (str
-      "Just wanted to check in.  I noticed that you haven't had "
-      "a chance to use CoachBot much recently.  I was just curious if "
-      "you have just been busy in the new year or if something else is "
-      "annoying you about coachbot"))
-
-  (def oops
-    (str
-      "Oops.  I wasn't reading the dates quite right.  I'm still curious "
-      "what you think of CoachBot so far though"))
-
-  ;; Use this to register a custom question.
-  (let [team-id 1
-        user-id 2
-        question "What part of 'CB' would be in between valuable to focus on?"]
-    (register-custom-question! team-id user-id question))
-
-  ;; Register an array of custom questions
-  (def custom-question-list
-    ["How do I feel today?
-    What is affecting me?
-    What is going on in my life?"
-     "What do I feel like doing today?"
-     "What are my tasks today?"
-     "Who should I proactively communicate with?"
-     "What do I want to learn today?"
-     "What did I actually learn from yesterday?"
-     "What actions, if any, can apply this insight?"])
-
-  (map #(register-custom-question! 3 12 %1) custom-question-list)
-
-  ;; Use this to send a custom question immediately.
-  (let [team-id 3
-        user-id 18
-        question oops]
-    (send-custom-question-now! team-id user-id question))
-
-  ;; In case you made a mistake, you can delete a question using the ID that
-  ;; the above command returned.
-  (delete-custom-question! 15)
-
-  ;; Show a bunch of data about a single slack coaching user
-  (pprint/print-table
-    (jdbc/query
-      (db/datasource)
-      [(str "select *, "
-            "timestampdiff(HOUR, last_question_date, current_timestamp()) AS
-            hours_since, "
-            "current_timestamp as now "
-            "from slack_coaching_users where email = ?")
-       "travis@couragelabs.com"]))
   )
