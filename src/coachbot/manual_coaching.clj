@@ -261,7 +261,7 @@
 
   ;; Send a message to a client without logging a question (in case you want
   ;; to notify them of something but you're not expecting a response)
-  (cp/with-sending-constructs {:user-id 8 :team-id 3 :channel "U04T4P88M"}
+  (cp/with-sending-constructs {:user-id "U04T4P88M" :team-id "T04SG55UA" :channel "U04T4P88M"}
                            [ds send-fn _]
                               (send-fn "Hello World"))
 
