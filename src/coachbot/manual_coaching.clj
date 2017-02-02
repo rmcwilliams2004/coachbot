@@ -259,6 +259,12 @@
   ;; the above command returned.
   (delete-custom-question! 70)
 
+  ;; Send a message to a client without logging a question (in case you want
+  ;; to notify them of something but you're not expecting a response)
+  (cp/with-sending-constructs {:user-id 8 :team-id 3 :channel "U04T4P88M"}
+                           [ds send-fn _]
+                              (send-fn "Hello World"))
+
   ;; Show a bunch of data about a single slack coaching user
   (pprint/print-table
     (jdbc/query

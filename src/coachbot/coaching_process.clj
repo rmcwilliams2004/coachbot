@@ -164,17 +164,16 @@
                  (str/join "\n" groups) "\n\n"
                  (question-group-display ds user-id))))))
 
-(defn add-to-question-group! [team-id channel remote-user-id [group]]
-  (with-sending-constructs {:user-id remote-user-id
-                            :team-id team-id :channel channel}
+(defn add-to-question-group! [team-id channel user-id [group]]
+  (with-sending-constructs {:user-id user-id :team-id team-id :channel channel}
     [ds send-fn access-token]
-    (ensure-user! ds access-token team-id remote-user-id)
+    (ensure-user! ds access-token team-id user-id)
     (send-fn
-      (if (storage/is-in-question-group? ds remote-user-id group)
+      (if (storage/is-in-question-group? ds user-id group)
         (str "Congrats. You're already a member of " group)
-        (if (seq (storage/add-to-question-group! ds remote-user-id group))
+        (if (seq (storage/add-to-question-group! ds user-id group))
           (str "I'll send you questions from " group "\n\n"
-               (question-group-display ds remote-user-id))
+               (question-group-display ds user-id))
           (str group " does not exist."))))))
 
 (defn remove-from-question-group! [team-id channel user-id [group]]
