@@ -97,14 +97,15 @@
       (:name channel)
       (log/errorf "Unable to get channel info: %s" body))))
 
-(defn buttons-to-attachment [{:keys [callback-id buttons]}]
-  (when buttons {:text "1=Completely Disagree, 5=Completely Agree"
-                 :callback_id callback-id
-                 :actions (map #(let [{:keys [name value]} %]
-                                  {:name name
-                                   :text value
-                                   :type "button"
-                                   :value value}) buttons)}))
+(defn buttons-to-attachment [{:keys [callback-id help-text buttons]}]
+  {:text help-text
+   :callback_id callback-id
+   :actions (map #(let [{:keys [name value]} %]
+                    {:name name
+                     :text value
+                     :type "button"
+                     :value value}) buttons)
+   :mrkdwn_in ["text"]})
 
 (defn image-to-attachment [{:keys [url description]
                             :or {description "Image"}}]

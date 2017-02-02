@@ -77,17 +77,17 @@
 (def channel-leave (load-event-edn "channel_leave.edn"))
 (def channel-leave-bob (bob channel-leave))
 
-(defn expected [question expires-when]
-  (format "@here %s _(expires in %s)_" question expires-when))
+(defn expected [question]
+  (format "<!here|here> Do you agree with this statement? *%s*" question))
 (def first-question "test question")
 (def second-question "second question")
 (def third-question "third question")
 (def fourth-question "fourth question")
 
-(def fq-expected (expected first-question "1 day"))
-(def sq-expected (expected second-question "2 days, 1 hour"))
-(def tq-expected (expected third-question "4 days, 2 hours"))
-(def fourthq-expected (expected fourth-question "3 hours"))
+(def fq-expected (expected first-question))
+(def sq-expected (expected second-question))
+(def tq-expected (expected third-question))
+(def fourthq-expected (expected fourth-question))
 
 (def cmsg (partial uc channel-id))
 
@@ -106,18 +106,24 @@
   (let [raw-events (map (fn [event] `(events/handle-raw-event ~event)) events)]
     `(should= ~expected-channels (do ~@raw-events (list-channels ~team-id)))))
 
-(defmacro should-ask-question [question expected id latest-messages &
-                               expiration-specs]
-  `(should= [{:msg (cmsg ~expected)
-              :attachments
-              [{:type :buttons
-                :callback-id (format "cquestion-%d" ~id)
-                :buttons [{:name "option", :value 1} {:name "option", :value 2}
-                          {:name "option", :value 3} {:name "option", :value 4}
-                          {:name "option", :value 5}]}]}]
-            (do (send-channel-question! team-id channel-id ~question
-                                        ~@expiration-specs)
-                (~latest-messages))))
+(defmacro should-ask-question [question expected expected-expiration id
+                               latest-messages & expiration-specs]
+  (let [help-text
+        (format "1=Completely Disagree, 5=Completely Agree. _Expires in %s._"
+                expected-expiration)]
+    `(should= [{:msg (cmsg ~expected)
+                :attachments
+                [{:type :buttons
+                  :callback-id (format "cquestion-%d" ~id)
+                  :buttons [{:name "option", :value 1}
+                            {:name "option", :value 2}
+                            {:name "option", :value 3}
+                            {:name "option", :value 4}
+                            {:name "option", :value 5}]
+                  :help-text ~help-text}]}]
+              (do (send-channel-question! team-id channel-id ~question
+                                          ~@expiration-specs)
+                  (~latest-messages)))))
 
 (defmacro should-store-response [id answer qid email]
   `(should=
@@ -177,13 +183,15 @@
     (with-all channels-coached (list-channels team-id))
 
     (it "should ask questions to the channel"
-      (should-ask-question first-question fq-expected 1 latest-messages)
-      (should-ask-question second-question sq-expected 2 latest-messages
+      (should-ask-question first-question fq-expected "1 day" 1 latest-messages)
+      (should-ask-question second-question sq-expected
+                           "2 days, 1 hour" 2 latest-messages
                            (t/days 2) (t/hours 1))
-      (should-ask-question third-question tq-expected 3 latest-messages
+      (should-ask-question third-question tq-expected
+                           "4 days, 2 hours" 3 latest-messages
                            (t/days 4) (t/hours 2))
-      (should-ask-question fourth-question fourthq-expected 4 latest-messages
-                           (t/hours 3)))
+      (should-ask-question fourth-question fourthq-expected
+                           "3 hours" 4 latest-messages (t/hours 3)))
 
     (it "should accept answers"
       (should= [(first-response first-question 3)
@@ -244,15 +252,15 @@
           (should= [] (send-channel-question-results! latest-messages)))
 
         (it "should decrypt question ID properly"
-            (should= 2 (decrypt-id @url-id)))
+          (should= 2 (decrypt-id @url-id)))
         (it "should not decrypt a question ID signed with the wrong key"
           (should-throw ExceptionInfo "Message seems corrupt or manipulated."
             (decrypt-id (encrypt-id "wrong" 2))))
 
         (now-context "much later" "2016-02-28T10:10:00-06:00"
           (it "should not decrypt a question ID that has expired"
-              (should-throw ExceptionInfo "Token is expired (1452528600)"
-                (decrypt-id @url-id))))))
+            (should-throw ExceptionInfo "Token is expired (1452528600)"
+              (decrypt-id @url-id))))))
     (it "should not decrypt gibberish"
       (should-throw ExceptionInfo "Message seems corrupt or manipulated."
         (decrypt-id "gibberish")))))

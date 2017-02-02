@@ -40,7 +40,7 @@
    :updated "Great! I've changed your answer to *%d* for *%s*"
    :expired "Sorry, but I can't submit *%d* to *%s* because it's expired!"})
 
-(def msg-format "@here %s _(expires in %s)_")
+(def msg-format "<!here|here> Do you agree with this statement? *%s*")
 
 (def channel-chart-url-pattern "/charts/channel/%s")
 (def channel-chart-url-out-pattern
@@ -96,8 +96,12 @@
                           (db/datasource) slack-team-id channel question
                           expiration-timestamp)]
         (send-fn
-          (format msg-format question (.print period-formatter time-diff))
+          (format msg-format question)
           [{:type :buttons :callback-id (format "cquestion-%s" question-id)
+            :help-text
+            (format
+              "1=Completely Disagree, 5=Completely Agree. _Expires in %s._"
+              (.print period-formatter time-diff))
             :buttons
             (map #(hash-map :name "option" :value %) (range 1 6))}])))))
 
