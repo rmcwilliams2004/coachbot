@@ -272,6 +272,27 @@
 
   (pprint/print-table (show-groups-by-user))
 
+  ;; Add a user to question groups
+  ;; CoachBot Feedback, Collaboration/Teamwork, Decision Making, Emotional
+  ;; Intelligence, Habits, Leadership, Learning, Management, Pause, Planning,
+  ;; Reflection, Strengths, Time Management
+  (def question-groups-to-add ["CoachBot Feedback"
+                               "Collaboration/Teamwork"
+                               "Decision Making"
+                               "Emotional Intelligence"
+                               "Habits"
+                               "Leadership"
+                               "Learning"
+                               "Management"
+                               "Pause"
+                               "Planning"
+                               "Reflection"
+                               "Strengths"
+                               "Time Management"])
+
+  (map #(storage/add-to-question-group! (db/datasource) "U04T4P88M" %1)
+       question-groups-to-add)
+
   ;; ----------------------  Team Coaching -----------------------------------
 
   ;; List all the teams
