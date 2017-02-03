@@ -104,6 +104,19 @@
     (when should-send-question?
       (send-next-or-resend-prev-question! user channel))))
 
+(defn send-question-with-rating!
+  [slack-team-id r-user-id question]
+  (with-sending-constructs
+    {:team-id slack-team-id :channel r-user-id} [ds send-fn _]
+    (let [question-id 222]
+      (send-fn question
+        [{:type :buttons :callback-id (format "cquestion-%s" question-id)
+          :help-text "1=Unhelpful Question, 5=Very Helpful Question"
+          :buttons
+                (map #(hash-map :name "option" :value %) (range 1 6))}]))))
+
+(send-question-with-rating! "T04SG55UA" "U04T4P88M" "My question w rating")
+
 (defn start-coaching!
   [team-id user-id & [coaching-time]]
   (let [ds (db/datasource)]
