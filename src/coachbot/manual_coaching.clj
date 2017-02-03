@@ -261,9 +261,17 @@
 
   ;; Send a message to a client without logging a question (in case you want
   ;; to notify them of something but you're not expecting a response)
-  (cp/with-sending-constructs {:user-id "U04T4P88M" :team-id "T04SG55UA" :channel "U04T4P88M"}
-                           [ds send-fn _]
-                              (send-fn "Hello World"))
+  (def my-message
+    (str "OK. I've gone ahead and changed the groups "
+         "that you're a part of to hopefully better reflect the questions "
+         "that you like.  If you'd like to see what groups you're now in "
+         "say _show groups_ and if you want to change things say "
+         "_remove groups or _add groups_. Or, if you can't remember, just "
+         "say _help_ and you'll get a bunch more information"))
+
+  (cp/with-sending-constructs {:user-id "U3E7Z77B4" :team-id "T04SG55UA"
+                               :channel nil} [ds send-fn _]
+                              (send-fn my-message))
 
   ;; Show a bunch of data about a single slack coaching user
   (pprint/print-table
