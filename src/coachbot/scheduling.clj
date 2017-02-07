@@ -24,7 +24,6 @@
             [clojurewerkz.quartzite.schedule.cron :as qc]
             [clojurewerkz.quartzite.scheduler :as qs])
   (:import (java.util UUID)
-           (org.quartz DisallowConcurrentExecution)
            (coachbot.scheduling NonConcurrentJob)))
 
 (defmacro defjob
