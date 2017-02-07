@@ -19,6 +19,8 @@
 
 (ns coachbot.coaching-process-spec
   (:require [coachbot.coaching-process :refer :all]
+            [coachbot.env :as env]
+            [coachbot.event-spec-utils :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]))
@@ -36,14 +38,18 @@
 (def u1-you-like-fun? (qmsg you-like-fun?))
 (def u1-how-much? (qmsg how-much?))
 
+(def questions-prefix "Here you go: \n")
+
 (describe-mocked "Custom questions" [ds latest-messages]
   (before-all
     (storage/replace-base-questions!
       @ds [first-question second-question third-question]))
+
   (context "basic"
     (before-all
-      (start-coaching! team-id user1-id)
-      (send-next-question-to-everyone-everywhere!)
+      (with-now "2015-12-18T10:10:00-06:00"
+        (start-coaching! team-id user1-id)
+        (send-next-question-to-everyone-everywhere!))
       (submit-text! team-id user1-email "banswer1")
       (register-custom-question! team-id user1-id not-liked)
       (register-custom-question! team-id user1-id you-like-fun?)
@@ -75,4 +81,38 @@
                 {:question you-like-fun?, :answer "qanswer2"}
                 {:question how-much?, :answer "qanswer3"}
                 {:question second-question, :answer "banswer2"}]
-               (storage/list-answers @ds team-id user1-email)))))
+               (storage/list-answers @ds team-id user1-email)))
+
+    (context "show questions"
+      (it "should show the last questions"
+        (should= [(u1c questions-prefix second-question)]
+                 (do (handle-event team-id user1-id "show last")
+                     (latest-messages)))
+
+        (should= [(u1c questions-prefix
+                       second-question "\n"
+                       how-much? "\n"
+                       you-like-fun?)]
+                 (do (handle-event team-id user1-id "show last 3 questions")
+                     (latest-messages)))
+
+        (should= [(u1c questions-prefix
+                       second-question "\n"
+                       how-much? "\n"
+                       you-like-fun? "\n"
+                       not-liked)]
+                 (do (handle-event team-id user1-id "show last day")
+                     (latest-messages)))
+
+        (should= [(u1c questions-prefix
+                       second-question "\n"
+                       how-much? "\n"
+                       you-like-fun? "\n"
+                       not-liked "\n"
+                       first-question)]
+                 (do (handle-event team-id user1-id "show last 2 weeks")
+                     (latest-messages)))
+
+        (should= [(u2c "Sadly, I haven't asked you any questions yet!")]
+                 (do (handle-event team-id user2-id "show last 2 weeks")
+                     (latest-messages)))))))

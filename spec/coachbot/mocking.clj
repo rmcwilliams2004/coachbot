@@ -102,33 +102,36 @@
 (defn now-fn [when]
   (fn [] (tf/parse (tf/formatters :date-time-no-ms) when)))
 
+(defmacro with-now [when & body]
+  `(with-redefs [env/now (now-fn ~when)] ~@body))
+
 (defmacro now-context [name when & body]
   `(context ~name
-     (around-all [it#] (with-redefs [env/now (now-fn ~when)] (it#)))
+     (around-all [it#] (with-now ~when (it#)))
      ~@body))
 
 (defn mock-event-boundary [messages ds it]
-  (with-redefs
-    [env/now (now-fn "2016-01-01T10:10:00-06:00")
-     db/datasource (fn [] ds)
-     slack/send-message! (fn [_ channel msg & [attachments]]
-                           (swap! messages conj
-                                  (let [out-msg (str channel ": " msg)]
-                                    (if attachments
-                                      {:msg out-msg
-                                       :attachments attachments}
-                                      out-msg))))
-     slack/send-response! (fn [_ message] (swap! messages conj
-                                                 (str "response: " message)))
-     slack/get-user-info (fn [_ user-id] (users user-id))
-     slack/get-channel-name (fn [_ _] "test channel")
-     slack/is-im-to-me? (fn [_ channel] (contains? users channel))
-     events/is-event-authorized? (fn [token] (= token good-token))
-     events/handle-unknown-failure
-     (fn [t _]
-       (log/error t)
-       (swap! messages conj (.getMessage t)))]
-    (it)))
+  (with-now "2016-01-01T10:10:00-06:00"
+    (with-redefs
+      [db/datasource (fn [] ds)
+       slack/send-message! (fn [_ channel msg & [attachments]]
+                             (swap! messages conj
+                                    (let [out-msg (str channel ": " msg)]
+                                      (if attachments
+                                        {:msg out-msg
+                                         :attachments attachments}
+                                        out-msg))))
+       slack/send-response! (fn [_ message] (swap! messages conj
+                                                   (str "response: " message)))
+       slack/get-user-info (fn [_ user-id] (users user-id))
+       slack/get-channel-name (fn [_ _] "test channel")
+       slack/is-im-to-me? (fn [_ channel] (contains? users channel))
+       events/is-event-authorized? (fn [token] (= token good-token))
+       events/handle-unknown-failure
+       (fn [t _]
+         (log/error t)
+         (swap! messages conj (.getMessage t)))]
+      (it))))
 
 (defmacro describe-with-level [level name & body]
   `(describe "*"

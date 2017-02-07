@@ -54,6 +54,24 @@
                       (or ~channel ~user-id))]
          ~@body))))
 
+(defn- try-numeric [n]
+  (if (and n (re-matches #"\d+" n)) (Integer/parseInt n) n))
+
+(defn show-last-questions [team-id user-id channel-id & [[n & [t]]]]
+  (let [t (if (and (not t)
+                   (or (= n "day")
+                       (= n "week"))) n t)
+        n (if (= n t) 1 (try-numeric n))
+
+        questions
+        (storage/list-last-questions (db/datasource) team-id user-id n t)]
+    (with-sending-constructs {:user-id user-id :team-id team-id
+                              :channel channel-id}
+      [ds send-fn _]
+      (send-fn (if (seq questions)
+                 (str "Here you go: \n" (str/join "\n" questions))
+                 "Sadly, I haven't asked you any questions yet!")))))
+
 (defn send-new-question!
   "Sends a new question to a specific individual."
   [{:keys [id asked-qid team-id] :as user} & [channel]]
