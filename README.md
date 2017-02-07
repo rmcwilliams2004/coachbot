@@ -46,7 +46,7 @@ Then:
 
 ## License
 
-    Copyright © 2016, Courage Labs, LLC.
+    Copyright © 2017, Courage Labs, LLC.
     
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU Affero General Public License as published by
