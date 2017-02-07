@@ -84,6 +84,12 @@
     "remove question groups bill")
 
   (context "show questions"
+    (it-parses-variants "last 1" [:show-questions]
+      "show me the last question"
+      "show me last question"
+      "show last question"
+      "show last")
+
     (it-parses-variants "simple" [:show-questions "5"]
       "show me the last 5"
       "show me last 5"

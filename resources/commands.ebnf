@@ -12,7 +12,7 @@ show-groups = <#"(show )?(question )?group(s)?">
 add-group = <#"add (to )?(question )?group(s)?">, ws, text
 remove-group = <#"remove (from )?(question )?group(s)?">, ws, text
 friendly = <#"thank(s)?( you)?( coachbot)?"> | <"cheers">
-show-questions = <#"show ((me )?(the )?)?last">, ws, #"(\d+)?", mws,
+show-questions = <#"show ((me )?(the )?)?last">, mws, #"(\d+)?", mws,
 #"((week|day))?", <#"(s(')?)?">, mws, <#"((of )?question(s)?)?">
 <mws> = <#"\s*">
 <ws> = <#'\s+'>
