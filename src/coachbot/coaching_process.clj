@@ -64,7 +64,7 @@
         n (if (= n t) 1 (try-numeric n))
 
         questions
-        (storage/list-last-questions (db/datasource) team-id user-id n t)]
+        (storage/list-last-questions (db/datasource) user-id n t)]
     (with-sending-constructs {:user-id user-id :team-id team-id
                               :channel channel-id}
       [ds send-fn _]

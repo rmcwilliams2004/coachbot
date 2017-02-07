@@ -363,7 +363,7 @@
                (t/minus (env/now) ((time-mappings t) n))] clause]
         clause))
 
-(defn list-last-questions [ds slack-team-id slack-user-id n t]
+(defn list-last-questions [ds slack-user-id n t]
   (let [q (-> (h/select [:bq.question :bqtext]
                         [:cq.question :cqtext])
               (h/from [:slack_coaching_users :scu])
