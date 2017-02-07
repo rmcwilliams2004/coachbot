@@ -27,7 +27,7 @@
   (insta/parser (str (io/resource "commands.ebnf")) :string-ci true))
 
 (defn- not-an-empty-string [v]
-  (or (not (string? v)) (not (empty? v))))
+  (or (not (string? v)) (seq v)))
 
 (defn parse-command [command]
   (let [result (parse-using-ebnf (str/trim command))]
