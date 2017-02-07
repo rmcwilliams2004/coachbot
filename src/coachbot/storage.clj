@@ -88,17 +88,6 @@
         (hu/query ds)
         first)))
 
-(defn- get-coaching-user-by-id [ds slack-team-id slack-user-id]
-  (let [team-internal-id (get-team-id ds slack-team-id)
-        where-clause [:and
-                      [:= :team_id team-internal-id]
-                      [:= :remote_user_id slack-user-id]]]
-    (-> (h/select :*)
-        (h/from :slack_coaching_users)
-        (h/where where-clause)
-        (hu/query ds)
-        first)))
-
 (defn- convert-user [team-id user]
   (when user
     (as-> user x
