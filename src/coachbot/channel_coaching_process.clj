@@ -196,7 +196,6 @@
 
 (defn render-plot-for-channel-question! [encrypted-question-id out-stream]
   (let [question-id (decrypt-id encrypted-question-id)
-        _ (log/debugf "Rendering plot for channel question %d" question-id)
         ds (db/datasource)
         {:keys [answers]} (storage/get-channel-question-results ds question-id)
         data (ic/dataset [:answer] (map (partial hash-map :answer) answers))]
