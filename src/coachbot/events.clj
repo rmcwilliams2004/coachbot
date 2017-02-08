@@ -32,6 +32,7 @@
             [coachbot.slack :as slack]
             [coachbot.storage :as storage]
             [compojure.api.sweet :refer :all]
+            [linked.core :as linked]
             [ring.util.http-response :refer :all]
             [schema.core :as s]
             [slingshot.slingshot :as ss]
@@ -41,7 +42,7 @@
 (s/defschema EventMessage
   {s/Any s/Any})
 
-(def ^:private events (atom {}))
+(def ^:private events (atom (linked/map)))
 
 (defn defevent [{:keys [command command-text help config-options]} ef]
   (swap! events assoc command
@@ -149,6 +150,15 @@
 
 (defevent {:command :next-question :command-text next-question-cmd
            :help "ask a new question"} cp/next-question!)
+
+(defevent {:command :show-questions
+           :command-text "show last"
+           :config-options
+           {"" "Show the last question I sent"
+            " 5 questions" "Show the last 5 questions I sent"
+            " 5 days of questions" "Show the last 5 days' questions"
+            " 2 weeks of questions" "Show the last 2 weeks' questions"}}
+          cp/show-last-questions)
 
 (defevent {:command :show-groups :command-text show-question-groups-cmd
            :help "get a list of the question groups available"}

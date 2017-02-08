@@ -83,6 +83,44 @@
     "remove question group bill"
     "remove question groups bill")
 
+  (context "show questions"
+    (it-parses-variants "last 1" [:show-questions]
+      "show me the last question"
+      "show me last question"
+      "show last question"
+      "show last")
+
+    (it-parses-variants "simple" [:show-questions "5"]
+      "show me the last 5"
+      "show me last 5"
+      "show the last 5"
+      "show last 5 question"
+      "show last 5 questions")
+
+    (it-parses-variants "weeks" [:show-questions "2" "week"]
+      "show me last 2 week"
+      "show me the last 2 week"
+      "show the last 2 week"
+      "show last 2 week"
+      "show last 2 weeks"
+      "show last 2 weeks'"
+      "show last 2 weeks' question"
+      "show last 2 weeks questions"
+      "show last 2 weeks of questions"
+      "show last 2 weeks' questions")
+
+    (it-parses-variants "days" [:show-questions "10" "day"]
+      "show me last 10 day"
+      "show me the last 10 day"
+      "show the last 10 day"
+      "show last 10 day"
+      "show last 10 days"
+      "show last 10 days'"
+      "show last 10 days' question"
+      "show last 10 days questions"
+      "show last 10 days of questions"
+      "show last 10 days' questions"))
+
   (it "should throw nice exceptions for bad commands"
     (should-throw Exception
       #":type :coachbot.command-parser/parse-failure"

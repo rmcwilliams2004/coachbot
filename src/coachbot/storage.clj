@@ -31,7 +31,8 @@
             [honeysql.core :as sql]
             [honeysql.helpers :as h]
             [slingshot.slingshot :as ss]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.pprint :as pprint]))
 
 (defn get-access-tokens [ds slack-team-id]
   (let [[{:keys [access_token bot_access_token]}]
@@ -76,7 +77,7 @@
       first
       :id))
 
-(defn- get-coaching-user-raw [ds slack-team-id user-email]
+(defn- get-coaching-user-by-email [ds slack-team-id user-email]
   (let [team-internal-id (get-team-id ds slack-team-id)
         where-clause [:and
                       [:= :team_id team-internal-id]
@@ -97,7 +98,7 @@
 
 (defn get-coaching-user [ds slack-team-id user-email]
   (convert-user slack-team-id
-                (get-coaching-user-raw ds slack-team-id user-email)))
+                (get-coaching-user-by-email ds slack-team-id user-email)))
 
 (defn add-coaching-user! [ds {:keys [email team-id coaching-time] :as user}]
   (jdbc/with-db-transaction
@@ -179,8 +180,11 @@
   (replace-base-questions-with-groups!
     ds (map #(hash-map :question %) questions)))
 
+(defn- is-remote-user-id [slack-user-id]
+  [:= :scu.remote_user_id slack-user-id])
+
 (defn- where-remote-user-id [stmt slack-user-id]
-  (h/where stmt [:= :scu.remote_user_id slack-user-id]))
+  (h/where stmt (is-remote-user-id slack-user-id)))
 
 (defn- get-user-id [conn slack-user-id]
   (-> (h/select :scu.id)
@@ -302,7 +306,8 @@
           question (add-question-metadata ds remote-user-id new-qid question
                                           custom-question?)]
       (jdbc/insert! conn :questions_asked
-                    {:slack_user_id user-id qa-col new-qid})
+                    {:slack_user_id user-id qa-col new-qid
+                     :created_date (env/now)})
       (jdbc/update! conn :slack_coaching_users
                     {asked-col new-qid :last_question_date (env/now)}
                     ["id  = ?" user-id])
@@ -330,7 +335,9 @@
 
 (defn submit-answer! [ds slack-team-id user-email qid cqid text]
   (jdbc/with-db-transaction [conn ds]
-    (let [{:keys [id]} (get-coaching-user-raw conn slack-team-id user-email)
+    (let [{:keys [id]}
+          (get-coaching-user-by-email conn slack-team-id user-email)
+
           answered-col (if cqid :cquestion_id :question_id)
           which-qid (or cqid qid)]
       (jdbc/insert! conn :question_answers
@@ -341,7 +348,7 @@
                       ["id = ?" id])))))
 
 (defn list-questions-asked [ds slack-team-id user-email]
-  (let [{:keys [id]} (get-coaching-user-raw ds slack-team-id user-email)]
+  (let [{:keys [id]} (get-coaching-user-by-email ds slack-team-id user-email)]
     (-> (h/select :bq.question)
         (h/from [:questions_asked :qa])
         (h/join [:base_questions :bq] [:= :bq.id :qa.question_id])
@@ -349,8 +356,31 @@
         (h/order-by :qa.created_date)
         (hu/query ds))))
 
+(def ^:private time-mappings {"day" t/days, "week" t/weeks})
+
+(defn last-questions-clause [clause n t]
+  (if t [:and [:>= :qasked.created_date
+               (t/minus (env/now) ((time-mappings t) n))] clause]
+        clause))
+
+(defn list-last-questions [ds slack-user-id n t]
+  (let [q (-> (h/select [:bq.question :bqtext]
+                        [:cq.question :cqtext])
+              (h/from [:slack_coaching_users :scu])
+              (h/where (last-questions-clause
+                         (is-remote-user-id slack-user-id) n t))
+              (h/join [:questions_asked :qasked]
+                      [:= :qasked.slack_user_id :scu.id])
+              (h/left-join [:base_questions :bq]
+                           [:= :bq.id :qasked.question_id]
+                           [:custom_questions :cq]
+                           [:= :cq.id :qasked.cquestion_id])
+              (h/order-by [:qasked.id :desc]))
+        q (if (and n (not t)) (h/limit q n) q)]
+    (map (fn [{:keys [bqtext cqtext]}] (or bqtext cqtext)) (hu/query q ds))))
+
 (defn list-answers [ds slack-team-id user-email]
-  (let [{:keys [id]} (get-coaching-user-raw ds slack-team-id user-email)
+  (let [{:keys [id]} (get-coaching-user-by-email ds slack-team-id user-email)
         answers (-> (h/select :bq.question
                               [:cq.question :cquestion]
                               [:qa.answer :qa])
@@ -529,7 +559,7 @@
 
 (defn get-channel-question-response [conn slack-team-id question-id email]
   (let [{user-id :id}
-        (get-coaching-user-raw conn slack-team-id email)]
+        (get-coaching-user-by-email conn slack-team-id email)]
     (-> (h/select :id :answer)
         (h/from :channel_question_answers)
         (where-answer-is question-id user-id)
@@ -554,7 +584,7 @@
                                         question-id answer]
   (jdbc/with-db-transaction [conn ds]
     (let [{user-id :id}
-          (get-coaching-user-raw conn slack-team-id email)
+          (get-coaching-user-by-email conn slack-team-id email)
 
           expiration-timestamp
           (:expiration_timestamp

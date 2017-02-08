@@ -18,7 +18,9 @@
 ;
 
 (ns coachbot.coaching-process-spec
-  (:require [coachbot.coaching-process :refer :all]
+  (:require [clojure.string :as str]
+            [coachbot.coaching-process :refer :all]
+            [coachbot.event-spec-utils :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]))
@@ -36,14 +38,21 @@
 (def u1-you-like-fun? (qmsg you-like-fun?))
 (def u1-how-much? (qmsg how-much?))
 
+(defmacro should-show-for-user1 [latest-messages show-stmt & expected]
+  `(should= [(uc user1-id "Here you go: \n" (str/join "\n" [~@expected]))]
+            (do (handle-event team-id user1-id ~show-stmt)
+                (~latest-messages))))
+
 (describe-mocked "Custom questions" [ds latest-messages]
   (before-all
     (storage/replace-base-questions!
       @ds [first-question second-question third-question]))
+
   (context "basic"
     (before-all
-      (start-coaching! team-id user1-id)
-      (send-next-question-to-everyone-everywhere!)
+      (with-now "2015-12-18T10:10:00-06:00"
+        (start-coaching! team-id user1-id)
+        (send-next-question-to-everyone-everywhere!))
       (submit-text! team-id user1-email "banswer1")
       (register-custom-question! team-id user1-id not-liked)
       (register-custom-question! team-id user1-id you-like-fun?)
@@ -75,4 +84,31 @@
                 {:question you-like-fun?, :answer "qanswer2"}
                 {:question how-much?, :answer "qanswer3"}
                 {:question second-question, :answer "banswer2"}]
-               (storage/list-answers @ds team-id user1-email)))))
+               (storage/list-answers @ds team-id user1-email)))
+
+    (context "show questions"
+      (it "should show the last questions"
+        (should-show-for-user1 latest-messages "show last"
+          second-question)
+
+        (should-show-for-user1 latest-messages "show last 3 questions"
+          second-question
+          how-much?
+          you-like-fun?)
+
+        (should-show-for-user1 latest-messages "show last day"
+          second-question
+          how-much?
+          you-like-fun?
+          not-liked)
+
+        (should-show-for-user1 latest-messages "show last 2 weeks"
+          second-question
+          how-much?
+          you-like-fun?
+          not-liked
+          first-question)
+
+        (should= [(u2c "Sadly, I haven't asked you any questions yet!")]
+                 (do (handle-event team-id user2-id "show last 2 weeks")
+                     (latest-messages)))))))
