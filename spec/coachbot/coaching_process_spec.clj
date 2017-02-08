@@ -18,8 +18,8 @@
 ;
 
 (ns coachbot.coaching-process-spec
-  (:require [coachbot.coaching-process :refer :all]
-            [coachbot.env :as env]
+  (:require [clojure.string :as str]
+            [coachbot.coaching-process :refer :all]
             [coachbot.event-spec-utils :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
@@ -38,7 +38,10 @@
 (def u1-you-like-fun? (qmsg you-like-fun?))
 (def u1-how-much? (qmsg how-much?))
 
-(def questions-prefix "Here you go: \n")
+(defmacro should-show-for-user1 [latest-messages show-stmt & expected]
+  `(should= [(uc user1-id "Here you go: \n" (str/join "\n" [~@expected]))]
+            (do (handle-event team-id user1-id ~show-stmt)
+                (~latest-messages))))
 
 (describe-mocked "Custom questions" [ds latest-messages]
   (before-all
@@ -85,33 +88,26 @@
 
     (context "show questions"
       (it "should show the last questions"
-        (should= [(u1c questions-prefix second-question)]
-                 (do (handle-event team-id user1-id "show last")
-                     (latest-messages)))
+        (should-show-for-user1 latest-messages "show last"
+          second-question)
 
-        (should= [(u1c questions-prefix
-                       second-question "\n"
-                       how-much? "\n"
-                       you-like-fun?)]
-                 (do (handle-event team-id user1-id "show last 3 questions")
-                     (latest-messages)))
+        (should-show-for-user1 latest-messages "show last 3 questions"
+          second-question
+          how-much?
+          you-like-fun?)
 
-        (should= [(u1c questions-prefix
-                       second-question "\n"
-                       how-much? "\n"
-                       you-like-fun? "\n"
-                       not-liked)]
-                 (do (handle-event team-id user1-id "show last day")
-                     (latest-messages)))
+        (should-show-for-user1 latest-messages "show last day"
+          second-question
+          how-much?
+          you-like-fun?
+          not-liked)
 
-        (should= [(u1c questions-prefix
-                       second-question "\n"
-                       how-much? "\n"
-                       you-like-fun? "\n"
-                       not-liked "\n"
-                       first-question)]
-                 (do (handle-event team-id user1-id "show last 2 weeks")
-                     (latest-messages)))
+        (should-show-for-user1 latest-messages "show last 2 weeks"
+          second-question
+          how-much?
+          you-like-fun?
+          not-liked
+          first-question)
 
         (should= [(u2c "Sadly, I haven't asked you any questions yet!")]
                  (do (handle-event team-id user2-id "show last 2 weeks")
