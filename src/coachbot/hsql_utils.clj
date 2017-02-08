@@ -30,8 +30,8 @@
 
 (defn query
   ([hq conn]
-   (->> hq
-        sql/format
-        (jdbc/query conn)))
+   (let [query-to-execute (sql/format hq)]
+     (log/debugf "Executing query: '%s'" query-to-execute)
+     (jdbc/query conn query-to-execute)))
   ([hq conn f]
    (map f (query hq conn))))

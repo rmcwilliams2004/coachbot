@@ -377,7 +377,8 @@
                            [:= :cq.id :qasked.cquestion_id])
               (h/order-by [:qasked.id :desc]))
         q (if (and n (not t)) (h/limit q n) q)]
-    (map (fn [{:keys [bqtext cqtext]}] (or bqtext cqtext)) (hu/query q ds))))
+    (map (fn [{:keys [bqtext cqtext]}] (or bqtext cqtext))
+         (log/with-level :debug (hu/query q ds)))))
 
 (defn list-answers [ds slack-team-id user-email]
   (let [{:keys [id]} (get-coaching-user-by-email ds slack-team-id user-email)
