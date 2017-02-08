@@ -57,7 +57,7 @@
 (defn- try-numeric [n]
   (if (and n (re-matches #"\d+" n)) (Integer/parseInt n) n))
 
-(defn show-last-questions [team-id user-id channel-id & [[n & [t]]]]
+(defn show-last-questions [team-id channel user-id & [[n & [t]]]]
   (let [t (if (and (not t)
                    (or (= n "day")
                        (= n "week"))) n t)
@@ -66,7 +66,7 @@
         questions
         (storage/list-last-questions (db/datasource) user-id n t)]
     (with-sending-constructs {:user-id user-id :team-id team-id
-                              :channel channel-id}
+                              :channel channel}
       [ds send-fn _]
       (send-fn (if (seq questions)
                  (str "Here you go: \n" (str/join "\n" questions))
