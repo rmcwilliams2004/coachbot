@@ -19,9 +19,11 @@
 
 (ns coachbot.coaching-process-spec
   (:require [coachbot.coaching-process :refer :all]
+            [coachbot.event-spec-utils :refer :all]
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
-            [speclj.core :refer :all]))
+            [speclj.core :refer :all]
+            [coachbot.events :as events]))
 
 (def first-question "first question")
 (def second-question "second question")
@@ -35,6 +37,8 @@
 (def u1-not-liked (qmsg not-liked))
 (def u1-you-like-fun? (qmsg you-like-fun?))
 (def u1-how-much? (qmsg how-much?))
+
+(def qa-button (partial button-pressed "qasked"))
 
 (describe-mocked "Custom questions" [ds latest-messages]
   (before-all
@@ -75,4 +79,11 @@
                 {:question you-like-fun?, :answer "qanswer2"}
                 {:question how-much?, :answer "qanswer3"}
                 {:question second-question, :answer "banswer2"}]
-               (storage/list-answers @ds team-id user1-email)))))
+               (storage/list-answers @ds team-id user1-email)))
+
+    (it "should store ratings for questions"
+      (should= [(u1c "Thanks for the rating!")]
+               (do
+                 (events/handle-raw-event (qa-button 1 user1-id 3))
+                 (latest-messages)))
+      (should= 3 (get-rating-for-question ds 1)))))

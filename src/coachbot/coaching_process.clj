@@ -65,7 +65,7 @@
                   question)]]
     (if new-question?
       (conj result
-            [{:type :buttons :callback-id (format "qasked-id-%s" qasked-id)
+            [{:type :buttons :callback-id (format "qasked-%s" qasked-id)
               :help-text "1=Unhelpful Question, 5=Very Helpful Question"
               :buttons
               (map #(hash-map :name "option" :value %) (range 1 6))}])
@@ -219,3 +219,6 @@
 (defn is-bot-user? [ds team-id slack-user-id]
   (or (= "USLACKBOT" slack-user-id)
       (storage/is-bot-user? ds team-id slack-user-id)))
+
+(defn get-rating-for-question [ds question-id]
+  3)

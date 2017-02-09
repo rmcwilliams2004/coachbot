@@ -178,7 +178,8 @@
    "channel_leave" ccp/stop-coaching-channel!})
 
 (def ^:private callback-handlers
-  {"cquestion" ccp/send-channel-question-response!})
+  {"cquestion" ccp/send-channel-question-response!
+   "qasked" ccp/add-question-rating!})
 
 (defn- reshape-event [{:keys [event callback_id] :as e}]
   (cond

@@ -1,5 +1,5 @@
 {:action_ts "1484235823.409404",
- :callback_id "cquestion-%d",                               ;formatted in test
+ :callback_id "%s-%d",                               ;formatted in test
  :channel {:id "replaced_in_test_case", :name "test"},
  :actions [{:name "option", :value "replaced_in_test_case"}],
  :token "replaced_in_test_case",

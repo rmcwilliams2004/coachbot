@@ -19,8 +19,6 @@
 
 (ns coachbot.channel-coaching-spec
   (:require [clj-time.core :as t]
-            [clojure.edn :as edn]
-            [clojure.java.io :as io]
             [clojure.string :as str]
             [coachbot.events :as events]
             [coachbot.channel-coaching-process :refer :all]
@@ -45,30 +43,6 @@
   (partial response
            "Sorry, but I can't submit *%d* to *%s* because it's expired!"))
 
-(defn set-event-channel-id [msg channel-id]
-  (assoc-in msg [:event :channel] channel-id))
-
-(defn load-edn [filename]
-  (-> (io/resource (str "channel_coaching/" filename))
-      slurp
-      edn/read-string
-      (assoc :token good-token)))
-
-(defn load-event-edn [filename]
-  (-> filename
-      load-edn
-      (assoc :team_id team-id)
-      (set-event-channel-id channel-id)))
-
-(defn button-pressed [question-id user-id value]
-  (-> "option_chosen.edn"
-      load-edn
-      (assoc-in [:team :id] team-id)
-      (assoc-in [:channel :id] channel-id)
-      (assoc-in [:actions 0 :value] (str value))
-      (assoc-in [:user :id] user-id)
-      (update-in [:callback_id] #(format % question-id))))
-
 (defn bob [msg] (set-event-channel-id msg "bob"))
 (def group-join (load-event-edn "group_join.edn"))
 (def group-leave (load-event-edn "group_leave.edn"))
@@ -88,6 +62,8 @@
 (def sq-expected (expected second-question))
 (def tq-expected (expected third-question))
 (def fourthq-expected (expected fourth-question))
+
+(def cq-button (partial button-pressed "cquestion"))
 
 (def cmsg (partial uc channel-id))
 
@@ -133,8 +109,8 @@
 (defmacro check-expired-questions [latest-messages & expectations]
   `(it "should not accept answers"
      (should= [~@expectations]
-              (do (events/handle-raw-event (button-pressed 1 user1-id 3))
-                  (events/handle-raw-event (button-pressed 2 user1-id 3))
+              (do (events/handle-raw-event (cq-button 1 user1-id 3))
+                  (events/handle-raw-event (cq-button 2 user1-id 3))
                   (~latest-messages)))))
 
 (defn stats-response [channel question-text avg smax smin scount]
@@ -204,16 +180,16 @@
                 (first-response third-question 3)
                 (first-response third-question 4)
                 (first-response third-question 5)]
-               (do (events/handle-raw-event (button-pressed 1 user1-id 3))
+               (do (events/handle-raw-event (cq-button 1 user1-id 3))
 
-                   (events/handle-raw-event (button-pressed 2 user1-id 3))
-                   (events/handle-raw-event (button-pressed 2 user1-id 5))
-                   (events/handle-raw-event (button-pressed 2 user2-id 4))
-                   (events/handle-raw-event (button-pressed 2 user3-id 2))
+                   (events/handle-raw-event (cq-button 2 user1-id 3))
+                   (events/handle-raw-event (cq-button 2 user1-id 5))
+                   (events/handle-raw-event (cq-button 2 user2-id 4))
+                   (events/handle-raw-event (cq-button 2 user3-id 2))
 
-                   (events/handle-raw-event (button-pressed 3 user1-id 3))
-                   (events/handle-raw-event (button-pressed 3 user2-id 4))
-                   (events/handle-raw-event (button-pressed 3 user3-id 5))
+                   (events/handle-raw-event (cq-button 3 user1-id 3))
+                   (events/handle-raw-event (cq-button 3 user2-id 4))
+                   (events/handle-raw-event (cq-button 3 user3-id 5))
 
                    (latest-messages)))
       (should-store-response 1 3 1 user1-email)

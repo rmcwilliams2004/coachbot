@@ -118,6 +118,10 @@
             conn slack-team-id email question-id value))]
     (format response-format value question)))
 
+(defn add-question-rating! [conn slack-team-id _ {:keys [email]}
+                            question-id _ value]
+  (println "add-question-rating!" slack-team-id email question-id value))
+
 (defn- calculate-stats-for-channel-question [{:keys [answers] :as question}]
   (merge
     question

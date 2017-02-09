@@ -27,7 +27,9 @@
             [coachbot.storage :as storage]
             [coachbot.db :as db]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [clojure.edn :as edn]
+            [clojure.java.io :as io]))
 
 (def access-token "gobbledygook")
 (def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
@@ -90,6 +92,8 @@
 (def u1-coaching-goodbye (u1c messages/coaching-goodbye))
 (def u2-coaching-goodbye (u2c messages/coaching-goodbye))
 
+(def good-token "good")
+
 (defn add-buttons [question qasked-id]
   (if (vector? question)
     (let [start-at (+ qasked-id (count question))
@@ -98,7 +102,7 @@
            (partition-all 2 (interleave question id-range))))
     {:msg question
      :attachments [{:type :buttons,
-                    :callback-id (format "qasked-id-%s" qasked-id),
+                    :callback-id (format "qasked-%s" qasked-id),
                     :help-text "1=Unhelpful Question, 5=Very Helpful Question",
                     :buttons [{:name "option", :value 1}
                               {:name "option", :value 2}
@@ -106,10 +110,33 @@
                               {:name "option", :value 4}
                               {:name "option", :value 5}]}]}))
 
+(defn set-event-channel-id [msg channel-id]
+  (assoc-in msg [:event :channel] channel-id))
+
+(defn load-edn [filename]
+  (-> (io/resource (str "channel_coaching/" filename))
+      slurp
+      edn/read-string
+      (assoc :token good-token)))
+
+(defn load-event-edn [filename]
+  (-> filename
+      load-edn
+      (assoc :team_id team-id)
+      (set-event-channel-id channel-id)))
+
+
+(defn button-pressed [type question-id user-id value]
+  (-> "option_chosen.edn"
+      load-edn
+      (assoc-in [:team :id] team-id)
+      (assoc-in [:channel :id] channel-id)
+      (assoc-in [:actions 0 :value] (str value))
+      (assoc-in [:user :id] user-id)
+      (update-in [:callback_id] #(format % type question-id))))
+
 (defn qwb [user-id question qasked-id]
   (add-buttons (uc user-id question) qasked-id))
-
-(def good-token "good")
 
 (def slack-auth {:team-id team-id
                  :team-name team-name
