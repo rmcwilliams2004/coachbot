@@ -213,7 +213,7 @@
 
   ;; Use this to see the last X days of answers
   (pprint/print-table (list-answers 7))
-  (pprint/print-table (list-answers 30 17))
+  (pprint/print-table (list-answers 30 10))
 
   ;;Common Messages to send
   (def usage-checkin
@@ -225,9 +225,9 @@
 
   (def a-custom-question
     (str
-      "You mentioned reaching out to your brother and sister are people "
-      "that are important but you haven't reached out to recently.  "
-      "How would you feel if you did reach out to them?"))
+      "You've been engaging with me (CoachBot) quite a bit recently. How is "
+      "this working out for you?/nWhat's working well?/nWhat could be "
+      "more helpful?"))
 
   ;; Use this to register a custom question.
   (let [team-id 3
