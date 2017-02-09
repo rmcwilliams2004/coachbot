@@ -54,6 +54,23 @@
                       (or ~channel ~user-id))]
          ~@body))))
 
+(defn- format-question [{:keys [prefix-items question
+                                qasked-id new-question?]}]
+  (let [result [(if (seq prefix-items)
+                  (format "[%s] %s"
+                          (->> prefix-items
+                               (map #(let [{:keys [emphasize? msg]} %]
+                                       (if emphasize? (format "_%s_" msg) msg)))
+                               (str/join ", ")) question)
+                  question)]]
+    (if new-question?
+      (conj result
+            [{:type :buttons :callback-id (format "qasked-id-%s" qasked-id)
+              :help-text "1=Unhelpful Question, 5=Very Helpful Question"
+              :buttons
+              (map #(hash-map :name "option" :value %) (range 1 6))}])
+      result)))
+
 (defn send-new-question!
   "Sends a new question to a specific individual."
   [{:keys [id asked-qid team-id] :as user} & [channel]]
@@ -65,14 +82,9 @@
         (when (and cquestion_id (not answered))
           (storage/mark-custom-question! conn slack_user_id cquestion_id
                                          :skipped))
-        (send-fn (storage/next-question-for-sending! conn asked-qid user))))))
-
-(defn- format-question [{:keys [prefix-items question]}]
-  (format "[%s] %s"
-          (->> prefix-items
-               (map #(let [{:keys [emphasize? msg]} %]
-                       (if emphasize? (format "_%s_" msg) msg)))
-               (str/join ", ")) question))
+        (apply send-fn
+               (format-question
+                 (storage/next-question-for-sending! conn asked-qid user)))))))
 
 (defn- send-next-or-resend-prev-question!
   ([user] (send-next-or-resend-prev-question! user nil))
@@ -81,11 +93,11 @@
      :as user} channel]
    (with-sending-constructs {:user-id id :team-id team-id :channel channel}
      [ds send-fn _]
-     (send-fn
-       (format-question
-         (if (= asked-qid answered-qid)
-           (storage/next-question-for-sending! ds asked-qid user)
-           (storage/question-for-sending! ds asked-qid user)))))))
+     (apply send-fn
+            (format-question
+              (if (= asked-qid answered-qid)
+                (storage/next-question-for-sending! ds asked-qid user)
+                (storage/question-for-sending! ds asked-qid user)))))))
 
 (defn send-question-if-conditions-are-right!
   "Sends a question to a specific individual only if the conditions are
@@ -112,17 +124,6 @@
 
     (when should-send-question?
       (send-next-or-resend-prev-question! user channel))))
-
-(defn send-question-with-rating!
-  [slack-team-id r-user-id question]
-  (with-sending-constructs
-    {:team-id slack-team-id :channel r-user-id} [ds send-fn _]
-    (let [question-id 222]
-      (send-fn question
-               [{:type :buttons :callback-id (format "cquestion-%s" question-id)
-                 :help-text "1=Unhelpful Question, 5=Very Helpful Question"
-                 :buttons
-                 (map #(hash-map :name "option" :value %) (range 1 6))}]))))
 
 (defn start-coaching!
   [team-id user-id & [coaching-time]]

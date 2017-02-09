@@ -107,24 +107,24 @@
 
     (it "starts and stops coaching for users properly"
       (should=
-        [(u1c first-question)
+        [(qwb user1-id first-question 1)
          u2-coaching-hello
-         (u2c first-question)
+         (qwb user2-id first-question 2)
          u1-coaching-hello
          u1-thanks-for-answer
          u2-thanks-for-answer
          u2-coaching-goodbye
-         (u1c second-question)
+         (qwb user1-id second-question 3)
          u1-thanks-for-answer
          u1-unknown
          u1-coaching-goodbye
          u1-coaching-hello
-         (u1c third-question)
+         (qwb user1-id third-question 4)
          (u1c third-question)
          u1-thanks-for-answer
          u1-coaching-goodbye
-         (u1c fourth-question)
-         (u1c first-question)]
+         (qwb user1-id fourth-question 6)
+         (qwb user1-id first-question 7)]
         (latest-messages))
 
       (should= [{:question first-question}

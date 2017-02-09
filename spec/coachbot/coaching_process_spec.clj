@@ -31,7 +31,7 @@
 (def not-liked "you won't like this question")
 (def how-much? "how much?")
 
-(def qmsg (comp u1c (partial q-with-md "Custom Question")))
+(def qmsg (partial q-with-md "Custom Question"))
 (def u1-not-liked (qmsg not-liked))
 (def u1-you-like-fun? (qmsg you-like-fun?))
 (def u1-how-much? (qmsg how-much?))
@@ -58,15 +58,15 @@
       (submit-text! team-id user1-email "banswer2"))
 
     (it "should ask a custom question before the next one in the rotation"
-      (should= [(u1c first-question)
+      (should= [(qwb user1-id first-question 1)
                 u1-thanks-for-answer
-                u1-not-liked
-                u1-you-like-fun?
+                (qwb user1-id u1-not-liked 2)
+                (qwb user1-id u1-you-like-fun? 3)
                 u1-thanks-for-answer
                 u1-thanks-for-answer
-                u1-how-much?
+                (qwb user1-id u1-how-much? 4)
                 u1-thanks-for-answer
-                (u1c second-question)
+                (qwb user1-id second-question 5)
                 u1-thanks-for-answer]
                (latest-messages))
 

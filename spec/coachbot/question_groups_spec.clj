@@ -106,10 +106,17 @@
             q3-ne (u1gc [groupb groupz] question3)
             q3-ae (u1gc [(emph groupb) (emph groupz)] question3)
             q4 (u1c question4)]
-        (should= [q3 q3 q3 q3] (do (add-group groupb) (four-questions)))
-        (should= [q1 q3 q1 q3] (do (add-group groupc) (four-questions)))
-        (should= [q1 q2 q3-ae q1] (do (add-group groupz) (four-questions)))
-        (should= [q2-ne q3-ne q4 q1-ne]
-                 (do
-                   (doseq [g [groupz groupb groupc]] (remove-group g))
-                   (four-questions)))))))
+        (should=
+          (add-buttons [q3 q3 q3 q3] 1)
+          (do (add-group groupb) (four-questions)))
+        (should=
+          (add-buttons [q1 q3 q1 q3] 5)
+          (do (add-group groupc) (four-questions)))
+        (should=
+          (add-buttons [q1 q2 q3-ae q1] 9)
+          (do (add-group groupz) (four-questions)))
+        (should=
+          (add-buttons [q2-ne q3-ne q4 q1-ne] 13)
+          (do
+            (doseq [g [groupz groupb groupc]] (remove-group g))
+            (four-questions)))))))

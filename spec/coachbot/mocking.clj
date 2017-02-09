@@ -90,6 +90,25 @@
 (def u1-coaching-goodbye (u1c messages/coaching-goodbye))
 (def u2-coaching-goodbye (u2c messages/coaching-goodbye))
 
+(defn add-buttons [question qasked-id]
+  (if (vector? question)
+    (let [start-at (+ qasked-id (count question))
+          id-range (range qasked-id (inc start-at))]
+      (map (fn [[q qaids]] (add-buttons q qaids))
+           (partition-all 2 (interleave question id-range))))
+    {:msg question
+     :attachments [{:type :buttons,
+                    :callback-id (format "qasked-id-%s" qasked-id),
+                    :help-text "1=Unhelpful Question, 5=Very Helpful Question",
+                    :buttons [{:name "option", :value 1}
+                              {:name "option", :value 2}
+                              {:name "option", :value 3}
+                              {:name "option", :value 4}
+                              {:name "option", :value 5}]}]}))
+
+(defn qwb [user-id question qasked-id]
+  (add-buttons (uc user-id question) qasked-id))
+
 (def good-token "good")
 
 (def slack-auth {:team-id team-id

@@ -277,10 +277,10 @@
                               (get-groups-for-qid ds new-qid)))
          question)))))
 
-(defn add-question-id [conn user-id qa-col new-qid question]
+(defn add-qasked-id [conn user-id qa-col new-qid question]
   (jdbc/insert! conn :questions_asked
                 {:slack_user_id user-id qa-col new-qid})
-  (assoc question :question-id (db/fetch-last-insert-id conn)))
+  (assoc question :qasked-id (db/fetch-last-insert-id conn)))
 
 (defn question-for-sending! [ds qid {remote-user-id :id}]
   (jdbc/with-db-transaction [conn ds]
@@ -301,7 +301,7 @@
           question (add-question-metadata ds remote-user-id new-qid
                                           {:question question}
                                           custom-question?)
-          question (add-question-id ds user-id qa-col new-qid question)]
+          question (add-qasked-id ds user-id qa-col new-qid question)]
       (jdbc/update! conn :slack_coaching_users
                     {asked-col new-qid :last_question_date (env/now)}
                     ["id  = ?" user-id])
@@ -325,7 +325,7 @@
 (defn next-question-for-sending! [ds qid {remote-user-id :id :as user}]
   (let [user-groups (map :id (list-groups-for-user ds remote-user-id))
         qid (if-not qid qid (find-next-base-question ds qid user-groups))]
-    (question-for-sending! ds qid user)))
+    (assoc (question-for-sending! ds qid user) :new-question? true)))
 
 (defn submit-answer! [ds slack-team-id user-email qid cqid text]
   (jdbc/with-db-transaction [conn ds]
