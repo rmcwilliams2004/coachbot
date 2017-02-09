@@ -237,15 +237,15 @@
 
   ;; Register an array of custom questions
   (def custom-question-list
-    ["How do I feel today?
-    What is affecting me?
-    What is going on in my life?"
-     "What do I feel like doing today?"
-     "What are my tasks today?"
-     "Who should I proactively communicate with?"
-     "What do I want to learn today?"
-     "What did I actually learn from yesterday?"
-     "What actions, if any, can apply this insight?"])
+    ["How do you feel today?
+    What is affecting you?
+    What is going on in yourlife?"
+     "What do you feel like doing today?"
+     "What are your tasks today?"
+     "Who should you proactively communicate with?"
+     "What do you want to learn today?"
+     "What did you learn from yesterday?
+     What actions, if any, can you apply this learning to?"])
 
   (map #(register-custom-question! 3 12 %1) custom-question-list)
 
