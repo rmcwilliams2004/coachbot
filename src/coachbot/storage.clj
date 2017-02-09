@@ -261,27 +261,26 @@
       (hu/query ds :group_name)))
 
 (defn- add-question-metadata
-  ([items question]
-   (format "[%s] %s"
-           (->> items
-                (map #(let [{:keys [emphasize? msg]} %]
-                        (if emphasize? (format "_%s_" msg) msg)))
-                (str/join ", ")) question))
   ([ds slack-user-id new-qid question custom-question?]
    (if custom-question?
-     (add-question-metadata [{:emphasize? true
-                              :msg "Custom Question"}] question)
+     (assoc question :prefix-items [{:emphasize? true
+                                     :msg "Custom Question"}])
      (let [groups (get-groups-for-qid ds new-qid)
            groups-for-user (->> slack-user-id
                                 (list-groups-for-user ds)
                                 (map :group_name)
                                 (into #{}))]
        (if (seq groups)
-         (add-question-metadata (map #(hash-map :msg %
-                                                :emphasize? (groups-for-user %))
-                                     (get-groups-for-qid ds new-qid))
-                                question)
+         (assoc question :prefix-items
+                         (map #(hash-map :msg %
+                                         :emphasize? (groups-for-user %))
+                              (get-groups-for-qid ds new-qid)))
          question)))))
+
+(defn add-question-id [conn user-id qa-col new-qid question]
+  (jdbc/insert! conn :questions_asked
+                {:slack_user_id user-id qa-col new-qid})
+  (assoc question :question-id (db/fetch-last-insert-id conn)))
 
 (defn question-for-sending! [ds qid {remote-user-id :id}]
   (jdbc/with-db-transaction [conn ds]
@@ -299,10 +298,10 @@
           custom-cols [:cquestion_id :asked_cqid]
           base-cols [:question_id :asked_qid]
           [qa-col asked-col] (if custom-question? custom-cols base-cols)
-          question (add-question-metadata ds remote-user-id new-qid question
-                                          custom-question?)]
-      (jdbc/insert! conn :questions_asked
-                    {:slack_user_id user-id qa-col new-qid})
+          question (add-question-metadata ds remote-user-id new-qid
+                                          {:question question}
+                                          custom-question?)
+          question (add-question-id ds user-id qa-col new-qid question)]
       (jdbc/update! conn :slack_coaching_users
                     {asked-col new-qid :last_question_date (env/now)}
                     ["id  = ?" user-id])

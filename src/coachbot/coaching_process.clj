@@ -67,21 +67,25 @@
                                          :skipped))
         (send-fn (storage/next-question-for-sending! conn asked-qid user))))))
 
+(defn- format-question [{:keys [prefix-items question]}]
+  (format "[%s] %s"
+          (->> prefix-items
+               (map #(let [{:keys [emphasize? msg]} %]
+                       (if emphasize? (format "_%s_" msg) msg)))
+               (str/join ", ")) question))
+
 (defn- send-next-or-resend-prev-question!
   ([user] (send-next-or-resend-prev-question! user nil))
   ([{:keys [id asked-qid answered-qid
             team-id]
-     :as   user} channel]
+     :as user} channel]
    (with-sending-constructs {:user-id id :team-id team-id :channel channel}
      [ds send-fn _]
-     (if (= asked-qid answered-qid)
-       (send-fn
-         (storage/next-question-for-sending! ds asked-qid user)
-         [{:type :buttons :callback-id (format "scu-%d
-         qa_created_date-%s" id qa_created_date)
-           :help-text "1=Unhelpful Question, 5=Very Helpful Question"
-           :buttons (map #(hash-map :name "option" :value %) (range 1 6))}])
-       (send-fn (storage/question-for-sending! ds asked-qid user))))))
+     (send-fn
+       (format-question
+         (if (= asked-qid answered-qid)
+           (storage/next-question-for-sending! ds asked-qid user)
+           (storage/question-for-sending! ds asked-qid user)))))))
 
 (defn send-question-if-conditions-are-right!
   "Sends a question to a specific individual only if the conditions are
@@ -115,12 +119,10 @@
     {:team-id slack-team-id :channel r-user-id} [ds send-fn _]
     (let [question-id 222]
       (send-fn question
-        [{:type :buttons :callback-id (format "cquestion-%s" question-id)
-          :help-text "1=Unhelpful Question, 5=Very Helpful Question"
-          :buttons
-                (map #(hash-map :name "option" :value %) (range 1 6))}]))))
-
-(send-question-with-rating! "T04SG55UA" "U04T4P88M" "My question w rating")
+               [{:type :buttons :callback-id (format "cquestion-%s" question-id)
+                 :help-text "1=Unhelpful Question, 5=Very Helpful Question"
+                 :buttons
+                 (map #(hash-map :name "option" :value %) (range 1 6))}]))))
 
 (defn start-coaching!
   [team-id user-id & [coaching-time]]
