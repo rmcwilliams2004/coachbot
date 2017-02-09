@@ -130,12 +130,28 @@
       first
       :users))
 
-(defn count-group-users []
+(defn count-active-group-users []
   (-> (h/select (sql/raw "count(distinct scu_id) AS group_users"))
-      (h/from :scu_question_groups)
+      (h/from [:scu_question_groups :qg])
+      (h/join [:slack_coaching_users :scu]
+              [:= :scu.id :qg.scu_id])
+      (h/where [:= :scu.active true])
       (hu/query (db/datasource))
       first
       :group_users))
+
+(defn show-groups-by-user []
+  (-> (h/select [:scu.id :scu-id] [:sqg.question_group_id :qg-id]
+                [:qg.group_name :group-name] [:scu.team_id :team-id]
+                [:scu.name :name])
+      (h/from [:scu_question_groups :sqg])
+      (h/join [:slack_coaching_users :scu]
+              [:= :sqg.scu_id :scu.id]
+              [:question_groups :qg]
+              [:= :qg.id :sqg.question_group_id])
+      (h/where [:= :scu.active true])
+      (h/order-by :scu.id)
+      (hu/query (db/datasource))))
 
 (defn count-question-answers
   ([days]
@@ -171,20 +187,18 @@
    And DB_MAX_CONN=2
    And DB_CONN_TIMEOUT=600000"
 
+  ;;----------------------  Basics & Bookkeeping ------------------------------
+
   ;; Switch to manual-coaching namespace in the REPL
   (in-ns 'coachbot.manual-coaching)
 
   ;; Get rid of annoying logging
   (log/set-level! :warn)
 
-  ;; Use this to see the last X days of answers
-  (pprint/print-table (list-answers 7))
-  (pprint/print-table (list-answers 30 18))
+  ;; Print last stack trace
+  (clojure.stacktrace/print-cause-trace *e)
 
-  ;; List all the teams
-  (pprint/print-table (-> (h/select :*)
-                          (h/from :slack_teams)
-                          (hu/query (db/datasource))))
+  ;;----------------------  Individual Coaching  -----------------------------
 
   ;; List all active users
   (pprint/print-table (-> (h/select [:st.id :tid] [:st.team_id :slack_team_id]
@@ -197,7 +211,110 @@
                                   [:= :st.id :scu.team_id])
                           (hu/query (db/datasource))))
 
-  ;; List channels we're coaching
+  ;; Use this to see the last X days of answers
+  (pprint/print-table (list-answers 7))
+  (pprint/print-table (list-answers 30 10))
+
+  ;;Common Messages to send
+  (def usage-checkin
+    (str
+      "Just wanted to check in.  I noticed that you haven't had "
+      "a chance to use CoachBot much recently.  I was just curious if "
+      "you have just been busy in the new year or if something else is "
+      "annoying you about coachbot"))
+
+  (def a-custom-question
+    (str
+      "You've been engaging with me (CoachBot) quite a bit recently. How is "
+      "this working out for you?/nWhat's working well?/nWhat could be "
+      "more helpful?"))
+
+  ;; Use this to register a custom question.
+  (let [team-id 3
+        user-id 17
+        question a-custom-question]
+    (register-custom-question! team-id user-id question))
+
+  ;; Register an array of custom questions
+  (def custom-question-list
+    ["How do you feel today?
+    What is affecting you?
+    What is going on in yourlife?"
+     "What do you feel like doing today?"
+     "What are your tasks today?"
+     "Who should you proactively communicate with?"
+     "What do you want to learn today?"
+     "What did you learn from yesterday?
+     What actions, if any, can you apply this learning to?"])
+
+  (map #(register-custom-question! 3 12 %1) custom-question-list)
+
+  ;; Use this to send a custom question immediately.
+  (let [team-id 3
+        user-id 18
+        question oops]
+    (send-custom-question-now! team-id user-id question))
+
+  ;; In case you made a mistake, you can delete a question using the ID that
+  ;; the above command returned.
+  (delete-custom-question! 70)
+
+  ;; Send a message to a client without logging a question (in case you want
+  ;; to notify them of something but you're not expecting a response)
+  (def my-message
+    (str "OK. I've gone ahead and changed the groups "
+         "that you're a part of to hopefully better reflect the questions "
+         "that you like.  If you'd like to see what groups you're now in "
+         "say _show groups_ and if you want to change things say "
+         "_remove groups or _add groups_. Or, if you can't remember, just "
+         "say _help_ and you'll get a bunch more information"))
+
+  (cp/with-sending-constructs {:user-id "U3E7Z77B4" :team-id "T04SG55UA"
+                               :channel nil} [ds send-fn _]
+                              (send-fn my-message))
+
+  ;; Show a bunch of data about a single slack coaching user
+  (pprint/print-table
+    (jdbc/query
+      (db/datasource)
+      [(str "select *, "
+            "timestampdiff(HOUR, last_question_date, current_timestamp()) AS
+            hours_since, "
+            "current_timestamp as now "
+            "from slack_coaching_users where email = ?")
+       "travis@couragelabs.com"]))
+
+  (pprint/print-table (show-groups-by-user))
+
+  ;; Add a user to question groups
+  ;; CoachBot Feedback, Collaboration/Teamwork, Decision Making, Emotional
+  ;; Intelligence, Habits, Leadership, Learning, Management, Pause, Planning,
+  ;; Reflection, Strengths, Time Management
+  (def question-groups-to-add ["CoachBot Feedback"
+                               "Collaboration/Teamwork"
+                               "Decision Making"
+                               "Emotional Intelligence"
+                               "Habits"
+                               "Leadership"
+                               "Learning"
+                               "Management"
+                               "Pause"
+                               "Planning"
+                               "Reflection"
+                               "Strengths"
+                               "Time Management"])
+
+  (map #(storage/add-to-question-group! (db/datasource) "U04T4P88M" %1)
+       question-groups-to-add)
+
+  ;; ----------------------  Team Coaching -----------------------------------
+
+  ;; List all the teams
+  (pprint/print-table (-> (h/select :*)
+                          (h/from :slack_teams)
+                          (hu/query (db/datasource))))
+
+  ;; List all active channels (channels we're coaching)
   (pprint/print-table
     (-> (h/select :st.team_id :scc.channel_id :st.team_name
                   :scc.channel_name)
@@ -226,16 +343,14 @@
     "T04SG55UA" "C3F03UHS6"
     "I feel excited about supporting the Courage Labs purpose" (t/days 1))
 
-  ;; Print last stack trace
-  (clojure.stacktrace/print-cause-trace *e)
+  ;; ----------------------  Stats and Data   ---------------------------
 
   ;; Count Number of engaged users
   (map count-engaged [7 14 30 60])
 
   ;; Count # of users using categories
-  (count-group-users)
   (count-active)
-  (/ (count-group-users) (count-active))
+  (count-active-group-users)
 
   ;; List total number of questions answered over various time frames
   (map count-question-answers [7 14 30 60])
@@ -245,44 +360,4 @@
             (first)
             (select-keys [:answers :name]))
        [7 14 30 60])
-
-  ;;Common Messages to send
-  (def usage-checkin
-    (str
-      "Just wanted to check in.  I noticed that you haven't had "
-      "a chance to use CoachBot much recently.  I was just curious if "
-      "you have just been busy in the new year or if something else is "
-      "annoying you about coachbot"))
-
-  (def oops
-    (str
-      "Oops.  I wasn't reading the dates quite right.  I'm still curious "
-      "what you think of CoachBot so far though"))
-
-  ;; Use this to register a custom question.
-  (let [team-id 1
-        user-id 2
-        question "What part of 'CB' would be in between valuable to focus on?"]
-    (register-custom-question! team-id user-id question))
-
-  ;; Use this to send a custom question immediately.
-  (let [team-id 3
-        user-id 18
-        question oops]
-    (send-custom-question-now! team-id user-id question))
-
-  ;; In case you made a mistake, you can delete a question using the ID that
-  ;; the above command returned.
-  (delete-custom-question! 15)
-
-  ;; Show a bunch of data about a single slack coaching user
-  (pprint/print-table
-    (jdbc/query
-      (db/datasource)
-      [(str "select *, "
-            "timestampdiff(HOUR, last_question_date, current_timestamp()) AS
-            hours_since, "
-            "current_timestamp as now "
-            "from slack_coaching_users where email = ?")
-       "travis@couragelabs.com"]))
   )
