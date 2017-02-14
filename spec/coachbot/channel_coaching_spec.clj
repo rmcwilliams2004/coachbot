@@ -107,14 +107,16 @@
     `(should= ~expected-channels (do ~@raw-events (list-channels ~team-id)))))
 
 (defmacro should-ask-question [question expected expected-expiration id
+                               left-label right-label num-buttons
                                reversed? latest-messages & expiration-specs]
   (let [help-text
-        (format "%d=Highly Inaccurate, %d=Highly Accurate%s. _Expires in %s._"
-                (if reversed? 5 1)
-                (if reversed? 1 5)
+        (format "%d=%s, %d=%s%s. _Expires in %s._"
+                (if reversed? num-buttons 1) left-label
+                (if reversed? 1 num-buttons) right-label
                 (if reversed? " (*Scale is reversed*)" "")
                 expected-expiration)
-        button-range (map #(hash-map :name "option" :value %) (range 1 6))
+        button-range (map #(hash-map :name "option" :value %)
+                          (range 1 (inc num-buttons)))
         button-range (if reversed? (reverse button-range) button-range)]
     `(should= [{:msg (cmsg ~expected)
                 :attachments
@@ -122,7 +124,9 @@
                   :callback-id (format "cquestion-%d" ~id)
                   :buttons [~@button-range]
                   :help-text ~help-text}]}]
-              (do (send-channel-question! team-id channel-id ~reversed?
+              (do (send-channel-question! team-id channel-id
+                                          ~left-label ~right-label
+                                          ~num-buttons ~reversed?
                                           ~question
                                           ~@expiration-specs)
                   (~latest-messages)))))
@@ -185,16 +189,23 @@
     (with-all channels-coached (list-channels team-id))
 
     (it "should ask questions to the channel"
-      (should-ask-question first-question fq-expected "1 day" 1 false
+      (should-ask-question first-question fq-expected "1 day" 1
+                           "Highly Inaccurate" "Highly Accurate" 5 false
                            latest-messages)
       (should-ask-question second-question sq-expected
-                           "2 days, 1 hour" 2 false latest-messages
+                           "2 days, 1 hour" 2
+                           "Highly Inaccurate" "Highly Accurate" 5 false
+                           latest-messages
                            (t/days 2) (t/hours 1))
       (should-ask-question third-question tq-expected
-                           "4 days, 2 hours" 3 false latest-messages
+                           "4 days, 2 hours" 3
+                           "Never" "Always" 4 false
+                           latest-messages
                            (t/days 4) (t/hours 2))
       (should-ask-question fourth-question fourthq-expected
-                           "3 hours" 4 true latest-messages (t/hours 3)))
+                           "3 hours" 4
+                           "Highly Inaccurate" "Highly Accurate" 5 true
+                           latest-messages (t/hours 3)))
 
     (it "should accept answers"
       (should= [(first-response first-question 3)
