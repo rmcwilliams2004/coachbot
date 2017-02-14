@@ -101,11 +101,12 @@
           (format msg-format question)
           [{:type :buttons :callback-id (format "cquestion-%s" question-id)
             :help-text
-            (format "%d=Highly Inaccurate, %d=Highly Accurate%s. _Expires in %s._"
-                    (if reversed? 5 1)
-                    (if reversed? 1 5)
-                    (if reversed? " (*Scale is reversed*)" "")
-                    (.print period-formatter time-diff))
+            (format
+              "%d=Highly Inaccurate, %d=Highly Accurate%s. _Expires in %s._"
+              (if reversed? 5 1)
+              (if reversed? 1 5)
+              (if reversed? " (*Scale is reversed*)" "")
+              (.print period-formatter time-diff))
             :buttons button-range}])))))
 
 (defn send-channel-question-response! [conn slack-team-id _ {:keys [email]}
