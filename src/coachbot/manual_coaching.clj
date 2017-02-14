@@ -340,7 +340,7 @@
 
   ;; Send a coaching question to a channel
   (ccp/send-channel-question!
-    "T04SG55UA" "C3F03UHS6"
+    "T04SG55UA" "C3F03UHS6" false
     "I feel excited about supporting the Courage Labs purpose" (t/days 1))
 
   ;; ----------------------  Stats and Data   ---------------------------

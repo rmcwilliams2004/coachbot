@@ -81,7 +81,7 @@
    e.g. (send-channel-question! id ch question (t/days 1) (t/hours 12))
 
    Would make the question expire 1.5 days after the current time."
-  [slack-team-id channel question & expiration-specs]
+  [slack-team-id channel reversed? question & expiration-specs]
   (let [expiration-specs
         (if (empty? expiration-specs) [(t/days 1)] expiration-specs)
 
@@ -94,16 +94,19 @@
       {:team-id slack-team-id :channel channel} [ds send-fn _]
       (let [question-id (storage/add-channel-question!
                           (db/datasource) slack-team-id channel question
-                          expiration-timestamp)]
+                          expiration-timestamp)
+            button-range (map #(hash-map :name "option" :value %) (range 1 6))
+            button-range (if reversed? (reverse button-range) button-range)]
         (send-fn
           (format msg-format question)
           [{:type :buttons :callback-id (format "cquestion-%s" question-id)
             :help-text
-            (format
-              "1=Completely Disagree, 5=Completely Agree. _Expires in %s._"
-              (.print period-formatter time-diff))
-            :buttons
-            (map #(hash-map :name "option" :value %) (range 1 6))}])))))
+            (format "%d=Highly Inaccurate, %d=Highly Accurate%s. _Expires in %s._"
+                    (if reversed? 5 1)
+                    (if reversed? 1 5)
+                    (if reversed? " (*Scale is reversed*)" "")
+                    (.print period-formatter time-diff))
+            :buttons button-range}])))))
 
 (defn send-channel-question-response! [conn slack-team-id _ {:keys [email]}
                                        question-id _ value]
