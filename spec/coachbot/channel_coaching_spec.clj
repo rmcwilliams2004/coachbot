@@ -83,11 +83,13 @@
 (def second-question "second question")
 (def third-question "third question")
 (def fourth-question "fourth question")
+(def fifth-question "fifth question")
 
 (def fq-expected (expected first-question))
 (def sq-expected (expected second-question))
 (def tq-expected (expected third-question))
 (def fourthq-expected (expected fourth-question))
+(def fifthq-expected (expected fifth-question))
 
 (def cmsg (partial uc channel-id))
 
@@ -188,10 +190,12 @@
                            "2 days, 1 hour" 2 latest-messages
                            (t/days 2) (t/hours 1))
       (should-ask-question third-question tq-expected
-                           "4 days, 2 hours" 3 latest-messages
-                           (t/days 4) (t/hours 2))
+                           "4 days, 2 hours, 30 minutes" 3 latest-messages
+                           (t/days 4) (t/hours 2) (t/minutes 30))
       (should-ask-question fourth-question fourthq-expected
-                           "3 hours" 4 latest-messages (t/hours 3)))
+                           "3 hours" 4 latest-messages (t/hours 3))
+      (should-ask-question fifth-question fifthq-expected
+                           "5 minutes" 5 latest-messages (t/minutes 5)))
 
     (it "should accept answers"
       (should= [(first-response first-question 3)

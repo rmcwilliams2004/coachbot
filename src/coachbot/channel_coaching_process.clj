@@ -52,7 +52,9 @@
     (doto (PeriodFormatterBuilder.)
       (.appendDays) (.appendSuffix " day" " days")
       (.appendSeparator ", " ", ")
-      (.appendHours) (.appendSuffix " hour" " hours"))))
+      (.appendHours) (.appendSuffix " hour" " hours")
+      (.appendSeparator ", " ", ")
+      (.appendMinutes) (.appendSuffix " minute" " minutes"))))
 
 (def channel-coaching-message
   (str "Hi everyone! I'm here to send periodic coaching questions. "
