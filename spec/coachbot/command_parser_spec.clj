@@ -65,6 +65,14 @@
     "group" "groups" "show group" "show groups" "question group"
     "question groups" "show question group" "show question groups")
 
+  (it-parses-variants "start coaching" [:start-coaching]
+    "start coaching"
+    "start")
+
+  (it-parses-variants "start coaching at" [:start-coaching "6am"]
+    "start coaching at 6am"
+    "start at 6am")
+
   (it-parses-variants "add group" [:add-group "bill"]
     "add group bill"
     "add to group bill"
@@ -123,8 +131,8 @@
 
   (it "should throw nice exceptions for bad commands"
     (should-throw Exception
-      #":type :coachbot.command-parser/parse-failure"
-      (parse-command "die scum")))
+                  #":type :coachbot.command-parser/parse-failure"
+                  (parse-command "die scum")))
 
   (context "start coaching"
     (single-arg-successes "good" start-coaching-pattern :start-coaching

@@ -3,7 +3,7 @@
              add-group | remove-group | friendly | show-questions
 help = <"help">
 hi = <"hi"> | <"hello"> | <"hola"> | <"howdy"> | <"yo"> | <"whatsup">
-start-coaching = <"start coaching">,
+start-coaching = <#"start( coaching)?">,
 { ws, <"at">, ws, #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)" }
 stop-coaching = <"stop coaching">
 next-question = (<"next question"> | <"another question">)
