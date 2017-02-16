@@ -207,10 +207,11 @@
       (should-ask-question fourth-question fourthq-expected
                            "3 hours" 4
                            "Highly Inaccurate" "Highly Accurate" 5 true
-                           latest-messages (t/hours 3)))
-                           "3 hours" 4 latest-messages (t/hours 3))
+                           latest-messages (t/hours 3))
       (should-ask-question fifth-question fifthq-expected
-                           "5 minutes" 5 latest-messages (t/minutes 5)))
+                           "30 minutes" 5
+                           "Highly Inaccurate" "Highly Accurate" 5 false
+                           latest-messages (t/minutes 30)))
 
     (it "should accept answers"
       (should= [(first-response first-question 3)
