@@ -52,6 +52,11 @@ div.purpose {
     font-style: italic;
 }
 
+div.purpose, div.main-content {
+    width: 580px;
+    margin: 0 auto;
+}
+
 div.main-content h1, div.main-content h2 {
     margin: 16px 0;
 }
