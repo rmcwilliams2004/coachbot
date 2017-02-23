@@ -48,6 +48,7 @@
     `(def ~b (delay (~tfn (env ~@env-args))))))
 
 (defenv db-type "DB_TYPE" :default "h2")
+(defenv db-class "DB_CLASS" :default "org.h2.Driver")
 (defenv db-url "DB_URL" :default "jdbc:h2:./cbdb")
 (defenv db-user "DB_USER" :default "coachbot")
 (defenv db-pass "DB_PASS" :default "coachbot")

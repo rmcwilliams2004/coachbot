@@ -8,3 +8,5 @@
 .flooignore
 /.nrepl-port
 cbdb.mv.db
+/pom.xml
+/cbdb.trace.db

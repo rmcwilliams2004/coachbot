@@ -29,7 +29,6 @@
             [compojure.route :as r]
             [org.httpkit.server :as srv]
             [ring.util.http-response :refer :all]
-            [schema.core :as s]
             [taoensso.timbre :as log])
   (:gen-class)
   (:import (java.io PipedInputStream PipedOutputStream)

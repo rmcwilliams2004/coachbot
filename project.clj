@@ -39,6 +39,7 @@
                  [listora/again "0.1.0"]
                  [metosin/compojure-api "1.1.10"]
                  [mysql/mysql-connector-java "6.0.5"]
+                 [org.activiti/activiti-engine "5.22.0"]
                  [org.clojars.scstarkey/honeysql "0.8.2"]
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/data.codec "0.1.0"]
@@ -48,6 +49,7 @@
                  [semantic-csv "0.1.0"]
                  [slingshot "0.12.2"]]
   :ring {:handler coachbot.handler/app}
+  :aot :all
   :uberjar-name "server.jar"
   :java-source-paths ["java-src"]
   :test-paths ["spec"]

@@ -132,6 +132,7 @@
       (jdbc/update! conn :slack_coaching_users
                     {:active 0}
                     ["email = ? AND team_id = ?" email team-id]))))
+;;---- Slack-y stuff
 
 (defn replace-base-questions-with-groups!
   "Used to replace the default base questions for testing. Give it a
@@ -456,6 +457,8 @@
                     [:= :question_group_id group-id]])
           (hu/execute-safely! conn)))))
 
+;; -- Begin Channel Slack-y stuff
+
 (def slack-coaching-channels [:slack_coaching_channels :scc])
 
 (defn- where-is-channel [hq team-id channel]
@@ -485,6 +488,8 @@
       (if existing-record
         (update-channel! conn team-id channel true channel-name)
         (do (jdbc/insert! conn :slack_coaching_channels new-record) true)))))
+
+;; -- End Channel Slack-y stuff
 
 (defn stop-coaching-channel! [ds slack-team-id channel]
   (jdbc/with-db-transaction [conn ds]
