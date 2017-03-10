@@ -95,6 +95,9 @@
 (sch/defsfn schedule-channel-coaching! "Channel Coaching" "0 * * ? * *"
             ccp/send-results-for-all-channel-questions!)
 
+(sch/defsfn schedule-delayed-messages! "Delayed Messages" "0 * * ? * *"
+            ccp/deliver-delayed-messages!)
+
 (defn -main
   "Main function. Invoked to run the application using httpkit."
   []
@@ -109,6 +112,7 @@
     (log/info "Starting scheduled jobs")
     (schedule-individual-coaching! scheduler)
     (schedule-channel-coaching! scheduler)
+    (schedule-delayed-messages! scheduler)
 
     (log/infof "Getting ready to listen on port %d" port)
     (srv/run-server app {:port port})))
