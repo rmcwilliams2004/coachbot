@@ -27,7 +27,8 @@
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log])
+            [taoensso.timbre :as log]
+            [clj-time.format :as tf])
   (:import (clojure.lang ExceptionInfo)))
 
 (log/set-level! :error)
@@ -91,6 +92,9 @@
 (def fourthq-expected (expected fourth-question))
 (def fifthq-expected (expected fifth-question))
 
+(def much-later-date "2016-02-28T10:10:00-06:00")
+(def coaching-message "Some coaching message")
+
 (def cmsg (partial uc channel-id))
 
 (defn send-channel-question-results! [latest-messages]
@@ -144,6 +148,13 @@
               (do (events/handle-raw-event (button-pressed 1 user1-id 3))
                   (events/handle-raw-event (button-pressed 2 user1-id 3))
                   (~latest-messages)))))
+
+(defmacro check-message-delivery [latest-messages should-stmt & expected-messages]
+  `(it ~should-stmt
+     (should= [~@expected-messages]
+              (do
+                (deliver-delayed-messages!)
+                (~latest-messages)))))
 
 (defn stats-response [channel question-text avg smax smin scount]
   {:msg (format "%s: Results from question: *%s*" channel question-text)
@@ -277,10 +288,22 @@
           (should-throw ExceptionInfo "Message seems corrupt or manipulated."
             (decrypt-id (encrypt-id "wrong" 2))))
 
-        (now-context "much later" "2016-02-28T10:10:00-06:00"
+        (now-context "much later" much-later-date
           (it "should not decrypt a question ID that has expired"
             (should-throw ExceptionInfo "Token is expired (1452528600)"
               (decrypt-id @url-id))))))
     (it "should not decrypt gibberish"
       (should-throw ExceptionInfo "Message seems corrupt or manipulated."
-        (decrypt-id "gibberish")))))
+        (decrypt-id "gibberish"))))
+
+  (describe "Delayed messages"
+    (before-all (schedule-message! team-id channel-id coaching-message
+                                   (parse-time much-later-date)))
+
+    (check-message-delivery latest-messages "should deliver a message a specific time")
+
+    (now-context "time to deliver" much-later-date
+      (check-message-delivery latest-messages "should deliver a message a specific time"
+                              (uc channel-id coaching-message))
+
+      (check-message-delivery latest-messages "should deliver a message only once"))))

@@ -400,8 +400,8 @@
   [ds]
   (jdbc/with-db-transaction [conn ds]
     (jdbc/execute! conn
-      ["update slack_coaching_users set last_question_date = ?"
-       (t/minus (env/now) (t/hours 16))])))
+                   ["update slack_coaching_users set last_question_date = ?"
+                    (t/minus (env/now) (t/hours 16))])))
 
 (defn list-coaching-users-across-all-teams [ds]
   (let [users
@@ -442,19 +442,19 @@
 (defn add-to-question-group! [ds remote-user-id group]
   (jdbc/with-db-transaction [conn ds]
     (with-question-group-context conn remote-user-id group [group-id user-id]
-      (-> (h/insert-into :scu_question_groups)
-          (h/values [{:scu_id user-id
-                      :question_group_id group-id}])
-          (hu/execute-safely! conn)))))
+                                 (-> (h/insert-into :scu_question_groups)
+                                     (h/values [{:scu_id user-id
+                                                 :question_group_id group-id}])
+                                     (hu/execute-safely! conn)))))
 
 (defn remove-from-question-group! [ds remote-user-id group]
   (jdbc/with-db-transaction [conn ds]
     (with-question-group-context conn remote-user-id group [group-id user-id]
-      (-> (h/delete-from :scu_question_groups)
-          (h/where [:and
-                    [:= :scu_id user-id]
-                    [:= :question_group_id group-id]])
-          (hu/execute-safely! conn)))))
+                                 (-> (h/delete-from :scu_question_groups)
+                                     (h/where [:and
+                                               [:= :scu_id user-id]
+                                               [:= :question_group_id group-id]])
+                                     (hu/execute-safely! conn)))))
 
 (def slack-coaching-channels [:slack_coaching_channels :scc])
 
@@ -660,4 +660,38 @@
   (-> (h/update :channel-questions-asked)
       (h/sset {:delivered true})
       (h/where [:= :id question-id])
+      (hu/execute-safely! conn)))
+
+(defn add-delayed-message! [ds slack-team-id channel message delivery-timestamp]
+  (jdbc/with-db-transaction [conn ds]
+    (let [team-id (get-team-id conn slack-team-id)
+          cid (:id (load-channel conn team-id channel :id))]
+      (-> (h/insert-into :queued_messages)
+          (h/values [{:team_id team-id
+                      :channel_id cid
+                      :raw_msg message
+                      :delivery_date delivery-timestamp}])
+          (hu/execute-safely! conn))
+      (db/fetch-last-insert-id conn))))
+
+(defn list-delayed-messages [ds]
+  (as-> (h/select :scc.channel_id
+                  :st.team_id
+                  :qm.raw_msg
+                  [:qm.id :message_id]) x
+        (h/from x [:queued_messages :qm])
+        (h/join x [:slack_coaching_channels :scc]
+                [:= :scc.id :qm.channel_id]
+                [:slack_teams :st]
+                [:= :st.id :qm.team_id])
+        (h/where x [:and
+                    [:<= :qm.delivery_date (env/now)]
+                    [:= :qm.delivered false]])
+        (h/order-by x :qm.id)
+        (hu/query x ds)))
+
+(defn message-delivered! [conn message-id]
+  (-> (h/update :queued_messages)
+      (h/sset {:delivered true})
+      (h/where [:= :id message-id])
       (hu/execute-safely! conn)))
