@@ -38,7 +38,7 @@
                  [joda-time "2.9.7"]
                  [listora/again "0.1.0"]
                  [metosin/compojure-api "1.1.10"]
-                 [mysql/mysql-connector-java "6.0.5"]
+                 [mysql/mysql-connector-java "6.0.6"]
                  [org.clojars.scstarkey/honeysql "0.8.2"]
                  [org.clojure/clojure "1.8.0"]
                  [org.clojure/data.codec "0.1.0"]
