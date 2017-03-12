@@ -212,19 +212,21 @@
                     (ich/box-plot :answer :y-label "") out-stream))))
 
 (defn- send-message-to-channel! [conn {:keys [channel_id team_id raw_msg message_id]}]
-  (storage/with-access-tokens conn team_id
-    [access-token bot-access-token]
-    (storage/message-delivered! conn message_id)
-    (slack/send-message! bot-access-token channel_id raw_msg)))
+  (try
+    (jdbc/with-db-transaction [conn (db/datasource)]
+      (storage/with-access-tokens conn team_id
+        [access-token bot-access-token]
+        (storage/message-delivered! conn message_id)
+        (slack/send-message! bot-access-token channel_id raw_msg)))
+    (catch Throwable t
+      (log/errorf t "Could not deliver '%s' (%d) to channel '%s' of team '%s''"
+                  raw_msg message_id channel_id team_id))))
 
 (defn schedule-message! [slack-team-id channel message datetime-to-send]
   (storage/add-delayed-message! (db/datasource) slack-team-id channel message datetime-to-send))
 
 (defn deliver-delayed-messages! []
-  (try
-    (jdbc/with-db-transaction [conn (db/datasource)]
-      (doall (->> (storage/list-delayed-messages conn)
-                  (map #(update-in % [:raw_msg] db/extract-character-data))
-                  (map (partial send-message-to-channel! conn)))))
-    (catch Throwable t
-      (log/errorf t "Could not deliver messages'"))))
+  (let [ds (db/datasource)]
+    (doall (->> (storage/list-delayed-messages ds)
+                (map #(update-in % [:raw_msg] db/extract-character-data))
+                (map (partial send-message-to-channel! ds))))))
