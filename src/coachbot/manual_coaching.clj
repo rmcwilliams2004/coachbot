@@ -19,6 +19,7 @@
 
 (ns coachbot.manual-coaching
   (:require [clj-time.core :as t]
+            [clj-time.format :as tf]
             [clojure.java.jdbc :as jdbc]
             [clojure.pprint :as pprint]
             [coachbot.channel-coaching-process :as ccp]
@@ -342,6 +343,13 @@
   (ccp/send-channel-question!
     "T04SG55UA" "C3F03UHS6" "Highly Inaccurate" "Highly Accurate" 5 false
     "I feel excited about supporting the Courage Labs purpose" (t/days 1))
+
+  (ccp/schedule-message! "T04SG55UA" "C3F03UHS6"
+                         "Hey <!here|here> don't forget to answer the question!"
+                         (t/plus (t/now) (t/minutes 1)))
+
+  (pprint/print-table (-> (h/select :*) (h/from :queued_messages)
+                          (hu/query (db/datasource))))
 
   ;; ----------------------  Stats and Data   ---------------------------
 
