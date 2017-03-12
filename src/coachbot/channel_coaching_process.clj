@@ -211,7 +211,8 @@
                   (ic/save
                     (ich/box-plot :answer :y-label "") out-stream))))
 
-(defn- send-message-to-channel! [conn {:keys [channel_id team_id raw_msg message_id]}]
+(defn- send-message-to-channel!
+  [conn {:keys [channel_id team_id raw_msg message_id]}]
   (try
     (jdbc/with-db-transaction [conn (db/datasource)]
       (storage/with-access-tokens conn team_id
@@ -223,7 +224,8 @@
                   raw_msg message_id channel_id team_id))))
 
 (defn schedule-message! [slack-team-id channel message datetime-to-send]
-  (storage/add-delayed-message! (db/datasource) slack-team-id channel message datetime-to-send))
+  (storage/add-delayed-message! (db/datasource)
+                                slack-team-id channel message datetime-to-send))
 
 (defn deliver-delayed-messages! []
   (let [ds (db/datasource)]

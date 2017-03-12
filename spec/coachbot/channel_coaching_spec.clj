@@ -19,6 +19,7 @@
 
 (ns coachbot.channel-coaching-spec
   (:require [clj-time.core :as t]
+            [clj-time.format :as tf]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -27,8 +28,7 @@
             [coachbot.mocking :refer :all]
             [coachbot.storage :as storage]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log]
-            [clj-time.format :as tf])
+            [taoensso.timbre :as log])
   (:import (clojure.lang ExceptionInfo)))
 
 (log/set-level! :error)
@@ -149,7 +149,8 @@
                   (events/handle-raw-event (button-pressed 2 user1-id 3))
                   (~latest-messages)))))
 
-(defmacro check-message-delivery [latest-messages should-stmt & expected-messages]
+(defmacro check-message-delivery [latest-messages should-stmt
+                                  & expected-messages]
   `(it ~should-stmt
      (should= [~@expected-messages]
               (do
@@ -300,10 +301,13 @@
     (before-all (schedule-message! team-id channel-id coaching-message
                                    (parse-time much-later-date)))
 
-    (check-message-delivery latest-messages "should deliver a message a specific time")
+    (check-message-delivery latest-messages
+                            "should not deliver a message unless it's time")
 
     (now-context "time to deliver" much-later-date
-      (check-message-delivery latest-messages "should deliver a message a specific time"
+      (check-message-delivery latest-messages
+                              "should deliver a message a specific time"
                               (uc channel-id coaching-message))
 
-      (check-message-delivery latest-messages "should deliver a message only once"))))
+      (check-message-delivery latest-messages
+                              "should deliver a message only once"))))
