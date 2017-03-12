@@ -99,8 +99,11 @@
                  :bot-access-token bot-access-token
                  :bot-user-id bot-user-id})
 
+(defn parse-time [when]
+  (tf/parse (tf/formatters :date-time-no-ms) when))
+
 (defn now-fn [when]
-  (fn [] (tf/parse (tf/formatters :date-time-no-ms) when)))
+  (partial parse-time when))
 
 (defmacro with-now [when & body]
   `(with-redefs [env/now (now-fn ~when)] ~@body))

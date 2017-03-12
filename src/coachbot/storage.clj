@@ -661,3 +661,34 @@
       (h/sset {:delivered true})
       (h/where [:= :id question-id])
       (hu/execute-safely! conn)))
+
+(defn add-delayed-message! [ds slack-team-id channel message delivery-timestamp]
+  (jdbc/with-db-transaction [conn ds]
+    (let [team-id (get-team-id conn slack-team-id)
+          cid (:id (load-channel conn team-id channel :id))]
+      (-> (h/insert-into :queued_messages)
+          (h/values [{:team_id team-id
+                      :channel_id cid
+                      :raw_msg message
+                      :delivery_date delivery-timestamp}])
+          (hu/execute-safely! conn))
+      (db/fetch-last-insert-id conn))))
+
+(defn list-delayed-messages [ds]
+  (-> (h/select :scc.channel_id :st.team_id :qm.raw_msg [:qm.id :message_id])
+      (h/from [:queued_messages :qm])
+      (h/join [:slack_coaching_channels :scc]
+              [:= :scc.id :qm.channel_id]
+              [:slack_teams :st]
+              [:= :st.id :qm.team_id])
+      (h/where [:and
+                [:<= :qm.delivery_date (env/now)]
+                [:= :qm.delivered false]])
+      (h/order-by :qm.id)
+      (hu/query ds)))
+
+(defn message-delivered! [conn message-id]
+  (-> (h/update :queued_messages)
+      (h/sset {:delivered true})
+      (h/where [:= :id message-id])
+      (hu/execute-safely! conn)))
