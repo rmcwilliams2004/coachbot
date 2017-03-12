@@ -27,7 +27,7 @@
                  [clojurewerkz/quartzite "2.0.0" :exclusions [clj-time]]
                  [com.fzakaria/slf4j-timbre "0.3.4"]
                  [com.h2database/h2 "1.4.193"]
-                 [com.zaxxer/HikariCP "2.6.0"]
+                 [com.zaxxer/HikariCP "2.6.1"]
                  [com.taoensso/timbre "4.8.0"]
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
