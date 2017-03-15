@@ -3,17 +3,17 @@
              add-group | remove-group | friendly | show-questions
 help = <"help">
 hi = <"hi"> | <"hello"> | <"hola"> | <"howdy"> | <"yo"> | <"whatsup">
-start-coaching = <#"start( coaching)?">,
+start-coaching = <#"(?i)start( coaching)?">,
 { ws, <"at">, ws, #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)" }
-stop-coaching = <"stop coaching">
+stop-coaching = <#"(?i)stop( coaching)?">
 next-question = (<"next question"> | <"another question">)
 tell-coach = <"tell coach">, ws, text
 show-groups = <#"(show )?(question )?group(s)?">
-add-group = <#"add (to )?(question )?group(s)?">, ws, text
-remove-group = <#"remove (from )?(question )?group(s)?">, ws, text
-friendly = <#"thank(s)?( you)?( coachbot)?"> | <"cheers">
-show-questions = <#"show ((me )?(the )?)?last">, mws, #"(\d+)?", mws,
-#"((week|day))?", <#"(s(')?)?">, mws, <#"((of )?question(s)?)?">
+add-group = <#"(?i)add (to )?(question )?group(s)?">, ws, text
+remove-group = <#"(?i)remove (from )?(question )?group(s)?">, ws, text
+friendly = <#"(?i)thank(s)?( you)?( coachbot)?"> | <"cheers">
+show-questions = <#"(?i)show ((me )?(the )?)?last">, mws, #"(\d+)?", mws,
+#"(?i)((week|day))?", <#"(s(')?)?">, mws, <#"(?i)((of )?question(s)?)?">
 <mws> = <#"\s*">
 <ws> = <#'\s+'>
 <text> = #"[^\"]*"

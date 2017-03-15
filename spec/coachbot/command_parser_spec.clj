@@ -66,12 +66,14 @@
     "question groups" "show question group" "show question groups")
 
   (it-parses-variants "start coaching" [:start-coaching]
-    "start coaching"
-    "start")
+    "start coaching" "start" "Start coaching" "START COACHING")
 
   (it-parses-variants "start coaching at" [:start-coaching "6am"]
     "start coaching at 6am"
     "start at 6am")
+
+  (it-parses-variants "stop coaching" [:stop-coaching]
+    "stop coaching" "stop" "Stop coaching" "STOP COACHING")
 
   (it-parses-variants "add group" [:add-group "bill"]
     "add group bill"
@@ -80,7 +82,8 @@
     "add to groups bill"
     "add to question groups bill"
     "add question group bill"
-    "add question groups bill")
+    "add question groups bill"
+    "ADD GROUP bill")
 
   (it-parses-variants "remove group" [:remove-group "bill"]
     "remove group bill"
@@ -89,7 +92,11 @@
     "remove from groups bill"
     "remove from question groups bill"
     "remove question group bill"
-    "remove question groups bill")
+    "remove question groups bill"
+    "ReMoVe Group bill")
+
+  (it-parses-variants "remove group" [:remove-group "Bill"]
+    "remove group Bill" "RemoVe group Bill")
 
   (context "show questions"
     (it-parses-variants "last 1" [:show-questions]
@@ -119,14 +126,14 @@
 
     (it-parses-variants "days" [:show-questions "10" "day"]
       "show me last 10 day"
-      "show me the last 10 day"
+      "show me ThE last 10 day"
       "show the last 10 day"
-      "show last 10 day"
+      "show LAST 10 day"
       "show last 10 days"
       "show last 10 days'"
-      "show last 10 days' question"
+      "show last 10 days' Question"
       "show last 10 days questions"
-      "show last 10 days of questions"
+      "show last 10 days OF questions"
       "show last 10 days' questions"))
 
   (it "should throw nice exceptions for bad commands"
