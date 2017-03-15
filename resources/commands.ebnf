@@ -6,7 +6,7 @@ hi = <"hi"> | <"hello"> | <"hola"> | <"howdy"> | <"yo"> | <"whatsup">
 start-coaching = <#"(?i)start( coaching)?">,
 { ws, <"at">, ws, #"(?i)(\d|1[0-2])( )?(a\.?m\.?|p\.?m\.?)" }
 stop-coaching = <#"(?i)stop( coaching)?">
-next-question = (<"next question"> | <"another question">)
+next-question = <#"(?i)(next|another)( question)?">
 tell-coach = <"tell coach">, ws, text
 show-groups = <#"(show )?(question )?group(s)?">
 add-group = <#"(?i)add (to )?(question )?group(s)?">, ws, text

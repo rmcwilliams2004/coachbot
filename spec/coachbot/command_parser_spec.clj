@@ -75,6 +75,10 @@
   (it-parses-variants "stop coaching" [:stop-coaching]
     "stop coaching" "stop" "Stop coaching" "STOP COACHING")
 
+  (it-parses-variants "next question" [:next-question]
+    "another question" "next question" "next" "another"
+    "Another Question" "NEXT" "AnOthER")
+
   (it-parses-variants "add group" [:add-group "bill"]
     "add group bill"
     "add to group bill"
@@ -138,8 +142,8 @@
 
   (it "should throw nice exceptions for bad commands"
     (should-throw Exception
-                  #":type :coachbot.command-parser/parse-failure"
-                  (parse-command "die scum")))
+      #":type :coachbot.command-parser/parse-failure"
+      (parse-command "die scum")))
 
   (context "start coaching"
     (single-arg-successes "good" start-coaching-pattern :start-coaching
