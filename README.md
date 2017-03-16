@@ -2,8 +2,7 @@
 
 Instant customizable motivation.
 
-[![Build Status](https://travis-ci.org/couragelabs/coachbot.svg?branch=master)]
-(https://travis-ci.org/couragelabs/coachbot)
+[![Build Status](https://travis-ci.org/couragelabs/coachbot.svg?branch=master)](https://travis-ci.org/couragelabs/coachbot)
 
 ## Usage
 
