@@ -35,7 +35,7 @@
                   ;; pulls in an incompatible bouncycastle
                   :exclusions [incanter/incanter-pdf]]
                  [instaparse "1.4.5"]
-                 [joda-time "2.9.7"]
+                 [joda-time "2.9.9"]
                  [listora/again "0.1.0"]
                  [metosin/compojure-api "1.1.10"]
                  [mysql/mysql-connector-java "6.0.6"]

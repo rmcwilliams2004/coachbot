@@ -89,14 +89,17 @@
         (ok (get-channel-chart-stream id)))
       (r/resources "/"))))
 
-(sch/defsfn schedule-individual-coaching! "Individual Coaching" "0 * * ? * *"
-            coaching/send-next-question-to-everyone-everywhere!)
+(sch/every-minute schedule-individual-coaching! "Individual Coaching"
+                  coaching/send-next-question-to-everyone-everywhere!)
 
-(sch/defsfn schedule-channel-coaching! "Channel Coaching" "0 * * ? * *"
-            ccp/send-results-for-all-channel-questions!)
+(sch/every-minute schedule-custom-questions! "Scheduled Custom Questions"
+                  coaching/deliver-scheduled-custom-questions!)
 
-(sch/defsfn schedule-delayed-messages! "Delayed Messages" "0 * * ? * *"
-            ccp/deliver-delayed-messages!)
+(sch/every-minute schedule-channel-coaching! "Channel Coaching"
+                  ccp/send-results-for-all-channel-questions!)
+
+(sch/every-minute schedule-delayed-messages! "Delayed Messages"
+                  ccp/deliver-delayed-messages!)
 
 (defn -main
   "Main function. Invoked to run the application using httpkit."
@@ -111,6 +114,7 @@
 
     (log/info "Starting scheduled jobs")
     (schedule-individual-coaching! scheduler)
+    (schedule-custom-questions! scheduler)
     (schedule-channel-coaching! scheduler)
     (schedule-delayed-messages! scheduler)
 

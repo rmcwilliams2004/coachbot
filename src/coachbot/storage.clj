@@ -322,6 +322,35 @@
       (jdbc/insert! conn :custom_questions {:slack_user_id user-id
                                             :question question}))))
 
+(defn add-scheduled-custom-question! [ds {remote-user-id :id} schedule question]
+  (jdbc/with-db-transaction [conn ds]
+    (let [user-id (get-user-id conn remote-user-id)]
+      (jdbc/insert! conn :scheduled_custom_questions
+                    {:slack_user_id user-id
+                     :schedule schedule
+                     :question question
+                     :last_sent_date (env/now)}))))
+
+(defn- convert-scheduled-question [question]
+  (when question (cske/transform-keys csk/->kebab-case question)))
+
+(defn list-scheduled-custom-questions [ds]
+  (let [questions
+        (-> (h/select :scq.id :scq.schedule :scq.question :scq.last_sent_date
+                      :st.team_id :scu.remote_user_id :scu.timezone)
+            (h/from [:scheduled_custom_questions :scq])
+            (h/join [:slack_coaching_users :scu]
+                    [:= :scu.id :scq.slack_user_id]
+                    [:slack_teams :st]
+                    [:= :st.id :scu.team_id])
+            (h/where [:= :scq.active 1])
+            (hu/query ds))]
+    (map convert-scheduled-question questions)))
+
+(defn stamp-scheduled-custom-question-sent! [conn id]
+  (jdbc/update! conn :scheduled_custom_questions {:last_sent_date (env/now)}
+                ["id = ?" id]))
+
 (defn- find-next-base-question [ds qid group-ids]
   (-> (base-question-query :> qid group-ids)
       (hu/query ds)

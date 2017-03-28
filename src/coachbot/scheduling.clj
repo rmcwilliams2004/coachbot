@@ -26,14 +26,16 @@
   (:import (java.util UUID)
            (coachbot.scheduling NonConcurrentJob)))
 
+(def ^:private schedule "0 * * ? * *")
+
 (defmacro defjob
   [jtype args & body]
   `(defrecord ~jtype [] NonConcurrentJob
      (execute [this ~@args] ~@body)))
 
-(defmacro defsfn
+(defmacro every-minute
   "Define a function that runs a function on a schedule when executed"
-  [fname job-name schedule f]
+  [fname job-name f]
   (let [fname-str (str (UUID/randomUUID))
         unable-to-execute (format "Unable to execute job '%s'" fname-str)
         job-key (str "jobs." fname-str)

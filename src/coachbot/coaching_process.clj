@@ -38,11 +38,19 @@
       (slack/send-message! bot-access-token channel
                            messages/coaching-goodbye))))
 
-(defn register-custom-question! [team-id user-id question]
+(defn register-custom-question!
+  ([ds team-id user-id question]
+   (storage/with-access-tokens ds team-id [access-token _]
+     (storage/add-custom-question!
+       ds (slack/get-user-info access-token user-id) question)))
+  ([team-id user-id question]
+   (register-custom-question! (db/datasource) team-id user-id question)))
+
+(defn schedule-custom-question! [team-id user-id schedule question]
   (let [ds (db/datasource)]
     (storage/with-access-tokens ds team-id [access-token _]
-      (storage/add-custom-question!
-        ds (slack/get-user-info access-token user-id) question))))
+      (storage/add-scheduled-custom-question!
+        ds (slack/get-user-info access-token user-id) schedule question))))
 
 (defmacro with-sending-constructs [{:keys [team-id user-id channel]}
                                    bindings & body]
@@ -166,6 +174,22 @@
        (send-new-question!
          (ensure-user! ds access-token team_id user-id) channel)))))
 
+(defn send-custom-question-if-conditions-are-right!
+  [{:keys [id team-id remote-user-id timezone schedule last-sent-date
+           question]}]
+
+  (let [next-date (cp/next-date last-sent-date schedule timezone)
+        now (env/now)
+        should-send-question? (or (t/equal? now next-date)
+                                  (t/after? now next-date))]
+
+    (when should-send-question?
+      (let [ds (db/datasource)]
+        (jdbc/with-db-transaction [conn ds]
+          (register-custom-question! conn team-id remote-user-id question)
+          (storage/stamp-scheduled-custom-question-sent! conn id))
+        (next-question! team-id remote-user-id remote-user-id)))))
+
 (defn- question-group-display [ds user-id]
   (let [user-groups (storage/list-groups-for-user ds user-id)]
     (str "You are in: "
@@ -212,6 +236,11 @@
   (let [ds (db/datasource)
         users (storage/list-coaching-users-across-all-teams ds)]
     (doall (map send-question-if-conditions-are-right! users))))
+
+(defn deliver-scheduled-custom-questions! []
+  (let [ds (db/datasource)
+        questions (storage/list-scheduled-custom-questions ds)]
+    (doall (map send-custom-question-if-conditions-are-right! questions))))
 
 (defn is-bot-user? [ds team-id slack-user-id]
   (or (= "USLACKBOT" slack-user-id)

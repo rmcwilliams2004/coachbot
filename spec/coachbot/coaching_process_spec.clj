@@ -31,12 +31,16 @@
 
 (def you-like-fun? "you like fun?")
 (def not-liked "you won't like this question")
+(def dont-answer "THIS SHOULDN'T BE ANSWERED!")
 (def how-much? "how much?")
+(def how-many-toes? "How many toes do you have?")
 
 (def qmsg (comp u1c (partial q-with-md "Custom Question")))
 (def u1-not-liked (qmsg not-liked))
 (def u1-you-like-fun? (qmsg you-like-fun?))
+(def u1-dont-answer (qmsg dont-answer))
 (def u1-how-much? (qmsg how-much?))
+(def u1-how-many-toes? (qmsg how-many-toes?))
 
 (defmacro should-show-for-user1 [latest-messages show-stmt & expected]
   `(should= [(uc user1-id "Here you go: \n" (str/join "\n" [~@expected]))]
@@ -60,6 +64,8 @@
       (next-question! team-id user1-id user1-id)
       (submit-text! team-id user1-email "qanswer1")
       (submit-text! team-id user1-email "qanswer2")
+      (register-custom-question! team-id user1-id dont-answer)
+      (next-question! team-id user1-id user1-id)
       (register-custom-question! team-id user1-id how-much?)
       (next-question! team-id user1-id user1-id)
       (submit-text! team-id user1-email "qanswer3")
@@ -73,6 +79,7 @@
                 u1-you-like-fun?
                 u1-thanks-for-answer
                 u1-thanks-for-answer
+                u1-dont-answer
                 u1-how-much?
                 u1-thanks-for-answer
                 (u1c second-question)
@@ -94,21 +101,41 @@
         (should-show-for-user1 latest-messages "show last 3 questions"
           second-question
           how-much?
-          you-like-fun?)
+          dont-answer)
 
         (should-show-for-user1 latest-messages "show last day"
           second-question
           how-much?
+          dont-answer
           you-like-fun?
           not-liked)
 
         (should-show-for-user1 latest-messages "show last 2 weeks"
           second-question
           how-much?
+          dont-answer
           you-like-fun?
           not-liked
           first-question)
 
         (should= [(u2c "Sadly, I haven't asked you any questions yet!")]
                  (do (handle-event team-id user2-id "show last 2 weeks")
-                     (latest-messages)))))))
+                     (latest-messages))))))
+
+  (context "scheduled"
+    (before-all
+      (with-now "2015-12-19T09:10:00-06:00"
+        (schedule-custom-question! team-id user1-id "0 0 11 * * *"
+                                   how-many-toes?))
+      (with-now "2015-12-19T10:10:00-06:00"
+        (deliver-scheduled-custom-questions!))
+      (with-now "2015-12-19T11:05:00-06:00"
+        (deliver-scheduled-custom-questions!))
+      (with-now "2015-12-20T11:05:00-06:00"
+        (deliver-scheduled-custom-questions!))
+      (with-now "2015-12-20T12:05:00-06:00"
+        (deliver-scheduled-custom-questions!)))
+
+    (it "should ask the right number of question questions"
+      (should= [u1-how-many-toes? u1-how-many-toes?]
+               (latest-messages)))))
