@@ -89,11 +89,12 @@
         (ok (get-channel-chart-stream id)))
       (r/resources "/"))))
 
-(sch/every-minute schedule-individual-coaching! "Individual Coaching"
-                  coaching/send-next-question-to-everyone-everywhere!)
+(defn do-individual-coaching! []
+  (coaching/send-next-question-to-everyone-everywhere!)
+  (coaching/deliver-scheduled-custom-questions!))
 
-(sch/every-minute schedule-custom-questions! "Scheduled Custom Questions"
-                  coaching/deliver-scheduled-custom-questions!)
+(sch/every-minute schedule-individual-coaching! "Individual Coaching"
+                  do-individual-coaching!)
 
 (sch/every-minute schedule-channel-coaching! "Channel Coaching"
                   ccp/send-results-for-all-channel-questions!)
@@ -114,7 +115,6 @@
 
     (log/info "Starting scheduled jobs")
     (schedule-individual-coaching! scheduler)
-    (schedule-custom-questions! scheduler)
     (schedule-channel-coaching! scheduler)
     (schedule-delayed-messages! scheduler)
 
