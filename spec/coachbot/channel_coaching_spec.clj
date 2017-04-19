@@ -92,7 +92,7 @@
 (def fourthq-expected (expected fourth-question))
 (def fifthq-expected (expected fifth-question))
 
-(def much-later-date "2016-02-28T10:10:00-06:00")
+(def much-later-date "2016-08-28T10:10:00-06:00")
 (def coaching-message "Some coaching message")
 
 (def cmsg (partial uc channel-id))
@@ -291,7 +291,7 @@
 
         (now-context "much later" much-later-date
           (it "should not decrypt a question ID that has expired"
-            (should-throw ExceptionInfo "Token is expired (1452528600)"
+            (should-throw ExceptionInfo "Token is expired (1467648600)"
               (decrypt-id @url-id))))))
     (it "should not decrypt gibberish"
       (should-throw ExceptionInfo "Message seems corrupt or manipulated."
