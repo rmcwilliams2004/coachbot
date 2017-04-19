@@ -154,7 +154,7 @@
   ([question-id]
    (encrypt-id @env/jwt-encryption-key question-id))
   ([encryption-key question-id]
-   (jwt/encrypt {:exp (t/plus (env/now) (t/weeks 1))
+   (jwt/encrypt {:exp (t/plus (env/now) (t/months 6))
                  :id question-id} (jwth/sha256 encryption-key))))
 
 (defn decrypt-id [v]

@@ -19,16 +19,16 @@
 
 (defproject coachbot "0.1.0-SNAPSHOT"
   :description "Simple, elegant, automatic motivation"
-  :dependencies [[buddy/buddy-sign "1.4.0"]
+  :dependencies [[buddy/buddy-sign "1.5.0"]
                  [camel-snake-kebab "0.4.0"]
                  [clj-cron-parse "0.1.4"]
-                 [clj-http "3.4.1"]
+                 [clj-http "3.5.0"]
                  [clj-time "0.13.0"]
                  [clojurewerkz/quartzite "2.0.0" :exclusions [clj-time]]
-                 [com.fzakaria/slf4j-timbre "0.3.4"]
+                 [com.fzakaria/slf4j-timbre "0.3.5"]
                  [com.h2database/h2 "1.4.194"]
                  [com.zaxxer/HikariCP "2.6.1"]
-                 [com.taoensso/timbre "4.8.0"]
+                 [com.taoensso/timbre "4.10.0"]
                  [frankiesardo/linked "1.2.9"]
                  [http-kit "2.2.0"]
                  [incanter "1.5.7" :upgrade false
