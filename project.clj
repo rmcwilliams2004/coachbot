@@ -26,7 +26,7 @@
                  [clj-time "0.13.0"]
                  [clojurewerkz/quartzite "2.0.0" :exclusions [clj-time]]
                  [com.fzakaria/slf4j-timbre "0.3.5"]
-                 [com.h2database/h2 "1.4.194"]
+                 [com.h2database/h2 "1.4.195"]
                  [com.zaxxer/HikariCP "2.6.1"]
                  [com.taoensso/timbre "4.10.0"]
                  [frankiesardo/linked "1.2.9"]
@@ -44,7 +44,7 @@
                  [org.clojure/data.codec "0.1.0"]
                  [org.clojure/data.json "0.2.6"]
                  [org.clojure/java.jdbc "0.6.1"]
-                 [org.flywaydb/flyway-core "4.1.2"]
+                 [org.flywaydb/flyway-core "4.2.0"]
                  [semantic-csv "0.2.0"]
                  [slingshot "0.12.2"]]
   :ring {:handler coachbot.handler/app}
@@ -53,12 +53,12 @@
   :test-paths ["spec"]
   :min-lein-version "2.0.0"
   :profiles {:dev {:dependencies [[javax.servlet/javax.servlet-api "3.1.0"]
-                                  [cheshire "5.7.0"]
+                                  [cheshire "5.7.1"]
                                   [ring/ring-mock "0.3.0"]
                                   [speclj "3.3.2"]]
                    :plugins [[lein-ancient "0.6.10"]
                              [lein-bikeshed "0.4.1"]
-                             [lein-kibit "0.1.3"]
+                             [lein-kibit "0.1.5"]
                              [ikitommi/lein-ring "0.9.8-FIX"]
                              [speclj "3.3.2"]]}
              :uberjar {:aot :all
