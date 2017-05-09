@@ -169,14 +169,15 @@
 
 (def not-enough-response
   (partial format
-           (str "%s: Question *%s* only had *%d* response(s). "
+           (str "%s: Question *%s* only had *%d* response%s. "
                 "We don't display results unless we get at least *%d* "
                 "because we care about your privacy.")))
 
 (def stats-response2-3
   (stats-response channel-id second-question 3.0 4 2 3))
+
 (def not-enough-response1-1
-  (not-enough-response channel-id first-question 1 3))
+  (not-enough-response channel-id first-question 1 "" 3))
 
 (describe-mocked "Channel coaching" [ds latest-messages]
   (describe "Channel joins"

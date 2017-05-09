@@ -144,7 +144,7 @@
                   "From %d people responding"]))
 
 (def ^:private not-enough-results-format
-  (str "Question *%s* only had *%d* response(s). "
+  (str "Question *%s* only had *%d* response%s. "
        "We don't display results unless we get at least *%d* because we "
        "care about your privacy."))
 
@@ -175,7 +175,7 @@
                :description (format channel-results-stats-format
                                     mean result-max result-min result-count)}]]
             [(format not-enough-results-format question result-count
-                     min-results) nil])]
+                     (if (= 1 result-count) "" "s") min-results) nil])]
       (log/infof "Sending results for %s / %s / %s / '%s'"
                  team-id channel-id question-id question)
       (try
