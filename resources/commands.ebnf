@@ -1,6 +1,7 @@
 <document> = help | hi | tell-coach | start-coaching |
              stop-coaching | next-question | show-groups |
-             add-group | remove-group | friendly | show-questions
+             add-group | remove-group | friendly | show-questions |
+             assert
 help = <"help">
 hi = <"hi"> | <"hello"> | <"hola"> | <"howdy"> | <"yo"> | <"whatsup">
 start-coaching = <#"(?i)start( coaching)?">,
@@ -14,6 +15,8 @@ remove-group = <#"(?i)remove (from )?(question )?group(s)?">, ws, text
 friendly = <#"(?i)thank(s)?( you)?( coachbot)?"> | <"cheers">
 show-questions = <#"(?i)show ((me )?(the )?)?last">, mws, #"(\d+)?", mws,
 #"(?i)((week|day))?", <#"(s(')?)?">, mws, <#"(?i)((of )?question(s)?)?">
+assert = <#"(?i)assert (to )?#">, #"\w+", mws, <#"(?i)(that )?">, <"\"">, text,
+<"\"">, mws, <#"(?i)(with)?">, mws, #"(?i)(reversed)?", mws, <#"(?i)(scale)?">
 <mws> = <#"\s*">
 <ws> = <#'\s+'>
 <text> = #"[^\"]*"

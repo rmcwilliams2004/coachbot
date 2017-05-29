@@ -142,8 +142,8 @@
 
   (it "should throw nice exceptions for bad commands"
     (should-throw Exception
-      #":type :coachbot.command-parser/parse-failure"
-      (parse-command "die scum")))
+                  #":type :coachbot.command-parser/parse-failure"
+                  (parse-command "die scum")))
 
   (context "start coaching"
     (single-arg-successes "good" start-coaching-pattern :start-coaching
@@ -151,4 +151,26 @@
                           "10 PM." "10 PM" "10 P.M")
 
     (single-arg-failures "bad" start-coaching-pattern
-                         "13pm" "91am" "47" "111 A.M." "whenever")))
+                         "13pm" "91am" "47" "111 A.M." "whenever"))
+
+  (context "make assertions"
+    (it-parses-variants "simple assertion"
+      [:assert "marketing" "Our marketing department is amazing"]
+      "assert to #marketing that \"Our marketing department is amazing\""
+      "ASSERT to #marketing that \"Our marketing department is amazing\""
+      "Assert To #marketing That \"Our marketing department is amazing\""
+      "assert to #marketing \"Our marketing department is amazing\""
+      "ASSERT #marketing \"Our marketing department is amazing\""
+      "Assert #marketing \"Our marketing department is amazing\"")
+
+    (it-parses-variants "reversed scale lowercase"
+      [:assert "marketing" "Our marketing department is awful" "reversed"]
+      (str "assert to #marketing that \"Our marketing department is awful\""
+           " with reversed scale")
+      "assert #marketing \"Our marketing department is awful\" reversed")
+
+    (it-parses-variants "reversed scale uppercase"
+      [:assert "marketing" "Our marketing department is awful" "REVERSED"]
+      (str "ASSERT TO #marketing that \"Our marketing department is awful\""
+           " WITH REVERSED SCALE")
+      "ASSERT #marketing \"Our marketing department is awful\" REVERSED")))
