@@ -38,8 +38,7 @@
   (insta/parser (str (io/resource "commands.ebnf")) :string-ci true))
 
 (defn- apply-transformation [options idx v]
-  (if-let [transformation (get options idx)]
-    (transformation v) v))
+  ((or (get options idx) identity) v))
 
 (defn parse-command [command]
   (let [result (parse-using-ebnf (str/trim command))]
