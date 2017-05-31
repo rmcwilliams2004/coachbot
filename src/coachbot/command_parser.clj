@@ -44,8 +44,8 @@
   (let [result (parse-using-ebnf (str/trim command))]
     (if (insta/failure? result)
       (throw+ {:type ::parse-failure :result (pr-str result)})
-      (let [[[command-result :as result]] result
-            options (command-transformations command-result)
+      (let [[[result-command :as result]] result
+            options (command-transformations result-command)
 
             transformed-result
             (map-indexed (partial apply-transformation options) result)]
