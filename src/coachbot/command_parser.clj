@@ -24,23 +24,22 @@
             [instaparse.core :as insta])
   (:use [slingshot.slingshot :only [throw+ try+]]))
 
-(def ^:private transformations
-  {:to-keyword (comp keyword str/lower-case)
-   :to-lowercase str/lower-case})
+(defn- not-an-empty-string? [v]
+  (or (not (string? v)) (seq v)))
+
+(defn- to-keyword [v]
+  (if (not-an-empty-string? v) (-> v str/lower-case keyword) v))
 
 (def ^:private command-transformations
-  {:show-questions {2 :to-lowercase}
-   :assert {3 :to-keyword}})
+  {:show-questions {2 str/lower-case}
+   :assert {3 to-keyword}})
 
 (def ^:private parse-using-ebnf
   (insta/parser (str (io/resource "commands.ebnf")) :string-ci true))
 
-(defn- not-an-empty-string [v]
-  (or (not (string? v)) (seq v)))
-
 (defn- apply-transformation [options idx v]
-  (if-let [option (get options idx)]
-    (if (not-an-empty-string v) ((transformations option) v) v) v))
+  (if-let [transformation (get options idx)]
+    (transformation v) v))
 
 (defn parse-command [command]
   (let [result (parse-using-ebnf (str/trim command))]
@@ -51,4 +50,4 @@
 
             transformed-result
             (map-indexed (partial apply-transformation options) result)]
-        (filter not-an-empty-string transformed-result)))))
+        (filter not-an-empty-string? transformed-result)))))
