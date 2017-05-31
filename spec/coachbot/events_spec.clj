@@ -70,7 +70,13 @@
               "default (e.g. 'add to question group Time Management')\n"
               " • remove from question group {group name} -- stop sending "
               "questions from the given question group (e.g. 'remove from "
-              "question group Time Management')")]
+              "question group Time Management')\n"
+              " • assert to #channel that \"assertion\" -- Check to see if "
+              "everyone in #channel believes that what you said is true "
+              "(assuming it's a good thing)\n"
+              " • assert to #channel that \"assertion\" with reversed scale -- "
+              "Check to see if everyone in #channel believes that what you "
+              "said is true (assuming it is NOT a good thing)")]
         (latest-messages))))
 
   (context "Start and stop coaching"

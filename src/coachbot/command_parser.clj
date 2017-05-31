@@ -27,12 +27,9 @@
 (defn- not-an-empty-string? [v]
   (or (not (string? v)) (seq v)))
 
-(defn- to-keyword [v]
-  (if (not-an-empty-string? v) (-> v str/lower-case keyword) v))
-
 (def ^:private command-transformations
   {:show-questions {2 str/lower-case}
-   :assert {3 to-keyword}})
+   :assert {3 #(.equalsIgnoreCase "reversed" %)}})
 
 (def ^:private parse-using-ebnf
   (insta/parser (str (io/resource "commands.ebnf")) :string-ci true))

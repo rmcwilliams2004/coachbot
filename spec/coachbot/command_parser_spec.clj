@@ -157,16 +157,16 @@
 
   (context "make assertions"
     (it-parses-variants "simple assertion"
-      [:assert "marketing" "Our marketing department is amazing"]
+      [:assert "marketing" "Our marketing department is amazing" false]
       "assert to #marketing that \"Our marketing department is amazing\""
       "ASSERT to #marketing that \"Our marketing department is amazing\""
       "Assert To #marketing That \"Our marketing department is amazing\""
-      "assert to #marketing \"Our marketing department is amazing\""
+      "assert #marketing \"Our marketing department is amazing\""
       "ASSERT #marketing \"Our marketing department is amazing\""
       "Assert #marketing \"Our marketing department is amazing\"")
 
     (it-parses-variants "reversed scale"
-      [:assert "marketing" "Our marketing department is awful" :reversed]
+      [:assert "marketing" "Our marketing department is awful" true]
       (str "assert to #marketing that \"Our marketing department is awful\""
            " with reversed scale")
       "assert #marketing \"Our marketing department is awful\" reversed"

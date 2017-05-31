@@ -63,10 +63,10 @@
 (defn coach-channel! [slack-team-id channel _]
   (let [ds (db/datasource)]
     (storage/with-access-tokens ds slack-team-id [access-token bot-access-token]
-      (let [channel-name (slack/get-channel-name access-token channel)]
-        (storage/add-coaching-channel! ds slack-team-id channel channel-name)
-        (slack/send-message! bot-access-token channel
-                             channel-coaching-message)))))
+                                (let [channel-name (slack/get-channel-name access-token channel)]
+                                  (storage/add-coaching-channel! ds slack-team-id channel channel-name)
+                                  (slack/send-message! bot-access-token channel
+                                                       channel-coaching-message)))))
 
 (defn stop-coaching-channel! [slack-team-id channel _]
   (storage/stop-coaching-channel! (db/datasource) slack-team-id channel))
@@ -112,6 +112,13 @@
               (if reversed? " (*Scale is reversed*)" "")
               (.print period-formatter time-diff))
             :buttons button-range}])))))
+
+(defn assert! [slack-team-id channel user-id
+               [target-channel assertion reversed?]]
+  (send-channel-question! slack-team-id target-channel "Highly Inaccurate"
+                          "Highly Accurate"
+                          5 reversed? assertion
+                          (t/minutes 30)))
 
 (defn send-channel-question-response! [conn slack-team-id _ {:keys [email]}
                                        question-id _ value]
@@ -180,11 +187,11 @@
                  team-id channel-id question-id question)
       (try
         (jdbc/with-db-transaction [conn ds]
-          (storage/with-access-tokens conn team-id
-            [access-token bot-access-token]
-            (storage/question-results-delivered! conn question-id)
-            (slack/send-message! bot-access-token channel-id
-                                 message attachments)))
+                                  (storage/with-access-tokens conn team-id
+                                                              [access-token bot-access-token]
+                                                              (storage/question-results-delivered! conn question-id)
+                                                              (slack/send-message! bot-access-token channel-id
+                                                                                   message attachments)))
         (catch Throwable t
           (log/errorf t "Could not send results for %s / %s / %s / '%s'"
                       team-id channel-id question-id question))))))
@@ -215,10 +222,10 @@
   [conn {:keys [channel_id team_id raw_msg message_id]}]
   (try
     (jdbc/with-db-transaction [conn (db/datasource)]
-      (storage/with-access-tokens conn team_id
-        [access-token bot-access-token]
-        (storage/message-delivered! conn message_id)
-        (slack/send-message! bot-access-token channel_id raw_msg)))
+                              (storage/with-access-tokens conn team_id
+                                                          [access-token bot-access-token]
+                                                          (storage/message-delivered! conn message_id)
+                                                          (slack/send-message! bot-access-token channel_id raw_msg)))
     (catch Throwable t
       (log/errorf t "Could not deliver '%s' (%d) to channel '%s' of team '%s''"
                   raw_msg message_id channel_id team_id))))

@@ -129,6 +129,7 @@
 (def show-question-groups-cmd "show question groups")
 (def add-to-group-cmd "add to question group")
 (def remove-from-group-cmd "remove from question group")
+(def assert-cmd "assert to")
 
 (defevent {:command :hi} hello-world)
 
@@ -178,6 +179,17 @@
             (str "stop sending questions from the given question group "
                  "(e.g. 'remove from question group Time Management')")}}
           cp/remove-from-question-group!)
+
+(defevent {:command :assert :command-text assert-cmd
+           :config-options
+           {" #channel that \"assertion\""
+            (str "Check to see if everyone in #channel believes that what "
+                 "you said is true (assuming it's a good thing)")
+
+            " #channel that \"assertion\" with reversed scale"
+            (str "Check to see if everyone in #channel believes that what "
+                 "you said is true (assuming it is NOT a good thing)")}}
+  ccp/assert!)
 
 (defevent {:command :friendly} friendly-reply)
 
@@ -276,6 +288,7 @@
                       raw-event
                       {:keys [team-id channel user-id text
                               event-subtype] :as event}]
+  (if (str/includes? text "assert") (println raw-event))
   (ss/try+
     (if-not (cp/is-bot-user? (db/datasource) team-id user-id)
       (when (slack/is-im-to-me? bot-access-token channel)
