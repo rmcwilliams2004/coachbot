@@ -14,7 +14,7 @@ add-group = <#"(?i)add (to )?(question )?group(s)?">, ws, text
 remove-group = <#"(?i)remove (from )?(question )?group(s)?">, ws, text
 friendly = <#"(?i)thank(s)?( you)?( coachbot)?"> | <"cheers">
 show-questions = <#"(?i)show ((me )?(the )?)?last">, mws, #"(\d+)?", mws,
-#"(?i)((week|day))?", <#"(s(')?)?">, mws, <#"(?i)((of )?question(s)?)?">
+#"(?i)((week|day))?", <#"(?i)(s(')?)?">, mws, <#"(?i)((of )?question(s)?)?">
 assert = <#"(?i)assert (to )?#">, #"\w+", mws, <#"(?i)(that )?">, <"\"">, text,
 <"\"">, mws, <#"(?i)(with)?">, mws, #"(?i)(reversed)?", mws, <#"(?i)(scale)?">
 <mws> = <#"\s*">

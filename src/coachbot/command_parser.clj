@@ -18,10 +18,19 @@
 ;
 
 (ns coachbot.command-parser
-  (:require [clojure.java.io :as io]
+  (:require [camel-snake-kebab.core :as csk]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [instaparse.core :as insta])
   (:use [slingshot.slingshot :only [throw+ try+]]))
+
+(def ^:private transformations
+  {:to-keyword (comp keyword str/lower-case)
+   :to-lowercase str/lower-case})
+
+(def ^:private command-transformations
+  {:show-questions {2 :to-lowercase}
+   :assert {3 :to-keyword}})
 
 (def ^:private parse-using-ebnf
   (insta/parser (str (io/resource "commands.ebnf")) :string-ci true))
@@ -29,8 +38,17 @@
 (defn- not-an-empty-string [v]
   (or (not (string? v)) (seq v)))
 
+(defn- apply-transformation [options idx v]
+  (if-let [option (get options idx)]
+    (if (not-an-empty-string v) ((transformations option) v) v) v))
+
 (defn parse-command [command]
   (let [result (parse-using-ebnf (str/trim command))]
     (if (insta/failure? result)
       (throw+ {:type ::parse-failure :result (pr-str result)})
-      (filter not-an-empty-string (first result)))))
+      (let [[[command-result :as result]] result
+            options (command-transformations command-result)
+
+            transformed-result
+            (map-indexed (partial apply-transformation options) result)]
+        (filter not-an-empty-string transformed-result)))))

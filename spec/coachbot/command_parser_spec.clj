@@ -121,6 +121,7 @@
       "show me the last 2 week"
       "show the last 2 week"
       "show last 2 week"
+      "show last 2 WEEK"
       "show last 2 weeks"
       "show last 2 weeks'"
       "show last 2 weeks' question"
@@ -133,6 +134,7 @@
       "show me ThE last 10 day"
       "show the last 10 day"
       "show LAST 10 day"
+      "show LAST 10 DAYS"
       "show last 10 days"
       "show last 10 days'"
       "show last 10 days' Question"
@@ -164,13 +166,10 @@
       "Assert #marketing \"Our marketing department is amazing\"")
 
     (it-parses-variants "reversed scale lowercase"
-      [:assert "marketing" "Our marketing department is awful" "reversed"]
+      [:assert "marketing" "Our marketing department is awful" :reversed]
       (str "assert to #marketing that \"Our marketing department is awful\""
            " with reversed scale")
-      "assert #marketing \"Our marketing department is awful\" reversed")
-
-    (it-parses-variants "reversed scale uppercase"
-      [:assert "marketing" "Our marketing department is awful" "REVERSED"]
+      "assert #marketing \"Our marketing department is awful\" reversed"
       (str "ASSERT TO #marketing that \"Our marketing department is awful\""
            " WITH REVERSED SCALE")
       "ASSERT #marketing \"Our marketing department is awful\" REVERSED")))
