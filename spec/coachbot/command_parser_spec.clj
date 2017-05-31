@@ -165,7 +165,7 @@
       "ASSERT #marketing \"Our marketing department is amazing\""
       "Assert #marketing \"Our marketing department is amazing\"")
 
-    (it-parses-variants "reversed scale lowercase"
+    (it-parses-variants "reversed scale"
       [:assert "marketing" "Our marketing department is awful" :reversed]
       (str "assert to #marketing that \"Our marketing department is awful\""
            " with reversed scale")
