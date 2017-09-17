@@ -22,8 +22,7 @@
             [coachbot.mocking :refer :all]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [speclj.core :refer :all])
-  (:import (java.io File)))
+            [speclj.core :refer :all]))
 
 (def expected-tables
   (sorted-set "base_questions" "bq_question_groups" "channel_question_answers"
