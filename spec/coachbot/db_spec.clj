@@ -56,5 +56,5 @@
                         "useLegacyDatetimeCode=false&serverTimezone=UTC&"
                         "useSSL=false")
                    "root" ""))
-    (it "should load the schema"
+    (it "should get the full schema"
       (should-get-tables @ds expected-tables :tables_in_coachbot))))
