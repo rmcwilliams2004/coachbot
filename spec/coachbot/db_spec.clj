@@ -48,6 +48,7 @@
                            (comp str/lower-case :table_name)))))
 
   ;; Requires running MySQL database
+  ;; use: 'create database coachbot default character set utf8;'
   #_(context "mysql"
     (with-all ds (db/make-db-datasource
                    "mysql"
