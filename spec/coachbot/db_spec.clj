@@ -18,10 +18,11 @@
 ;
 
 (ns coachbot.db-spec
-  (:require [coachbot.mocking :refer :all]
+  (:require [coachbot.db :as db]
+            [coachbot.mocking :refer :all]
             [clojure.java.jdbc :as jdbc]
-            [speclj.core :refer :all]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [speclj.core :refer :all])
   (:import (java.io File)))
 
 (def expected-tables
@@ -32,10 +33,10 @@
               "scu_question_groups" "slack_coaching_channels"
               "slack_coaching_users" "slack_teams" "user_activity"))
 
-(defmacro should-get-tables [tables & transform-code]
+(defmacro should-get-tables [ds tables & transform-code]
   `(should= ~tables
             (->> ["show tables"]
-                 (jdbc/query @ds)
+                 (jdbc/query ~ds)
                  (map ~@transform-code)
                  (into (sorted-set)))))
 
@@ -43,7 +44,7 @@
   (context "h2"
     (with-clean-db [ds]
       (it "should get the full schema"
-        (should-get-tables expected-tables
+        (should-get-tables @ds expected-tables
                            (comp str/lower-case :table_name)))))
 
   ;; Requires running MySQL database
@@ -56,4 +57,4 @@
                         "useSSL=false")
                    "root" ""))
     (it "should load the schema"
-      (should-get-tables expected-tables :tables_in_coachbot))))
+      (should-get-tables @ds expected-tables :tables_in_coachbot))))
