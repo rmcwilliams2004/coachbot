@@ -40,21 +40,16 @@
                  (into (sorted-set)))))
 
 (describe-with-level :error "Database Schema"
-  (context "h2"
-    (with-clean-db [ds]
-      (it "should get the full schema"
-        (should-get-tables @ds expected-tables
-                           (comp str/lower-case :table_name)))))
+  (db-context h2-type h2-url h2-username h2-password [ds]
+    (it "should get the full schema"
+      (should-get-tables @ds expected-tables
+                         (comp str/lower-case :table_name))))
 
   ;; Requires running MySQL database
   ;; use: 'create database coachbot default character set utf8;'
-  #_(context "mysql"
-    (with-all ds (db/make-db-datasource
-                   "mysql"
-                   (str "jdbc:mysql://localhost/coachbot?"
-                        "useJDBCCompliantTimezoneShift=true&"
-                        "useLegacyDatetimeCode=false&serverTimezone=UTC&"
-                        "useSSL=false")
-                   "root" ""))
+  #_(db-context "mysql" (str "jdbc:mysql://localhost/coachbot?"
+                           "useJDBCCompliantTimezoneShift=true&"
+                           "useLegacyDatetimeCode=false&serverTimezone=UTC&"
+                           "useSSL=false") "root" "" [ds]
     (it "should get the full schema"
       (should-get-tables @ds expected-tables :tables_in_coachbot))))

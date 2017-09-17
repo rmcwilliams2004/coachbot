@@ -29,6 +29,11 @@
             [speclj.core :refer :all]
             [taoensso.timbre :as log]))
 
+(def h2-type "h2")
+(def h2-url "jdbc:h2:mem:test")
+(def h2-username "")
+(def h2-password "")
+
 (def access-token "gobbledygook")
 (def bot-access-token "bot_stuff!!@!$sc$AG$A$^AVASEA$")
 (def team-id "def456")
@@ -141,16 +146,15 @@
      (around-all [it#] (log/with-level ~level (it#)))
      (context ~name ~@body)))
 
-(defmacro with-clean-db [bindings & body]
-  `(context "-CDB-"
-     (with-all
-       ~(first bindings)
-       (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
+(defmacro db-context [type url username password bindings & body]
+  `(context ~type
+     (with-all ~(first bindings)
+       (db/make-db-datasource ~type ~url ~username ~password))
 
-     (before-all (storage/store-slack-auth! (deref ~(first bindings))
-                                            slack-auth))
-     (after-all (jdbc/execute! (deref ~(first bindings))
-                  ["drop all objects"]))
+     (after-all
+       (when (= "h2" ~type)
+         (jdbc/execute! (deref ~(first bindings))
+           ["drop all objects"])))
      ~@body))
 
 (defmacro describe-mocked [name bindings & body]
@@ -159,7 +163,7 @@
                                (swap! messages# empty)
                                msgs#)]
      (describe-with-level :error ~name
-       (with-clean-db [~(first bindings)]
+       (db-context h2-type h2-url h2-username h2-password [~(first bindings)]
          (before-all (storage/store-slack-auth! (deref ~(first bindings))
                                                 slack-auth))
 
