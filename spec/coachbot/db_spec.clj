@@ -22,36 +22,37 @@
             [coachbot.mocking :refer :all]
             [clojure.java.jdbc :as jdbc]
             [speclj.core :refer :all]
-            [taoensso.timbre :as log])
+            [clojure.string :as str])
   (:import (java.io File)))
 
-;; Change :error to :info to see the full schema
-(describe-with-level :error "Database Schema"
-  (with-clean-db [ds]
-    (it "should get the full schema"
-      (jdbc/query @ds ["script simple nodata to 'schema.sql'"])
-      (let [f (File. "schema.sql")
-            _ (log/info (slurp f))
-            exists? (.exists f)
-            deleted? (.delete f)]
-        (should exists?)
-        (should deleted?)))))
+(def expected-tables
+  (sorted-set "base_questions" "bq_question_groups" "channel_question_answers"
+              "channel_questions" "channel_questions_asked" "custom_questions"
+              "question_answers" "question_groups" "questions_asked"
+              "queued_messages" "scheduled_custom_questions" "schema_version"
+              "scu_question_groups" "slack_coaching_channels"
+              "slack_coaching_users" "slack_teams" "user_activity"))
 
-#_(describe-with-level :error "My local mysql db"
-  ; create database coachbot default character set utf8;
-  (with-all ds (db/make-db-datasource
-                 "mysql"
-                 (str "jdbc:mysql://localhost/coachbot?"
-                      "useJDBCCompliantTimezoneShift=true&"
-                      "useLegacyDatetimeCode=false&serverTimezone=UTC")
-                 "root" ""))
-  (it "should load the schema"
-    (should= #{"base_questions" "bq_question_groups" "channel_question_answers"
-               "channel_questions" "channel_questions_asked" "custom_questions"
-               "question_answers" "question_groups" "questions_asked"
-               "queued_messages" "scheduled_custom_questions" "schema_version"
-               "scu_question_groups" "slack_coaching_channels"
-               "slack_coaching_users" "slack_teams" "user_activity"}
-             (into (sorted-set)
-                   (map :tables_in_coachbot
-                        (jdbc/query @ds ["show tables"]))))))
+(defmacro should-get-tables [tables & transform-code]
+  `(should= ~tables
+            (->> ["show tables"]
+                 (jdbc/query @ds)
+                 (map ~@transform-code)
+                 (into (sorted-set)))))
+
+(describe-with-level :error "Database Schema"
+  (context "h2"
+    (with-clean-db [ds]
+      (it "should get the full schema"
+        (should-get-tables expected-tables
+                           (comp str/lower-case :table_name)))))
+  #_(context "mysql"
+    (with-all ds (db/make-db-datasource
+                   "mysql"
+                   (str "jdbc:mysql://localhost/coachbot?"
+                        "useJDBCCompliantTimezoneShift=true&"
+                        "useLegacyDatetimeCode=false&serverTimezone=UTC&"
+                        "useSSL=false")
+                   "root" ""))
+    (it "should load the schema"
+      (should-get-tables expected-tables :tables_in_coachbot))))

@@ -142,7 +142,7 @@
      (context ~name ~@body)))
 
 (defmacro with-clean-db [bindings & body]
-  `(context "-"
+  `(context "-CDB-"
      (with-all
        ~(first bindings)
        (db/make-db-datasource "h2" "jdbc:h2:mem:test" "" ""))
