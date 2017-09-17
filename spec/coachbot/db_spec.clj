@@ -18,8 +18,7 @@
 ;
 
 (ns coachbot.db-spec
-  (:require [coachbot.db :as db]
-            [coachbot.mocking :refer :all]
+  (:require [coachbot.mocking :refer :all]
             [clojure.java.jdbc :as jdbc]
             [speclj.core :refer :all]
             [clojure.string :as str])
@@ -46,6 +45,8 @@
       (it "should get the full schema"
         (should-get-tables expected-tables
                            (comp str/lower-case :table_name)))))
+
+  ;; Requires running MySQL database
   #_(context "mysql"
     (with-all ds (db/make-db-datasource
                    "mysql"
